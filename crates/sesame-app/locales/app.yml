@@ -268,3 +268,15 @@ repo.change: { en: "Change", ru: "Изменить", az: "Dəyiş" }
 repo.check: { en: "Check GitHub", ru: "Проверить GitHub", az: "GitHub-ı yoxla" }
 repo.up_to_date: { en: "up to date", ru: "актуально", az: "aktualdır" }
 repo.behind: { en: "new commits on GitHub", ru: "на GitHub есть новые коммиты", az: "GitHub-da yeni commitlər var" }
+cf.all_domains: { en: "All domains", ru: "Все домены", az: "Bütün domenlər" }
+cf.search_domains: { en: "Search domains…", ru: "Поиск доменов…", az: "Domen axtar…" }
+cf.search_records: { en: "Search name or content…", ru: "Поиск по имени или значению…", az: "Ad və ya dəyərə görə axtar…" }
+cf.records_count: { en: "%{n} records", ru: "записей: %{n}", az: "qeyd: %{n}" }
+cf.type: { en: "Type", ru: "Тип", az: "Tip" }
+cf.ttl: { en: "TTL", ru: "TTL", az: "TTL" }
+cf.auto: { en: "Auto", ru: "Авто", az: "Avto" }
+cf.priority: { en: "Priority", ru: "Приоритет", az: "Prioritet" }
+cf.delete: { en: "Delete", ru: "Удалить", az: "Sil" }
+cf.no_records: { en: "No records match", ru: "Нет подходящих записей", az: "Uyğun qeyd yoxdur" }
+cf.no_domains: { en: "No domains match", ru: "Нет подходящих доменов", az: "Uyğun domen yoxdur" }
+cf.add_hint: { en: "Name: @ for the root, or a subdomain like www", ru: "Имя: @ для корня или субдомен, например www", az: "Ad: kök üçün @ və ya www kimi subdomen" }

@@ -72,6 +72,7 @@ fn main() {
             ("updates", Page::Updates),
             ("vault", Page::Vault),
             ("cloudflare", Page::Cloudflare),
+            ("cloudflare-zone", Page::Cloudflare),
         ];
         if let Some(only) = &only {
             pages.retain(|(name, _)| only.split(',').any(|o| o == *name));
@@ -79,7 +80,14 @@ fn main() {
         let want = |name: &str| only.as_ref().is_none_or(|o| o.split(',').any(|x| x == name));
         for (name, page) in pages {
             cx.update_window(handle, |_, window, cx| {
-                view.update(cx, |v, cx| v.navigate(page, cx));
+                view.update(cx, |v, cx| {
+                    v.navigate(page, cx);
+                    if name == "cloudflare-zone" {
+                        v.demo_open_zone("z1", cx);
+                    } else if name == "cloudflare" {
+                        v.demo_integrations("203.0.113.10", cx);
+                    }
+                });
                 window.render_frame(cx);
             })
             .unwrap();

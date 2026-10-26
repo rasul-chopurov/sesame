@@ -47,6 +47,18 @@ pub struct CfState {
     pub loading: bool,
     pub error: Option<String>,
     pub selected: Option<String>,
+    /// Record table filter by type (None = all).
+    pub filter_type: Option<String>,
+    /// The add-record form.
+    pub add_type: String,
+    pub add_ttl: u32,
+    pub add_proxied: bool,
+}
+
+impl CfState {
+    pub fn fresh() -> Self {
+        Self { add_type: "A".into(), add_ttl: 1, add_proxied: true, ..Default::default() }
+    }
 }
 
 /// A Cloudflare change, run after confirmation.
@@ -65,6 +77,9 @@ pub struct Inputs {
     pub new_zone: Entity<InputState>,
     pub rec_name: Entity<InputState>,
     pub rec_content: Entity<InputState>,
+    pub rec_priority: Entity<InputState>,
+    pub zone_search: Entity<InputState>,
+    pub record_search: Entity<InputState>,
 }
 
 impl Inputs {
@@ -78,11 +93,24 @@ impl Inputs {
             new_zone: plain("example.com".into(), window, cx),
             rec_name: plain("www".into(), window, cx),
             rec_content: plain("203.0.113.10".into(), window, cx),
+            rec_priority: plain("10".into(), window, cx),
+            zone_search: plain(tr("cf.search_domains"), window, cx),
+            record_search: plain(tr("cf.search_records"), window, cx),
         }
     }
 
-    pub fn all(&self) -> [&Entity<InputState>; 6] {
-        [&self.gh_token, &self.cf_token, &self.repo_search, &self.new_zone, &self.rec_name, &self.rec_content]
+    pub fn all(&self) -> [&Entity<InputState>; 9] {
+        [
+            &self.gh_token,
+            &self.cf_token,
+            &self.repo_search,
+            &self.new_zone,
+            &self.rec_name,
+            &self.rec_content,
+            &self.rec_priority,
+            &self.zone_search,
+            &self.record_search,
+        ]
     }
 }
 
@@ -170,7 +198,7 @@ impl SesameApp {
 
     pub(crate) fn disconnect_cloudflare(&mut self, cx: &mut Context<Self>) {
         let _ = secrets::delete_global(CLOUDFLARE_TOKEN);
-        self.cf = CfState::default();
+        self.cf = CfState::fresh();
         cx.notify();
     }
 
@@ -198,9 +226,6 @@ impl SesameApp {
                     Ok(Ok((accounts, zones, records))) => {
                         this.cf.connected = true;
                         this.cf.accounts = accounts;
-                        if this.cf.selected.is_none() {
-                            this.cf.selected = zones.first().map(|z| z.id.clone());
-                        }
                         this.cf.zones = zones;
                         this.cf.records = records;
                     }
@@ -530,6 +555,7 @@ pub fn settings_card(app: &SesameApp, cx: &mut Context<SesameApp>) -> Div {
 
 pub fn cloudflare_page(app: &SesameApp, cx: &mut Context<SesameApp>) -> impl IntoElement {
     let g = Glass::get(cx).clone();
+    let zone = app.cf.selected.as_ref().and_then(|id| app.cf.zones.iter().find(|z| &z.id == id)).cloned();
     let header = h_flex()
         .px_5()
         .py_3()
@@ -537,7 +563,26 @@ pub fn cloudflare_page(app: &SesameApp, cx: &mut Context<SesameApp>) -> impl Int
         .border_b_1()
         .border_color(g.line)
         .children(brand("cloudflare", px(20.)))
-        .child(div().flex_1().text_lg().font_weight(FontWeight::BOLD).child("Cloudflare"))
+        .child(
+            h_flex()
+                .flex_1()
+                .gap_2()
+                .child(
+                    div()
+                        .id("cf-home")
+                        .text_lg()
+                        .font_weight(FontWeight::BOLD)
+                        .cursor_pointer()
+                        .child("Cloudflare")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.cf.selected = None;
+                            cx.notify();
+                        })),
+                )
+                .when_some(zone.as_ref().map(|z| z.name.clone()), |d, name| {
+                    d.child(div().text_lg().text_color(g.faint).child("/")).child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child(name))
+                }),
+        )
         .child(
             Button::new("cf-refresh")
                 .ghost()
@@ -554,121 +599,220 @@ pub fn cloudflare_page(app: &SesameApp, cx: &mut Context<SesameApp>) -> impl Int
             .when_some(app.cf.error.clone(), |d, e| d.child(div().text_color(g.bad).child(e)));
         return v_flex().size_full().child(header).child(body);
     }
+    let body = match zone {
+        None => zones_grid(app, cx).into_any_element(),
+        Some(z) => zone_detail(app, &z, cx).into_any_element(),
+    };
+    v_flex()
+        .size_full()
+        .child(header)
+        .child(div().id("cf-body").flex_1().min_h_0().overflow_y_scroll().p_5().child(body))
+}
 
-    let mut zones = v_flex().gap_0p5();
-    for z in &app.cf.zones {
+fn zones_grid(app: &SesameApp, cx: &mut Context<SesameApp>) -> Div {
+    let g = Glass::get(cx).clone();
+    let q = app.int.zone_search.read(cx).value().trim().to_lowercase();
+    let mut grid = div().grid().grid_cols(3).gap_3();
+    let mut shown = 0;
+    for z in app.cf.zones.iter().filter(|z| q.is_empty() || z.name.contains(&q)) {
+        shown += 1;
         let id = z.id.clone();
-        let active = app.cf.selected.as_deref() == Some(z.id.as_str());
-        let count = app.cf.records.iter().find(|(zid, _)| *zid == z.id).map(|(_, r)| r.len()).unwrap_or(0);
-        zones = zones.child(
-            h_flex()
+        let recs = app.cf.records.iter().find(|(zid, _)| *zid == z.id).map(|(_, r)| r.as_slice()).unwrap_or(&[]);
+        let proxied = recs.iter().filter(|r| r.proxied).count();
+        grid = grid.child(
+            v_flex()
                 .id(SharedString::from(format!("zone-{}", z.id)))
-                .gap_2()
-                .px_2()
-                .h(px(30.))
-                .rounded_md()
+                .p_4()
+                .gap_3()
+                .rounded_lg()
+                .border_1()
+                .border_color(g.line)
+                .bg(g.panel)
                 .cursor_pointer()
-                .when(active, |d| d.bg(g.accent_soft))
-                .hover(|d| d.bg(g.panel_hover))
+                .hover(|d| d.bg(g.panel_hover).border_color(g.accent.opacity(0.5)))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.cf.selected = Some(id.clone());
+                    this.cf.filter_type = None;
                     cx.notify();
                 }))
-                .child(dot(if z.status == "active" { g.ok } else { g.warn }))
-                .child(div().flex_1().child(z.name.clone()))
-                .child(div().text_xs().text_color(g.faint).child(count.to_string())),
-        );
-    }
-    let add_zone = v_flex()
-        .gap_1()
-        .pt_3()
-        .child(heading(&tr("cf.add_zone"), cx))
-        .child(Input::new(&app.int.new_zone))
-        .child(div().text_xs().text_color(g.faint).child(tr("cf.add_zone_hint")))
-        .child(
-            Button::new("cf-add-zone")
-                .small()
-                .primary()
-                .icon(IconName::Plus)
-                .label(tr("cf.add_zone"))
-                .on_click(cx.listener(|this, _, window, cx| {
-                    let name = this.int.new_zone.read(cx).value().trim().to_lowercase();
-                    let Some(account) = this.cf.accounts.first().cloned() else { return };
-                    if !sesame_cloudflare::valid_hostname(&name) {
-                        return;
-                    }
-                    this.request_api(
-                        format!("add {name} to Cloudflare"),
-                        vec![format!("account {}", account.name), "then change the domain's nameservers at the registrar".into()],
-                        Risk::Change,
-                        None,
-                        ApiAction::CreateZone { account_id: account.id, name },
-                        window,
-                        cx,
-                    );
-                })),
-        );
-
-    let zone = app.cf.selected.as_ref().and_then(|id| app.cf.zones.iter().find(|z| &z.id == id)).cloned();
-    let right = match zone {
-        None => v_flex().child(empty(tr("cf.select_zone"), cx)),
-        Some(zone) => {
-            let records = app.cf.records.iter().find(|(id, _)| *id == zone.id).map(|(_, r)| r.clone()).unwrap_or_default();
-            let zid = zone.id.clone();
-            let mut table = v_flex().gap_0p5();
-            for r in records {
-                let (zid_d, rid, name) = (zid.clone(), r.id.clone(), r.name.clone());
-                let (zid_p, toggled) = (zid.clone(), { let mut t = r.clone(); t.proxied = !t.proxied; t });
-                let proxiable = matches!(r.kind.as_str(), "A" | "AAAA" | "CNAME");
-                table = table.child(
+                .child(
                     h_flex()
                         .gap_3()
-                        .min_h(px(30.))
-                        .px_2()
-                        .rounded_md()
-                        .hover(|d| d.bg(g.panel_hover))
-                        .child(div().w(px(56.)).child(pill(r.kind.clone(), g.info)))
-                        .child(div().w(px(240.)).min_w_0().overflow_hidden().child(mono(r.name.clone())))
-                        .child(div().flex_1().min_w_0().overflow_hidden().child(mono(r.content.clone()).text_color(g.dim)))
+                        .child(avatar(&z.name, cx))
                         .child(
-                            div()
-                                .id(SharedString::from(format!("px-{}", r.id)))
-                                .w(px(120.))
-                                .cursor_pointer()
-                                .when(proxiable, |d| {
-                                    d.child(pill(if r.proxied { tr("cf.proxied") } else { tr("cf.dns_only") }, if r.proxied { g.accent } else { g.faint }))
-                                        .on_click(cx.listener(move |this, _, window, cx| {
-                                            let title = format!("{} {}: {}", toggled.kind, toggled.name, if toggled.proxied { "proxied" } else { "DNS only" });
-                                            this.request_api(title.clone(), vec![title], Risk::Change, None, ApiAction::Upsert { zone_id: zid_p.clone(), records: vec![toggled.clone()] }, window, cx);
-                                        }))
-                                }),
+                            v_flex()
+                                .flex_1()
+                                .min_w_0()
+                                .child(div().font_weight(FontWeight::SEMIBOLD).child(z.name.clone()))
+                                .child(div().text_xs().text_color(g.faint).child(trp("cf.records_count", &[("n", &recs.len().to_string())]))),
                         )
-                        .child(
-                            Button::new(SharedString::from(format!("del-{}", r.id)))
-                                .xsmall()
-                                .ghost()
-                                .icon(IconName::X)
-                                .on_click(cx.listener(move |this, _, window, cx| {
-                                    this.request_api(
-                                        format!("delete DNS record {name}"),
-                                        vec![format!("{name} stops resolving through this record")],
-                                        Risk::Destructive,
-                                        Some(name.clone()),
-                                        ApiAction::Delete { zone_id: zid_d.clone(), record_id: rid.clone() },
-                                        window,
-                                        cx,
-                                    );
-                                })),
-                        ),
-                );
-            }
-            let zid_add = zid.clone();
-            let zname = zone.name.clone();
-            let add = h_flex()
+                        .child(pill(z.status.clone(), if z.status == "active" { g.ok } else { g.warn })),
+                )
+                .child(
+                    h_flex()
+                        .gap_3()
+                        .text_xs()
+                        .text_color(g.dim)
+                        .child(h_flex().gap_1().children(brand("cloudflare", px(12.))).child(format!("{proxied} proxied")))
+                        .when(!z.name_servers.is_empty(), |d| d.child(div().overflow_hidden().child(z.name_servers.join(", ")))),
+                ),
+        );
+    }
+    let add_zone = card(&tr("cf.add_zone"), cx).child(
+        h_flex()
+            .gap_2()
+            .child(div().w(px(300.)).child(Input::new(&app.int.new_zone)))
+            .child(
+                Button::new("cf-add-zone")
+                    .primary()
+                    .icon(IconName::Plus)
+                    .label(tr("cf.add_zone"))
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        let name = this.int.new_zone.read(cx).value().trim().to_lowercase();
+                        let Some(account) = this.cf.accounts.first().cloned() else { return };
+                        if !sesame_cloudflare::valid_hostname(&name) {
+                            return;
+                        }
+                        this.request_api(
+                            format!("add {name} to Cloudflare"),
+                            vec![format!("account {}", account.name), "then change the domain's nameservers at the registrar".into()],
+                            Risk::Change,
+                            None,
+                            ApiAction::CreateZone { account_id: account.id, name },
+                            window,
+                            cx,
+                        );
+                    })),
+            )
+            .child(div().text_xs().text_color(g.faint).child(tr("cf.add_zone_hint"))),
+    );
+    v_flex()
+        .gap_4()
+        .child(div().w(px(380.)).child(Input::new(&app.int.zone_search).prefix(icon(IconName::Search, g.faint)).cleanable(true)))
+        .child(if shown == 0 { empty(tr("cf.no_domains"), cx) } else { grid })
+        .child(add_zone)
+}
+
+fn zone_detail(app: &SesameApp, zone: &Zone, cx: &mut Context<SesameApp>) -> Div {
+    let g = Glass::get(cx).clone();
+    let zid = zone.id.clone();
+    let records = app.cf.records.iter().find(|(id, _)| *id == zone.id).map(|(_, r)| r.clone()).unwrap_or_default();
+    let q = app.int.record_search.read(cx).value().trim().to_lowercase();
+
+    // Filters: type chips present in the zone + search.
+    let mut types: Vec<String> = records.iter().map(|r| r.kind.clone()).collect();
+    types.sort();
+    types.dedup();
+    let chip = |id: String, label: String, active: bool| {
+        div()
+            .id(SharedString::from(id))
+            .px_3()
+            .py_1()
+            .rounded_full()
+            .cursor_pointer()
+            .text_xs()
+            .border_1()
+            .border_color(if active { g.accent } else { g.line })
+            .when(active, |d| d.bg(g.accent_soft).text_color(g.text))
+            .when(!active, |d| d.text_color(g.dim))
+            .child(label)
+    };
+    let mut chips = h_flex().gap_1().child(
+        chip("rt-all".into(), format!("{} · {}", tr("sites.all"), records.len()), app.cf.filter_type.is_none()).on_click(cx.listener(|this, _, _, cx| {
+            this.cf.filter_type = None;
+            cx.notify();
+        })),
+    );
+    for t in &types {
+        let n = records.iter().filter(|r| &r.kind == t).count();
+        let tt = t.clone();
+        chips = chips.child(
+            chip(format!("rt-{t}"), format!("{t} · {n}"), app.cf.filter_type.as_deref() == Some(t.as_str())).on_click(cx.listener(move |this, _, _, cx| {
+                this.cf.filter_type = Some(tt.clone());
+                cx.notify();
+            })),
+        );
+    }
+
+    // Add form: type selector, name, content, priority (MX), TTL, proxy.
+    let add_type = app.cf.add_type.clone();
+    let mut type_sel = h_flex().p_0p5().gap_0p5().rounded_lg().bg(g.panel).border_1().border_color(g.line);
+    for t in sesame_cloudflare::RECORD_TYPES {
+        let active = add_type == *t;
+        let tt = t.to_string();
+        type_sel = type_sel.child(
+            div()
+                .id(SharedString::from(format!("add-{t}")))
+                .px_2p5()
+                .py_1()
+                .rounded_md()
+                .cursor_pointer()
+                .text_xs()
+                .font_weight(FontWeight::SEMIBOLD)
+                .when(active, |d| d.bg(g.accent).text_color(g.accent_text))
+                .when(!active, |d| d.text_color(g.dim).hover(|d| d.bg(g.panel_hover)))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.cf.add_type = tt.clone();
+                    if !sesame_cloudflare::proxiable(&tt) {
+                        this.cf.add_proxied = false;
+                    }
+                    cx.notify();
+                }))
+                .child(t.to_string()),
+        );
+    }
+    let ttl_opts: [(u32, String); 4] = [(1, tr("cf.auto")), (300, "5 min".into()), (3600, "1 h".into()), (86400, "1 d".into())];
+    let mut ttl_sel = h_flex().gap_0p5();
+    for (v, label) in ttl_opts {
+        let active = app.cf.add_ttl == v;
+        ttl_sel = ttl_sel.child(
+            div()
+                .id(SharedString::from(format!("ttl-{v}")))
+                .px_2()
+                .py_1()
+                .rounded_md()
+                .cursor_pointer()
+                .text_xs()
+                .when(active, |d| d.bg(g.accent_soft).text_color(g.text))
+                .when(!active, |d| d.text_color(g.dim))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.cf.add_ttl = v;
+                    cx.notify();
+                }))
+                .child(label),
+        );
+    }
+    let can_proxy = sesame_cloudflare::proxiable(&add_type);
+    let zname = zone.name.clone();
+    let zid_add = zid.clone();
+    let add_form = card(&tr("cf.add_record"), cx)
+        .child(h_flex().gap_3().child(type_sel).child(div().text_xs().text_color(g.faint).child(tr("cf.add_hint"))))
+        .child(
+            h_flex()
                 .gap_2()
-                .pt_2()
-                .child(div().w(px(200.)).child(Input::new(&app.int.rec_name)))
-                .child(div().w(px(220.)).child(Input::new(&app.int.rec_content)))
+                .items_center()
+                .child(v_flex().w(px(200.)).gap_1().child(div().text_xs().text_color(g.dim).child(tr("cf.name"))).child(Input::new(&app.int.rec_name)))
+                .child(v_flex().flex_1().gap_1().child(div().text_xs().text_color(g.dim).child(tr("cf.content"))).child(Input::new(&app.int.rec_content)))
+                .when(add_type == "MX", |d| {
+                    d.child(v_flex().w(px(90.)).gap_1().child(div().text_xs().text_color(g.dim).child(tr("cf.priority"))).child(Input::new(&app.int.rec_priority)))
+                }),
+        )
+        .child(
+            h_flex()
+                .gap_4()
+                .child(h_flex().gap_2().child(div().text_xs().text_color(g.dim).child(tr("cf.ttl"))).child(ttl_sel))
+                .when(can_proxy, |d| {
+                    d.child(
+                        gpui_kit::component::switch::Switch::new("add-proxied")
+                            .checked(app.cf.add_proxied)
+                            .label(tr("cf.proxied"))
+                            .on_click(cx.listener(|this, v: &bool, _, cx| {
+                                this.cf.add_proxied = *v;
+                                cx.notify();
+                            })),
+                    )
+                })
+                .child(div().flex_1())
                 .child(
                     Button::new("cf-add-record")
                         .primary()
@@ -677,66 +821,156 @@ pub fn cloudflare_page(app: &SesameApp, cx: &mut Context<SesameApp>) -> impl Int
                         .on_click(cx.listener(move |this, _, window, cx| {
                             let name = this.int.rec_name.read(cx).value().trim().to_lowercase();
                             let content = this.int.rec_content.read(cx).value().trim().to_string();
-                            let fqdn = if name == "@" || name.is_empty() { zname.clone() } else if name.ends_with(&zname) { name } else { format!("{name}.{zname}") };
+                            let kind = this.cf.add_type.clone();
+                            let fqdn = if name == "@" || name.is_empty() {
+                                zname.clone()
+                            } else if name == zname || name.ends_with(&format!(".{zname}")) {
+                                name
+                            } else {
+                                format!("{name}.{zname}")
+                            };
                             if !sesame_cloudflare::valid_hostname(&fqdn) || content.is_empty() {
                                 return;
                             }
-                            let kind = if content.parse::<std::net::Ipv4Addr>().is_ok() {
-                                "A"
-                            } else if content.parse::<std::net::Ipv6Addr>().is_ok() {
-                                "AAAA"
-                            } else {
-                                "CNAME"
-                            };
-                            let rec = DnsRecord { id: String::new(), kind: kind.into(), name: fqdn.clone(), content: content.clone(), proxied: true, ttl: 1 };
-                            this.request_api(format!("add {kind} {fqdn}"), vec![format!("{kind} {fqdn} → {content} (proxied)")], Risk::Change, None, ApiAction::Upsert { zone_id: zid_add.clone(), records: vec![rec] }, window, cx);
+                            let priority = (kind == "MX").then(|| this.int.rec_priority.read(cx).value().trim().parse().unwrap_or(10));
+                            let proxied = sesame_cloudflare::proxiable(&kind) && this.cf.add_proxied;
+                            let rec = DnsRecord { id: String::new(), kind: kind.clone(), name: fqdn.clone(), content: content.clone(), proxied, ttl: this.cf.add_ttl, priority };
+                            this.request_api(
+                                format!("add {kind} {fqdn}"),
+                                vec![format!("{kind} {fqdn} → {content}{}", if proxied { " (proxied)" } else { "" })],
+                                Risk::Change,
+                                None,
+                                ApiAction::Upsert { zone_id: zid_add.clone(), records: vec![rec] },
+                                window,
+                                cx,
+                            );
                         })),
-                );
-            let zid_purge = zid.clone();
-            v_flex()
+                ),
+        );
+
+    // The table.
+    let visible: Vec<DnsRecord> = records
+        .into_iter()
+        .filter(|r| app.cf.filter_type.as_ref().is_none_or(|t| &r.kind == t))
+        .filter(|r| q.is_empty() || r.name.to_lowercase().contains(&q) || r.content.to_lowercase().contains(&q))
+        .collect();
+    let head = h_flex()
+        .gap_3()
+        .px_2()
+        .pb_1()
+        .text_xs()
+        .text_color(g.faint)
+        .child(div().w(px(64.)).child(tr("cf.type").to_uppercase()))
+        .child(div().w(px(240.)).child(tr("cf.name").to_uppercase()))
+        .child(div().flex_1().child(tr("cf.content").to_uppercase()))
+        .child(div().w(px(130.)).child("PROXY"))
+        .child(div().w(px(60.)).child(tr("cf.ttl").to_uppercase()))
+        .child(div().w(px(90.)));
+    let mut table = v_flex().gap_0p5().child(head);
+    if visible.is_empty() {
+        table = table.child(empty(tr("cf.no_records"), cx));
+    }
+    for r in visible {
+        let (zid_d, rid, name) = (zid.clone(), r.id.clone(), r.name.clone());
+        let zid_p = zid.clone();
+        let mut toggled = r.clone();
+        toggled.proxied = !toggled.proxied;
+        let ttl = if r.ttl == 1 { tr("cf.auto") } else if r.ttl % 3600 == 0 { format!("{} h", r.ttl / 3600) } else { format!("{} s", r.ttl) };
+        table = table.child(
+            h_flex()
+                .gap_3()
+                .min_h(px(34.))
+                .px_2()
+                .rounded_md()
+                .border_b_1()
+                .border_color(g.line)
+                .hover(|d| d.bg(g.panel_hover))
+                .child(div().w(px(64.)).child(pill(r.kind.clone(), g.info)))
+                .child(div().w(px(240.)).min_w_0().overflow_hidden().child(mono(r.name.clone())))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .overflow_hidden()
+                        .child(mono(match r.priority {
+                            Some(p) => format!("{p} {}", r.content),
+                            None => r.content.clone(),
+                        }).text_color(g.dim)),
+                )
+                .child(
+                    div()
+                        .id(SharedString::from(format!("px-{}", r.id)))
+                        .w(px(130.))
+                        .when(sesame_cloudflare::proxiable(&r.kind), |d| {
+                            d.cursor_pointer()
+                                .child(pill(if r.proxied { tr("cf.proxied") } else { tr("cf.dns_only") }, if r.proxied { g.accent } else { g.faint }))
+                                .on_click(cx.listener(move |this, _, window, cx| {
+                                    let title = format!("{} {}: {}", toggled.kind, toggled.name, if toggled.proxied { "proxied" } else { "DNS only" });
+                                    this.request_api(title.clone(), vec![title], Risk::Change, None, ApiAction::Upsert { zone_id: zid_p.clone(), records: vec![toggled.clone()] }, window, cx);
+                                }))
+                        }),
+                )
+                .child(div().w(px(60.)).text_xs().text_color(g.dim).child(ttl))
+                .child(
+                    div().w(px(90.)).child(
+                        Button::new(SharedString::from(format!("del-{}", r.id)))
+                            .xsmall()
+                            .danger()
+                            .icon(IconName::X)
+                            .label(tr("cf.delete"))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.request_api(
+                                    format!("delete DNS record {name}"),
+                                    vec![format!("{name} stops resolving through this record")],
+                                    Risk::Destructive,
+                                    Some(name.clone()),
+                                    ApiAction::Delete { zone_id: zid_d.clone(), record_id: rid.clone() },
+                                    window,
+                                    cx,
+                                );
+                            })),
+                    ),
+                ),
+        );
+    }
+    let zid_purge = zid.clone();
+    v_flex()
+        .gap_4()
+        .child(
+            h_flex()
                 .gap_3()
                 .child(
                     h_flex()
-                        .gap_3()
-                        .child(div().flex_1().text_lg().font_weight(FontWeight::SEMIBOLD).child(zone.name.clone()))
-                        .child(pill(zone.status.clone(), if zone.status == "active" { g.ok } else { g.warn }))
-                        .child(
-                            Button::new("cf-purge")
-                                .ghost()
-                                .icon(IconName::Zap)
-                                .label(tr("cf.purge"))
-                                .on_click(cx.listener(move |this, _, window, cx| {
-                                    this.request_api("purge Cloudflare cache".into(), vec!["every cached file of the zone".into()], Risk::Change, None, ApiAction::Purge { zone_id: zid_purge.clone() }, window, cx);
-                                })),
-                        ),
+                        .id("cf-back")
+                        .gap_1()
+                        .cursor_pointer()
+                        .text_color(g.dim)
+                        .hover(|d| d.text_color(g.text))
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.cf.selected = None;
+                            cx.notify();
+                        }))
+                        .child("←")
+                        .child(tr("cf.all_domains")),
                 )
-                .when(!zone.name_servers.is_empty(), |d| d.child(kv(&tr("cf.nameservers"), zone.name_servers.join(", "), cx)))
-                .child(card(&tr("cf.records"), cx).child(table).child(add))
-        }
-    };
-    v_flex()
-        .size_full()
-        .child(header)
-        .child(
-            h_flex()
-                .flex_1()
-                .min_h_0()
-                .items_start()
+                .child(div().flex_1())
+                .child(pill(zone.status.clone(), if zone.status == "active" { g.ok } else { g.warn }))
                 .child(
-                    div()
-                        .id("cf-zones")
-                        .w(px(260.))
-                        .h_full()
-                        .flex_shrink_0()
-                        .overflow_y_scroll()
-                        .p_3()
-                        .border_r_1()
-                        .border_color(g.line)
-                        .child(heading(&tr("cf.zones"), cx))
-                        .child(zones)
-                        .child(add_zone),
-                )
-                .child(div().id("cf-records").flex_1().h_full().overflow_y_scroll().p_5().child(right)),
+                    Button::new("cf-purge")
+                        .ghost()
+                        .icon(IconName::Zap)
+                        .label(tr("cf.purge"))
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            this.request_api("purge Cloudflare cache".into(), vec!["every cached file of the zone".into()], Risk::Change, None, ApiAction::Purge { zone_id: zid_purge.clone() }, window, cx);
+                        })),
+                ),
+        )
+        .when(!zone.name_servers.is_empty(), |d| d.child(kv(&tr("cf.nameservers"), zone.name_servers.join(", "), cx)))
+        .child(add_form)
+        .child(
+            card(&tr("cf.records"), cx)
+                .child(h_flex().gap_3().child(chips).child(div().flex_1()).child(div().w(px(300.)).child(Input::new(&app.int.record_search).prefix(icon(IconName::Search, g.faint)).cleanable(true))))
+                .child(table),
         )
 }
 
@@ -958,6 +1192,13 @@ pub fn sidebar_entry(app: &SesameApp, cx: &mut Context<SesameApp>) -> impl IntoE
 }
 
 impl SesameApp {
+    /// Opens a zone on the Cloudflare page (screenshots, demos).
+    #[doc(hidden)]
+    pub fn demo_open_zone(&mut self, id: &str, cx: &mut Context<Self>) {
+        self.cf.selected = Some(id.to_string());
+        cx.notify();
+    }
+
     /// Fills GitHub and Cloudflare with sample data (screenshots, demos).
     #[doc(hidden)]
     pub fn demo_integrations(&mut self, server_ip: &str, cx: &mut Context<Self>) {
@@ -972,15 +1213,18 @@ impl SesameApp {
         }];
         self.gh.branches.insert("rasul-chopurov/shop".into(), vec!["main".into(), "staging".into()]);
         let zone = Zone { id: "z1".into(), name: "example.com".into(), status: "active".into(), name_servers: vec!["ada.ns.cloudflare.com".into(), "bob.ns.cloudflare.com".into()], paused: false };
-        let rec = |kind: &str, name: &str, content: &str, proxied: bool| DnsRecord { id: format!("{kind}-{name}"), kind: kind.into(), name: name.into(), content: content.into(), proxied, ttl: 1 };
+        let rec = |kind: &str, name: &str, content: &str, proxied: bool| DnsRecord { id: format!("{kind}-{name}"), kind: kind.into(), name: name.into(), content: content.into(), proxied, ttl: 1, priority: None };
         self.cf.connected = true;
         self.cf.accounts = vec![Account { id: "a1".into(), name: "Shop LLC".into() }];
+        self.cf.add_type = "A".into();
+        self.cf.add_ttl = 1;
+        self.cf.add_proxied = true;
         self.cf.zones = vec![zone, Zone { id: "z2".into(), name: "response.az".into(), status: "active".into(), name_servers: vec![], paused: false }];
         self.cf.records = vec![
             ("z1".into(), vec![rec("A", "example.com", server_ip, true), rec("MX", "example.com", "mx.zoho.eu", false), rec("TXT", "example.com", "v=spf1 include:zoho.eu ~all", false)]),
             ("z2".into(), vec![rec("A", "sesame.response.az", server_ip, true)]),
         ];
-        self.cf.selected = Some("z1".into());
+        self.cf.selected = None;
         cx.notify();
     }
 }

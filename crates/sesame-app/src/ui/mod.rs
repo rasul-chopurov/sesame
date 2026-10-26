@@ -258,7 +258,7 @@ impl SesameApp {
             vault_busy: false,
             vault_error: None,
             gh: Default::default(),
-            cf: Default::default(),
+            cf: integrations::CfState::fresh(),
             int,
             _subscriptions: subs,
         };
@@ -305,6 +305,8 @@ impl SesameApp {
             (&self.filter, tr("nav.filter")),
             (&self.site_search, tr("sites.search")),
             (&self.int.repo_search, tr("repo.search")),
+            (&self.int.zone_search, tr("cf.search_domains")),
+            (&self.int.record_search, tr("cf.search_records")),
             (&self.form.key, tr("add.key_placeholder")),
             (&self.form.password, tr("add.password_placeholder")),
         ];

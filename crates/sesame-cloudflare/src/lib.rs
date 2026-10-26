@@ -32,6 +32,28 @@ pub struct DnsRecord {
     pub proxied: bool,
     #[serde(default = "auto_ttl")]
     pub ttl: u32,
+    /// MX (and SRV) priority.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority: Option<u16>,
+}
+
+/// Record types Sesame lets you add, in Cloudflare's order.
+pub const RECORD_TYPES: &[&str] = &["A", "AAAA", "CNAME", "TXT", "MX", "NS", "CAA"];
+
+/// Types Cloudflare can proxy.
+pub fn proxiable(kind: &str) -> bool {
+    matches!(kind, "A" | "AAAA" | "CNAME")
+}
+
+fn record_body(r: &DnsRecord) -> serde_json::Value {
+    let mut body = serde_json::json!({ "type": r.kind, "name": r.name, "content": r.content, "ttl": r.ttl });
+    if proxiable(&r.kind) {
+        body["proxied"] = serde_json::json!(r.proxied);
+    }
+    if let Some(p) = r.priority {
+        body["priority"] = serde_json::json!(p);
+    }
+    body
 }
 
 fn auto_ttl() -> u32 {
@@ -155,12 +177,12 @@ impl Client {
     }
 
     pub async fn create_record(&self, zone_id: &str, r: &DnsRecord) -> Result<DnsRecord> {
-        let body = serde_json::json!({ "type": r.kind, "name": r.name, "content": r.content, "proxied": r.proxied, "ttl": r.ttl });
+        let body = record_body(r);
         Ok(self.call(self.http.post(format!("{API}/zones/{zone_id}/dns_records")).json(&body)).await?.0)
     }
 
     pub async fn update_record(&self, zone_id: &str, r: &DnsRecord) -> Result<DnsRecord> {
-        let body = serde_json::json!({ "type": r.kind, "name": r.name, "content": r.content, "proxied": r.proxied, "ttl": r.ttl });
+        let body = record_body(r);
         Ok(self
             .call(self.http.put(format!("{API}/zones/{zone_id}/dns_records/{}", r.id)).json(&body))
             .await?
@@ -231,6 +253,7 @@ pub fn record_for(host: &str, server_ip: &str, proxied: bool) -> DnsRecord {
         content: server_ip.into(),
         proxied,
         ttl: 1,
+        priority: None,
     }
 }
 
@@ -287,6 +310,7 @@ mod tests {
             content: ip.into(),
             proxied: true,
             ttl: 1,
+            priority: None,
         };
         let records = vec![("1".to_string(), vec![a("example.com", "1.2.3.4"), a("old.example.com", "9.9.9.9")])];
         assert!(matches!(status("example.com", "1.2.3.4", &zones, &records), DnsStatus::Ok { .. }));
@@ -294,6 +318,16 @@ mod tests {
         assert_eq!(status("new.example.com", "1.2.3.4", &zones, &records), DnsStatus::Missing { zone: "example.com".into() });
         assert_eq!(status("shop.test", "1.2.3.4", &zones, &records), DnsStatus::NoZone);
         assert_eq!(record_for("New.Example.com", "2a01::1", true).kind, "AAAA");
+    }
+
+    #[test]
+    fn record_bodies() {
+        let mx = DnsRecord { id: String::new(), kind: "MX".into(), name: "example.com".into(), content: "mx.zoho.eu".into(), proxied: true, ttl: 3600, priority: Some(10) };
+        let b = record_body(&mx);
+        assert_eq!(b["priority"], 10);
+        assert!(b.get("proxied").is_none(), "MX cannot be proxied");
+        let a = record_for("example.com", "1.2.3.4", true);
+        assert_eq!(record_body(&a)["proxied"], true);
     }
 
     #[test]
