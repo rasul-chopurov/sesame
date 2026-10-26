@@ -436,7 +436,9 @@ impl SesameApp {
                     .collect()
             })
             .unwrap_or_default();
-        let opts = sesame_ops::actions::DeployOptions { laravel, migrate: laravel, restart };
+        // Public repositories clone over HTTPS; private ones use the deploy key.
+        let public_https = self.gh.repos.iter().any(|r| r.full_name == link.repo && !r.private);
+        let opts = sesame_ops::actions::DeployOptions { public_https, laravel, migrate: laravel, restart };
         let plan = sesame_ops::actions::deploy(&link.app_path, &link.repo, &link.branch, &opts);
         self.request(server, plan, None, window, cx);
     }

@@ -379,6 +379,8 @@ pub fn git_connect(app_path: &str) -> Result<Plan> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeployOptions {
+    /// Clone over HTTPS without a deploy key (public repositories).
+    pub public_https: bool,
     pub laravel: bool,
     pub migrate: bool,
     /// Supervisor programs to restart after the code changes (Octane, Horizon…).
@@ -403,9 +405,13 @@ pub fn deploy(app_path: &str, repo: &str, branch: &str, opts: &DeployOptions) ->
     }
     let slug = slug_of(app_path);
     let ssh = format!("ssh -i $HOME/.ssh/sesame_{slug} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes");
-    let url = format!("git@github.com:{repo}.git");
+    let (url, env) = if opts.public_https {
+        (format!("https://github.com/{repo}.git"), String::new())
+    } else {
+        (format!("git@github.com:{repo}.git"), format!("export GIT_SSH_COMMAND='{ssh}'"))
+    };
     let fetch = format!(
-        "export GIT_SSH_COMMAND='{ssh}'\n\
+        "{env}\n\
          cd {p}\n\
          if [ ! -d .git ]; then\n\
          \x20 git init -q\n\
@@ -464,7 +470,7 @@ mod deploy_tests {
         assert!(sh_ok(&c.steps[0].script));
         assert!(c.steps[0].script.contains("runuser -u \"$owner\""));
 
-        let opts = DeployOptions { laravel: true, migrate: true, restart: vec!["shop-octane".into()] };
+        let opts = DeployOptions { public_https: false, laravel: true, migrate: true, restart: vec!["shop-octane".into()] };
         let d = deploy("/var/www/shop", "rasul-chopurov/shop", "main", &opts).unwrap();
         for s in &d.steps {
             assert!(sh_ok(&s.script), "{}", s.title);

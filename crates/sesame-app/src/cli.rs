@@ -35,6 +35,37 @@ pub enum DoAction {
         #[arg(long)]
         key: String,
     },
+    /// Create an isolated site: own Linux user, PHP pool or Octane, web-server file, database, cron.
+    NewSite {
+        domain: String,
+        /// laravel or static
+        #[arg(long, default_value = "laravel")]
+        kind: String,
+        /// fpm or octane
+        #[arg(long, default_value = "fpm")]
+        runtime: String,
+        /// Public GitHub repository (owner/name) to deploy instead of a skeleton.
+        #[arg(long)]
+        repo: Option<String>,
+        #[arg(long, default_value = "main")]
+        branch: String,
+        /// Web root inside the app (public, website, .)
+        #[arg(long)]
+        root: Option<String>,
+        /// mysql, mariadb or postgres
+        #[arg(long)]
+        db: Option<String>,
+        #[arg(long)]
+        alias: Vec<String>,
+        #[arg(long)]
+        no_scheduler: bool,
+    },
+    /// Delete a site created by Sesame (backs up its database first).
+    RemoveSite {
+        domain: String,
+        #[arg(long)]
+        db: Option<String>,
+    },
     /// Run Reverb under supervisor for the site with this domain.
     Reverb { domain: String, #[arg(long, default_value_t = 8080)] port: u16 },
 }
@@ -332,6 +363,30 @@ fn build_plan(
             actions::service(kind, name, action)
         }
         DoAction::Maintenance { path, state } => actions::maintenance(path, state == "on"),
+        DoAction::RemoveSite { domain, db } => {
+            let snap = snap.context("discover the server first")?;
+            sesame_ops::site::remove_site(domain, db.as_deref().map(engine).transpose()?, snap)
+        }
+        DoAction::NewSite { domain, kind, runtime, repo, branch, root, db, alias, no_scheduler } => {
+            use sesame_ops::site::{NewSite, Runtime, SiteKind, Source};
+            let snap = snap.context("discover the server first")?;
+            let kind = match kind.as_str() {
+                "laravel" => SiteKind::Laravel,
+                "static" => SiteKind::Static,
+                k => bail!("kind must be laravel or static, not {k}"),
+            };
+            let site = NewSite {
+                domain: domain.clone(),
+                aliases: alias.clone(),
+                kind,
+                runtime: if runtime == "octane" { Runtime::Octane } else { Runtime::Fpm },
+                source: repo.clone().map(|repo| Source { repo, branch: branch.clone() }),
+                web_root: root.clone().unwrap_or_else(|| if kind == SiteKind::Laravel { "public".into() } else { ".".into() }),
+                database: db.as_deref().map(engine).transpose()?,
+                scheduler: !no_scheduler,
+            };
+            sesame_ops::site::new_site(&site, snap)
+        }
         DoAction::Cert { name, cert, key } => {
             let cert = std::fs::read_to_string(cert).with_context(|| format!("read {cert}"))?;
             let key = std::fs::read_to_string(key).with_context(|| format!("read {key}"))?;

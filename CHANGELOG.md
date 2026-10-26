@@ -18,6 +18,8 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Secrets moved from the macOS Keychain to an encrypted vault in Sesame's own database: the key is derived from a master password with Argon2id (64 MiB, 3 passes) and every secret is sealed with XChaCha20-Poly1305 bound to its slot. Optional key-file mode without a password. Works the same on macOS and Windows and survives app updates.
 
 ### Added
+- New-site wizard (`sesame do <server> new-site <domain>`): own Linux user and home (750), own PHP-FPM pool with open_basedir or Octane, web server reads only the web root through ACLs (`.env` stays private, no restarts), own database and user with the PHP driver installed when missing, scheduler in the site user's crontab, HTTPS with an installed certificate that covers the domain (e.g. a Cloudflare Origin wildcard) or automatic. Broken web or FPM configs are rolled back instead of reloaded.
+- Delete site: turns it off, backs up and drops its database, removes the user and files.
 - GitHub: connect a token, link a site to a repository and branch, a per-site read-only deploy key created on the server (private key never leaves it; GitHub's host key pinned), one-click deploy (fetch + checkout, composer, migrations, caches, worker restarts), "new commits on GitHub" check.
 - Cloudflare: connect a token, list domains and DNS records, add/delete records, toggle proxied, add a domain (shows the nameservers), purge cache; DNS status per site and "point to this server" for missing or wrong records, with a one-click sync banner on the sites list.
 - Certificate install (`sesame do <server> cert <name> --cert … --key …`): checks the key matches, key readable by root and the web server group only.

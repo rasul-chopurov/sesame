@@ -4,6 +4,7 @@
 //! log. Agents (MCP/REST) get exactly the same plans.
 
 pub mod actions;
+pub mod site;
 
 use anyhow::{Result, bail};
 use sesame_core::ops::Risk;
