@@ -33,7 +33,7 @@ async function submit() {
   <div class="center">
     <form class="card login" @submit.prevent="submit">
       <div class="row" style="gap:10px;margin-bottom:6px"><img src="/logo.svg" width="32" height="32" alt=""><h2 style="margin:0">{{ setup ? t('setup_title') : 'Sesame Cloud' }}</h2></div>
-      <label v-if="setup">{{ t('setup_code') }}<input v-model="form.setup_token" class="mono" required></label>
+      <label v-if="setup">{{ t('setup_code') }}<input v-model="form.setup_token" class="mono" name="sesame-setup-code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="b1ccaa250838" required></label>
       <label v-if="setup">{{ t('name') }}<input v-model="form.name" required></label>
       <label>{{ t('email') }}<input v-model="form.email" type="email" autocomplete="username" required></label>
       <label>{{ t('password') }}<input v-model="form.password" type="password" :autocomplete="setup ? 'new-password' : 'current-password'" :minlength="setup ? 10 : 1" required></label>

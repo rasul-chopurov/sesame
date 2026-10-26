@@ -87,7 +87,9 @@ async fn setup(State(app): State<App>, Json(b): Json<Setup>) -> Reply {
     if !app.users.is_empty().unwrap_or(false) {
         return err(StatusCode::CONFLICT, "Sesame Cloud is already set up");
     }
-    if b.setup_token.trim() != app.setup_token.as_str() {
+    // Forgive pasted spaces, quotes or upper case: only the code's characters count.
+    let given: String = b.setup_token.chars().filter(|c| c.is_ascii_hexdigit()).collect::<String>().to_lowercase();
+    if given != app.setup_token.as_str() {
         tokio::time::sleep(Duration::from_secs(1)).await;
         return err(StatusCode::FORBIDDEN, "wrong setup code — it is printed in the server log at start");
     }

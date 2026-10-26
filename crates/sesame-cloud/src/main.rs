@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
     unlock(&store)?;
     let dir = SqliteStore::data_dir()?;
     let users = Arc::new(users::Users::open(&dir.join("cloud.db"))?);
-    let setup_token = users::random_token("")?[..12].to_string();
+    let setup_token = users.setup_code()?;
     if users.is_empty()? {
         eprintln!("First start: open the web app and create the owner account with this setup code: {setup_token}");
     }

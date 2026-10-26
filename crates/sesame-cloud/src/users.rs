@@ -112,6 +112,7 @@ impl Users {
                 password TEXT,
                 agent INTEGER NOT NULL DEFAULT 0
              );
+             CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
              CREATE TABLE IF NOT EXISTS sessions (
                 token_sha256 TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -119,6 +120,18 @@ impl Users {
              );",
         )?;
         Ok(Self { conn: Mutex::new(conn) })
+    }
+
+    /// The one-time code for creating the owner; kept until setup is done so
+    /// a restart does not change it.
+    pub fn setup_code(&self) -> Result<String> {
+        let conn = self.conn.lock().unwrap();
+        if let Some(c) = conn.query_row("SELECT value FROM meta WHERE key = 'setup_code'", [], |r| r.get(0)).optional()? {
+            return Ok(c);
+        }
+        let code = random_token("")?[..12].to_string();
+        conn.execute("INSERT INTO meta (key, value) VALUES ('setup_code', ?1)", [&code])?;
+        Ok(code)
     }
 
     pub fn is_empty(&self) -> Result<bool> {
