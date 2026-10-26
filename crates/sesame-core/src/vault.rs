@@ -39,6 +39,9 @@ pub enum VaultMode {
 pub struct Vault {
     store: Arc<SqliteStore>,
     key: Zeroizing<[u8; 32]>,
+    /// The key file this vault was opened with (key-file mode only). Only
+    /// this exact file is ever removed, never a default path.
+    key_file: Option<PathBuf>,
 }
 
 fn random<const N: usize>() -> Result<[u8; N]> {
@@ -130,7 +133,7 @@ impl Vault {
         store.set_vault_meta("p_cost", &P_COST.to_le_bytes())?;
         Self::write_verifier(&store, &key)?;
         store.set_vault_meta("mode", b"password")?;
-        Ok(Self { store, key })
+        Ok(Self { store, key, key_file: None })
     }
 
     pub fn unlock_with_password(store: Arc<SqliteStore>, password: &str) -> Result<Self> {
@@ -143,7 +146,7 @@ impl Vault {
         let p = u32_meta(&store, "p_cost")?.unwrap_or(P_COST);
         let key = derive(password, &salt, m, t, p)?;
         Self::check_verifier(&store, &key)?;
-        Ok(Self { store, key })
+        Ok(Self { store, key, key_file: None })
     }
 
     /// First run without a master password: the key goes to a 0600 file.
@@ -153,9 +156,14 @@ impl Vault {
         }
         let key = Zeroizing::new(random::<32>()?);
         write_private(path, key.as_ref())?;
+        // Read it back before relying on it.
+        let check = std::fs::read(path).with_context(|| format!("cannot read back {}", path.display()))?;
+        if check.as_slice() != key.as_ref() {
+            bail!("the key file was not written correctly");
+        }
         Self::write_verifier(&store, &key)?;
         store.set_vault_meta("mode", b"keyfile")?;
-        Ok(Self { store, key })
+        Ok(Self { store, key, key_file: Some(path.to_path_buf()) })
     }
 
     pub fn unlock_with_key_file(store: Arc<SqliteStore>, path: &Path) -> Result<Self> {
@@ -163,15 +171,28 @@ impl Vault {
         let key: Zeroizing<[u8; 32]> =
             Zeroizing::new(bytes.as_slice().try_into().map_err(|_| anyhow!("corrupt key file"))?);
         Self::check_verifier(&store, &key)?;
-        Ok(Self { store, key })
+        Ok(Self { store, key, key_file: Some(path.to_path_buf()) })
     }
 
-    /// At least 10 characters; the vault guards SSH and database credentials.
+    /// Any non-empty password; the user decides how strong it is.
     pub fn check_strength(password: &str) -> Result<()> {
-        if password.chars().count() < 10 {
-            bail!("the master password needs at least 10 characters");
+        if password.is_empty() {
+            bail!("the master password cannot be empty");
         }
         Ok(())
+    }
+
+    /// True when the vault is in key-file mode but the file is gone.
+    pub fn key_file_missing(store: &SqliteStore, path: &Path) -> Result<bool> {
+        Ok(Self::mode(store)? == VaultMode::KeyFile && !path.exists())
+    }
+
+    /// Forgets the vault: deletes every sealed secret and the vault settings,
+    /// so a new vault can be created. Used when the key is lost.
+    /// A backup of the database and key file is made first.
+    pub fn reset(store: &SqliteStore) -> Result<()> {
+        SqliteStore::backup_data_dir("vault-reset")?;
+        store.vault_reset()
     }
 
     pub fn put(&self, scope: &str, name: &str, value: &str) -> Result<()> {
@@ -192,6 +213,7 @@ impl Vault {
     /// Switches to a (new) master password, re-sealing every secret.
     pub fn set_password(&mut self, password: &str) -> Result<()> {
         Self::check_strength(password)?;
+        SqliteStore::backup_data_dir("vault-password")?;
         let salt: [u8; 16] = random()?;
         let new_key = derive(password, &salt, M_COST_KIB, T_COST, P_COST)?;
         let mut resealed = Vec::new();
@@ -210,7 +232,7 @@ impl Vault {
         Self::write_verifier(&self.store, &new_key)?;
         self.store.set_vault_meta("mode", b"password")?;
         self.key = new_key;
-        if let Ok(path) = Self::key_file_path() {
+        if let Some(path) = self.key_file.take() {
             let _ = std::fs::remove_file(path);
         }
         Ok(())
@@ -304,7 +326,37 @@ mod tests {
     }
 
     #[test]
-    fn weak_passwords_are_refused() {
-        assert!(Vault::create_with_password(store(), "short").is_err());
+    fn any_non_empty_password_is_accepted() {
+        assert!(Vault::create_with_password(store(), "").is_err());
+        assert!(Vault::create_with_password(store(), "1").is_ok());
+    }
+
+    #[test]
+    fn upgrading_removes_only_its_own_key_file() {
+        // A decoy at the default location must survive (it was deleted before).
+        let dir = tempfile::tempdir().unwrap();
+        let own = dir.path().join("own.key");
+        let decoy = dir.path().join("vault.key");
+        std::fs::write(&decoy, b"user's real key").unwrap();
+        let mut v = Vault::create_with_key_file(store(), &own).unwrap();
+        v.set_password("pw").unwrap();
+        assert!(!own.exists());
+        assert!(decoy.exists());
+    }
+
+    #[test]
+    fn reset_after_losing_the_key_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.key");
+        let s = store();
+        let v = Vault::create_with_key_file(s.clone(), &path).unwrap();
+        v.put("global", "CF", "x").unwrap();
+        drop(v);
+        std::fs::remove_file(&path).unwrap();
+        assert!(Vault::key_file_missing(&s, &path).unwrap());
+        assert!(Vault::unlock_with_key_file(s.clone(), &path).is_err());
+        Vault::reset(&s).unwrap();
+        assert_eq!(Vault::mode(&s).unwrap(), VaultMode::New);
+        assert!(s.vault_all().unwrap().is_empty());
     }
 }

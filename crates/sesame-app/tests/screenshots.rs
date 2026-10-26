@@ -10,6 +10,8 @@ use sesame_app::ui::{Page, Section, SesameApp};
 use sesame_core::{ServerConfig, SqliteStore, Store};
 
 fn main() {
+    // Never touch the user's real data directory from tests.
+    unsafe { std::env::set_var("SESAME_TEST_ISOLATION", "1") };
     let dir = std::env::var("SESAME_SHOTS_DIR")
         .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/screenshots").to_string());
     std::fs::create_dir_all(&dir).unwrap();

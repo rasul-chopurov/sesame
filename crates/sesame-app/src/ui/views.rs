@@ -1218,6 +1218,39 @@ pub fn updates(app: &SesameApp, cx: &mut Context<SesameApp>) -> impl IntoElement
 pub fn vault(app: &SesameApp, cx: &mut Context<SesameApp>) -> impl IntoElement {
     use sesame_core::vault::{Vault, VaultMode};
     let g = Glass::get(cx).clone();
+    let missing = Vault::key_file_path().ok().is_some_and(|p| Vault::key_file_missing(&app.store, &p).unwrap_or(false));
+    if missing {
+        return div().flex_1().flex().justify_center().pt(px(90.)).child(
+            v_flex()
+                .w(px(560.))
+                .gap_5()
+                .items_center()
+                .child(icon(IconName::TriangleAlert, g.warn).size_8())
+                .child(div().text_xl().font_weight(FontWeight::BOLD).child(tr("vault.missing_title")))
+                .child(div().text_center().text_color(g.dim).child(tr("vault.missing_lead")))
+                .child(div().text_color(g.dim).child(trp("job.type_to_confirm", &[("word", "reset")])))
+                .child(div().w(px(240.)).child(Input::new(&app.vault_pw2)))
+                .child(
+                    Button::new("vault-reset")
+                        .danger()
+                        .icon(IconName::RefreshCw)
+                        .label(tr("vault.reset"))
+                        .disabled(app.vault_pw2.read(cx).value().trim() != "reset")
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            if this.vault_pw2.read(cx).value().trim() != "reset" {
+                                return;
+                            }
+                            match Vault::reset(&this.store) {
+                                Ok(()) => this.vault_error = None,
+                                Err(e) => this.vault_error = Some(e.to_string()),
+                            }
+                            this.vault_pw2.update(cx, |s, cx| s.set_value("", window, cx));
+                            cx.notify();
+                        })),
+                )
+                .when_some(app.vault_error.clone(), |d, e| d.child(div().text_color(g.bad).child(e))),
+        );
+    }
     let new = Vault::mode(&app.store).map(|m| m == VaultMode::New).unwrap_or(true);
     let field = |label: String, input: &Entity<gpui_kit::component::input::InputState>| {
         v_flex().gap_1().child(div().font_weight(FontWeight::MEDIUM).child(label)).child(Input::new(input))

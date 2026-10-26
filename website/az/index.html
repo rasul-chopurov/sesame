@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sesame — serverlərinizi açın. Laravel üçün nativ server meneceri</title>
+  <meta name="description" content="Sesame Laravel icması üçün nativ, süni intellektə uyğun server meneceridir. SSH girişi verin — o, bütün saytları, bazaları, poçtu və prosesləri tapır, sonra izolə edilmiş saytları, xidmətləri, deployları və Cloudflare DNS-i idarə edir.">
+  <link rel="canonical" href="https://sesame.response.az/az/">
+  <link rel="alternate" hreflang="en" href="https://sesame.response.az/">
+  <link rel="alternate" hreflang="az" href="https://sesame.response.az/az/">
+  <link rel="alternate" hreflang="ru" href="https://sesame.response.az/ru/">
+  <link rel="alternate" hreflang="x-default" href="https://sesame.response.az/">
+  <meta name="theme-color" content="#07060b" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#fbf6ee" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../assets/logo.svg">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sesame">
+  <meta property="og:locale" content="az_AZ">
+  <meta property="og:title" content="Sesame — serverlərinizi açın. Laravel üçün nativ server meneceri">
+  <meta property="og:description" content="Sesame Laravel icması üçün nativ, süni intellektə uyğun server meneceridir. SSH girişi verin — o, bütün saytları, bazaları, poçtu və prosesləri tapır, sonra izolə edilmiş saytları, xidmətləri, deployları və Cloudflare DNS-i idarə edir.">
+  <meta property="og:url" content="https://sesame.response.az/az/">
+  <meta property="og:image" content="https://sesame.response.az/assets/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/site.css">
+  <link rel="preload" as="image" href="../assets/screens/overview-dark-az.webp" type="image/webp">
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"><span></span></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="nav" aria-label="Sesame">
+    <a class="brand" href="../az/"><img src="../assets/logo.svg" alt="" width="26" height="26"><span>Sesame</span></a>
+    <nav class="nav-links" aria-label="Sections"><a href="#features">İmkanlar</a><a href="#security">Təhlükəsizlik</a><a href="#cli">CLI</a><a href="#roadmap">Yol xəritəsi</a></nav>
+    <div class="lang" role="navigation" aria-label="Language"><a href="../" lang="en" hreflang="en">EN</a><a href="../az/" lang="az" hreflang="az" aria-current="page">AZ</a><a href="../ru/" lang="ru" hreflang="ru">RU</a></div>
+    <a class="btn btn-primary btn-sm" href="https://github.com/rasul-chopurov/sesame/releases">macOS üçün yüklə<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg></span></a>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap hero-grid">
+        <div class="reveal">
+          <span class="eyebrow"><span class="dot"></span>Alfa · v0.1.0-alpha.1 · Apache-2.0</span>
+          <h1 id="hero-title">Serverlərinizi <em>açın.</em></h1>
+          <p class="lead">Laravel icması üçün nativ, süni intellektə uyğun server meneceri. SSH verin — bütün saytları, bazaları, poçtu və prosesləri tapır və onları sizinlə birlikdə idarə edir.</p>
+          <div class="cta">
+            <a class="btn btn-primary" href="https://github.com/rasul-chopurov/sesame/releases">macOS üçün yüklə<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg></span></a>
+            <a class="btn btn-ghost" href="https://github.com/rasul-chopurov/sesame">GitHub-da bax<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></span></a>
+          </div>
+          <div class="meta"><span>macOS · tezliklə Windows</span><span>Rust + GPUI</span><span>Serverdə agent yoxdur</span></div>
+        </div>
+        <div class="hero-shot reveal d2">
+          <div class="bezel"><div class="core"><img src="../assets/screens/overview-dark-az.webp" width="1600" height="1018" fetchpriority="high" alt="Məsləhətlərlə server icmalı"></div></div>
+          <div class="float bezel"><div class="core"><img src="../assets/screens/job-done-light-az.webp" width="1600" height="1018" loading="lazy" alt=""></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" aria-labelledby="features-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow"><span class="dot"></span>Nə edir</span>
+          <h2 id="features-title">Serverdəki hər şey bir sakit pəncərədə.</h2>
+          <p>Sesame serverinizi sizin kimi oxuyur — SSH ilə, əvvəlcə yalnız oxuma rejimində — və tapdıqlarını idarə edilə bilən bir mənzərəyə çevirir.</p>
+        </div>
+        <div class="bento">
+      <article class="card wide bezel reveal">
+        <div class="core">
+          <div class="text">
+            <span class="tag">Kəşf</span>
+            <h3>Həqiqətən nə işlədiyini görün</h3>
+            <p>Bir oxuma yoxlaması FrankenPHP/Caddy, Nginx və Apache-dəki saytları, Laravel tətbiqlərini və onların .env drayverlərini, supervisor proseslərini, bazaları, cron-u, sertifikatları və firewall-u tapır — və nəyin diqqət tələb etdiyini göstərir.</p>
+            <ul><li>FrankenPHP</li><li>Octane</li><li>Nginx</li><li>MySQL</li><li>PostgreSQL</li><li>Redis</li><li>cron</li><li>ufw</li></ul>
+          </div>
+          <figure class="shot"><img src="../assets/screens/overview-dark-az.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Məsləhətlərlə server icmalı"></figure>
+        </div>
+      </article>
+      <article class="card narrow bezel reveal d1">
+        <div class="core">
+          <div class="text">
+            <span class="tag">İzolə edilmiş saytlar</span>
+            <h3>Yeni sayt, tam ayrılmış</h3>
+            <p>Hər sayt öz Linux istifadəçisini, öz PHP-FPM pulunu və ya Octane-ı, öz baza istifadəçisini və Redis ACL-ni alır. Veb server yalnız public/ qovluğunu oxuyur — .env faylınızı heç vaxt.</p>
+            <ul><li>öz istifadəçi</li><li>öz pul</li><li>öz baza</li><li>Redis ACL</li></ul>
+          </div>
+          <figure class="shot"><img src="../assets/screens/sites-light-az.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Axtarışlı sayt kartları"></figure>
+        </div>
+      </article>
+      <article class="card narrow bezel reveal">
+        <div class="core">
+          <div class="text">
+            <span class="tag">Xidmətlər</span>
+            <h3>Bazalar bir kliklə</h3>
+            <p>Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, RustFS üzərində S3 və Reverb — yalnız localhost-da, yaradılmış parollarla. Siz istəməyincə heç nə quraşdırılmır.</p>
+            <ul><li>yalnız localhost</li><li>silərkən məlumat qalır</li></ul>
+          </div>
+          <figure class="shot"><img src="../assets/screens/services-dark-az.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Bir kliklə xidmətlər"></figure>
+        </div>
+      </article>
+      <article class="card wide bezel reveal d1">
+        <div class="core">
+          <div class="text">
+            <span class="tag">Deploylar</span>
+            <h3>GitHub-a push, Sesame-də deploy</h3>
+            <p>Saytı repozitoriya və budaqla əlaqələndirin. Sesame serverdə yalnız oxuma üçün deploy açarı yaradır, sonra kodu çəkir, asılılıqları quraşdırır, miqrasiyaları işə salır və prosesləri yenidən başladır.</p>
+            <ul><li>deploy açarları</li><li>miqrasiyalar</li><li>workerlər</li></ul>
+          </div>
+          <figure class="shot"><img src="../assets/screens/site-dark-az.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Repozitoriya və DNS ilə sayt"></figure>
+        </div>
+      </article>
+      <article class="card full bezel reveal">
+        <div class="core">
+          <div class="text">
+            <span class="tag">Cloudflare</span>
+            <h3>Tablar arasında keçid olmadan DNS</h3>
+            <p>Domenlər, qeydlər, proksi aç/bağla, keşin təmizlənməsi — və hələ serverə yönəlməmiş hər sayt üçün «bu serverə yönəlt» düyməsi.</p>
+            <ul><li>DNS qeydləri</li><li>proksi</li><li>keş</li></ul>
+          </div>
+          <figure class="shot"><img src="../assets/screens/cloudflare-dark-az.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Cloudflare DNS qeydləri"></figure>
+        </div>
+      </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="security" aria-labelledby="security-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow"><span class="dot"></span>Təhlükəsiz dizayn</span>
+          <h2 id="security-title">Hər dəyişiklik baş verməzdən əvvəl göstərilir.</h2>
+          <p>Sesame serveri xəbəriniz olmadan dəyişmir. Planlar əvvəlcədən göstərilir, geri qaytarılmaz addımlar adı yazmağınızı tələb edir və hər şey audit jurnalına düşür.</p>
+        </div>
+        <div class="principles">
+      <div class="bezel reveal d0"><div class="core">
+        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span>
+        <h3>Əvvəlcə yalnız oxuma</h3>
+        <p>Kəşf heç nə yazmır. .env-dən parol və açarları da oxumur.</p>
+      </div></div>
+      <div class="bezel reveal d1"><div class="core">
+        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.4 3.2 7.9 7.5 9 4.3-1.1 7.5-4.6 7.5-9V6L12 3Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+        <h3>Şifrəli anbar</h3>
+        <p>Sirlər master paroldan Argon2id ilə alınan açarla XChaCha20-Poly1305 vasitəsilə şifrələnir.</p>
+      </div></div>
+      <div class="bezel reveal d2"><div class="core">
+        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></span>
+        <h3>Təsdiqlə, sonra icra et</h3>
+        <p>Hər plan addımlarını göstərir. Silmədən əvvəl ehtiyat nüsxə çıxarılır və adı yazmaq lazımdır.</p>
+      </div></div>
+      <div class="bezel reveal d0"><div class="core">
+        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/></svg></span>
+        <h3>Komanda sətrindən kənarda</h3>
+        <p>Parollar stdin və heredoc ilə ötürülür — heç vaxt argv-də, heç vaxt ps-də görünmür.</p>
+      </div></div>
+        </div>
+        <div class="bezel reveal" style="margin-top:18px"><div class="core"><img src="../assets/screens/confirm-drop-dark-az.webp" width="1600" height="1018" loading="lazy" alt="Geri qaytarılmaz dəyişikliyin təsdiqi"></div></div>
+      </div>
+    </section>
+
+    <section id="cli" aria-labelledby="cli-title">
+      <div class="wrap cli-grid">
+        <div class="section-head reveal" style="margin:0">
+          <span class="eyebrow"><span class="dot"></span>Süni intellektə uyğun</span>
+          <h2 id="cli-title">Hər əməliyyat tipli əməliyyatdır.</h2>
+          <p>Tətbiq və sesame CLI eyni planları icra edir — skriptlər və süni intellekt agentləri də sizin etdiyinizi edə bilər, eyni ön baxış və eyni audit jurnalı ilə. Növbəti addım MCP və REST-dir.</p>
+        </div>
+        <div class="bezel reveal d1"><div class="core">
+          <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+<pre class="term"><code><span class="c"># serveri yadda saxla və yoxla</span>
+<span class="p">$</span> <b>sesame add</b> prod root@203.0.113.10
+<span class="p">$</span> <b>sesame discover</b> prod
+
+<span class="c"># PostgreSQL ilə izolə edilmiş Laravel saytı</span>
+<span class="p">$</span> <b>sesame do</b> prod new-site shop.example.com --db postgres --yes
+
+<span class="c"># Redis, yalnız localhost-da, parol yaradılır</span>
+<span class="p">$</span> <b>sesame do</b> prod install redis --yes</code></pre>
+        </div></div>
+      </div>
+      <div class="wrap principles pillars-row">
+      <div class="bezel reveal d0"><div class="core">
+        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/></svg></span>
+        <h3>Nativ və sürətli</h3>
+        <p>Rust və GPUI. Electron yox, JVM yox — dərhal açılır və yüngül qalır.</p>
+      </div></div>
+      <div class="bezel reveal d1"><div class="core">
+        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/></svg></span>
+        <h3>Heç nə quraşdırmaq lazım deyil</h3>
+        <p>Adi SSH. Serverdə agent, xidmət və ya açıq port yoxdur.</p>
+      </div></div>
+      <div class="bezel reveal d2"><div class="core">
+        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg></span>
+        <h3>Üç dil</h3>
+        <p>English, Русский və Azərbaycanca, açıq və tünd şüşə mövzuları ilə.</p>
+      </div></div>
+      </div>
+    </section>
+
+    <section id="roadmap" aria-labelledby="roadmap-title">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow"><span class="dot"></span>Yol xəritəsi</span>
+          <h2 id="roadmap-title">Sesame hara gedir.</h2>
+        </div>
+        <div class="road">
+          <div class="bezel reveal"><div class="core done"><h3><svg class="i" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg> Hazırdır</h3><ul><li>Yalnız oxuma kəşfi və məsləhətlər</li><li>İzolə edilmiş yeni sayt ustası</li><li>Bir kliklə xidmətlər</li><li>Ehtiyat nüsxəli bazalar</li><li>GitHub deployları</li><li>Cloudflare DNS</li><li>Şifrəli anbar, imzalı yeniləmələr</li></ul></div></div>
+          <div class="bezel reveal d1"><div class="core"><h3><svg class="i" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg> Növbəti</h3><ul><li>Süni intellekt agentləri üçün MCP və REST API</li><li>Komanda paneli ⌘K</li><li>Canlı metrikalar və loglar</li><li>Sıfırdan yeni server qurulması</li><li>Windows, mobil və Sesame Cloud</li></ul></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="final" aria-labelledby="final-title">
+      <div class="wrap reveal">
+        <img src="../assets/logo.svg" alt="" width="72" height="72" style="margin:0 auto 26px;border-radius:18px">
+        <h2 id="final-title">Serverlərinizi açın.</h2>
+        <p>Sesame Apache-2.0 lisenziyası ilə açıq mənbəlidir. Alfa versiyanı əvvəlcə test serverində sınayın — və nə tapdığını bizə deyin.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/rasul-chopurov/sesame/releases">macOS üçün yüklə<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg></span></a>
+          <a class="btn btn-ghost" href="https://github.com/rasul-chopurov/sesame">GitHub-da bax<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></span></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 Sesame · Açıq mənbə, Apache-2.0</span>
+      <nav aria-label="Footer"><a href="https://github.com/rasul-chopurov/sesame">GitHub</a><a href="https://github.com/rasul-chopurov/sesame/releases">Buraxılışlar</a><a href="https://github.com/rasul-chopurov/sesame/blob/main/CHANGELOG.md">Dəyişikliklər</a><a href="https://github.com/rasul-chopurov/sesame/blob/main/SECURITY.md">Təhlükəsizlik</a></nav>
+    </div>
+  </footer>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

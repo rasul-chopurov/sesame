@@ -156,7 +156,7 @@ pub fn unlock_vault(store: &std::sync::Arc<SqliteStore>) -> Result<()> {
             let pw = match from_env {
                 Some(p) => p,
                 None => {
-                    eprintln!("Create a master password for Sesame's encrypted vault (10+ characters).");
+                    eprintln!("Create a master password for Sesame's encrypted vault.");
                     let a = rpassword::prompt_password("New master password: ")?;
                     let b = rpassword::prompt_password("Repeat: ")?;
                     if a != b {

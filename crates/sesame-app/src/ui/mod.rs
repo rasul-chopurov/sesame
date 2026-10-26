@@ -208,6 +208,7 @@ impl SesameApp {
         for input in int.all().into_iter().chain(ns.inputs()) {
             subs.push(cx.subscribe(input, |_, _, _: &InputEvent, cx| cx.notify()));
         }
+        subs.push(cx.subscribe(&vault_pw2, |_, _, _: &InputEvent, cx| cx.notify()));
         subs.push(cx.subscribe(&vault_pw, |this, _, e: &InputEvent, cx| {
             if matches!(e, InputEvent::PressEnter { .. }) {
                 this.submit_vault(false, cx);

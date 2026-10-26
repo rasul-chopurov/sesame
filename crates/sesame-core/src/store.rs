@@ -310,6 +310,38 @@ impl SqliteStore {
         Ok(())
     }
 
+    /// Copies the database (and the vault key file, if any) to
+    /// `<data dir>/backups/<timestamp>/` before anything destructive.
+    pub fn backup_data_dir(reason: &str) -> Result<std::path::PathBuf> {
+        let dir = Self::data_dir()?;
+        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let out = dir.join("backups").join(format!("{stamp}-{reason}"));
+        std::fs::create_dir_all(&out)?;
+        for name in ["state.db", "vault.key"] {
+            let src = dir.join(name);
+            if src.exists() {
+                std::fs::copy(&src, out.join(name))?;
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    std::fs::set_permissions(out.join(name), std::fs::Permissions::from_mode(0o600))?;
+                }
+            }
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(dir.join("backups"), std::fs::Permissions::from_mode(0o700));
+        }
+        Ok(out)
+    }
+
+    pub(crate) fn vault_reset(&self) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute_batch("DELETE FROM vault; DELETE FROM vault_meta;")?;
+        Ok(())
+    }
+
     pub(crate) fn vault_all(&self) -> Result<Vec<(String, String, Vec<u8>, Vec<u8>)>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare("SELECT scope, name, nonce, ciphertext FROM vault")?;
@@ -318,7 +350,15 @@ impl SqliteStore {
     }
 
     /// Where the database lives (for the key file next to it).
+    ///
+    /// Test builds never see the real directory: they get a private temp
+    /// folder, so no test can touch a user's database or key file.
     pub fn data_dir() -> Result<std::path::PathBuf> {
+        if cfg!(test) || std::env::var_os("SESAME_TEST_ISOLATION").is_some() {
+            let dir = std::env::temp_dir().join(format!("sesame-test-{}", std::process::id()));
+            std::fs::create_dir_all(&dir)?;
+            return Ok(dir);
+        }
         Ok(match std::env::var_os("SESAME_DATA_DIR") {
             Some(d) => std::path::PathBuf::from(d),
             None => directories::ProjectDirs::from("dev", "sesame", "Sesame")
