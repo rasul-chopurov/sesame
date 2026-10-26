@@ -118,6 +118,11 @@ pub fn details(app_paths: &[String], cert_paths: &[String]) -> String {
              [ -f {q}/index.html ] && echo framework=static\n\
              [ -f {q}/composer.lock ] && grep -A3 '\"name\": \"laravel/framework\"' {q}/composer.lock | grep -m1 '\"version\"' | sed 's/^/laravel_version=/'\n\
              [ -f {q}/.env ] && $S grep -E '{env_re}' {q}/.env | sed 's/^/env:/'\n\
+             if [ -d {q}/.git ]; then\n\
+             \x20 echo \"git_sha=$(git -c safe.directory='*' -C {q} rev-parse --short HEAD 2>/dev/null)\"\n\
+             \x20 echo \"git_branch=$(git -c safe.directory='*' -C {q} rev-parse --abbrev-ref HEAD 2>/dev/null)\"\n\
+             \x20 echo \"git_remote=$(git -c safe.directory='*' -C {q} config --get remote.origin.url 2>/dev/null)\"\n\
+             fi\n\
              [ -f {q}/wp-config.php ] && $S grep -oE \"define\\( *'DB_(NAME|HOST|USER)', *'[^']*'\" {q}/wp-config.php | sed 's/^/wp:/'\n",
             sec = quote(&format!("app:{p}")),
         ));

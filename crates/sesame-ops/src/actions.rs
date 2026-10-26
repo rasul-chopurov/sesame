@@ -476,3 +476,68 @@ mod deploy_tests {
         assert!(deploy("/var/www/shop", "a;b/c", "main", &opts).is_err());
     }
 }
+
+/// Installs a certificate and its private key under `/etc/ssl/sesame/<name>/`
+/// after checking they belong together. The key travels in the script on
+/// stdin and is readable only by root and the web server group.
+pub fn cert_install(name: &str, cert_pem: &str, key_pem: &str) -> Result<Plan> {
+    check_name("certificate", name, "-.")?;
+    let cert = cert_pem.trim();
+    let key = key_pem.trim();
+    if !cert.starts_with("-----BEGIN CERTIFICATE-----") || !cert.ends_with("-----END CERTIFICATE-----") {
+        bail!("the certificate must be PEM (-----BEGIN CERTIFICATE-----)");
+    }
+    let key_ok = key.starts_with("-----BEGIN") && key.contains("PRIVATE KEY-----") && key.ends_with("PRIVATE KEY-----");
+    if !key_ok {
+        bail!("the private key must be PEM (-----BEGIN PRIVATE KEY-----)");
+    }
+    if cert.contains("SESAME_PEM") || key.contains("SESAME_PEM") {
+        bail!("unexpected content in PEM");
+    }
+    let dir = format!("/etc/ssl/sesame/{name}");
+    let script = format!(
+        "umask 077\n\
+         tmp=$(mktemp -d)\n\
+         trap 'rm -rf \"$tmp\"' EXIT\n\
+         cat > \"$tmp/cert.pem\" <<'SESAME_PEM'\n{cert}\nSESAME_PEM\n\
+         cat > \"$tmp/key.pem\" <<'SESAME_PEM'\n{key}\nSESAME_PEM\n\
+         a=$(openssl x509 -noout -pubkey -in \"$tmp/cert.pem\" | sha256sum)\n\
+         b=$(openssl pkey -pubout -in \"$tmp/key.pem\" | sha256sum)\n\
+         [ \"$a\" = \"$b\" ] || {{ echo 'the private key does not match the certificate'; exit 1; }}\n\
+         grp=root\n\
+         for g in caddy www-data nginx; do getent group \"$g\" >/dev/null && {{ grp=$g; break; }}; done\n\
+         install -d -m 750 -o root -g \"$grp\" /etc/ssl/sesame {dir}\n\
+         install -m 644 -o root -g \"$grp\" \"$tmp/cert.pem\" {dir}/cert.pem\n\
+         install -m 640 -o root -g \"$grp\" \"$tmp/key.pem\" {dir}/key.pem\n\
+         openssl x509 -noout -subject -enddate -ext subjectAltName -in {dir}/cert.pem"
+    );
+    Ok(Plan {
+        op: "cert_install",
+        title: format!("install certificate {name}"),
+        risk: Risk::Change,
+        details: vec![
+            format!("{dir}/cert.pem and key.pem (key readable by root and the web server group only)"),
+            "the key is checked against the certificate first".into(),
+        ],
+        confirm_word: None,
+        steps: vec![Step::new(format!("install {name}"), script)],
+        reveal: vec![],
+    })
+}
+
+#[cfg(test)]
+mod cert_tests {
+    use super::*;
+
+    #[test]
+    fn cert_install_validates_pem_and_shell() {
+        let cert = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----";
+        let key = "-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----";
+        let p = cert_install("response.az", cert, key).unwrap();
+        let ok = std::process::Command::new("sh").args(["-n", "-c", &p.steps[0].script]).status().unwrap().success();
+        assert!(ok);
+        assert!(p.steps[0].script.contains("install -m 640"));
+        assert!(cert_install("response.az", "not a cert", key).is_err());
+        assert!(cert_install("../etc", cert, key).is_err());
+    }
+}

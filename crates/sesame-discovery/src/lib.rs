@@ -158,6 +158,7 @@ pub fn apply_details(snap: &mut ServerSnapshot, output: &str) {
                 site.framework = d.framework;
                 site.framework_version = d.version.clone();
                 site.env = d.env.clone();
+                site.git = d.git.clone();
             }
         } else if let Some(path) = name.strip_prefix("cert:") {
             let Some(cert) = app::certificate(path, body) else { continue };

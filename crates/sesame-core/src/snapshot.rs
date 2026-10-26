@@ -119,6 +119,30 @@ pub struct Site {
     pub env: Option<AppEnv>,
     /// Supervisor programs running from this app's directory.
     pub processes: Vec<String>,
+    /// The checkout in the app directory, when it is a git repository.
+    #[serde(default)]
+    pub git: Option<GitInfo>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct GitInfo {
+    pub sha: String,
+    pub branch: Option<String>,
+    pub remote: Option<String>,
+    /// `owner/name` when the remote is on GitHub.
+    pub github_repo: Option<String>,
+}
+
+impl GitInfo {
+    /// `git@github.com:o/r.git` or `https://github.com/o/r(.git)` → `o/r`.
+    pub fn github_repo_of(remote: &str) -> Option<String> {
+        let rest = remote
+            .strip_prefix("git@github.com:")
+            .or_else(|| remote.strip_prefix("https://github.com/"))
+            .or_else(|| remote.strip_prefix("ssh://git@github.com/"))?;
+        let rest = rest.trim_end_matches('/').trim_end_matches(".git");
+        (rest.split('/').count() == 2).then(|| rest.to_string())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]

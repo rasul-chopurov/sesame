@@ -11,4 +11,4 @@ pub mod vault;
 
 pub use model::{AuthMethod, ServerConfig, ServerId};
 pub use snapshot::ServerSnapshot;
-pub use store::{AuditEntry, SqliteStore, Store};
+pub use store::{AuditEntry, SiteLink, SqliteStore, Store};

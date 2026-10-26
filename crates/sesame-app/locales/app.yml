@@ -223,3 +223,48 @@ vault.unlock_lead: { en: "Enter your master password to decrypt server and token
 vault.unlock: { en: "Unlock", ru: "Разблокировать", az: "Kilidi aç" }
 vault.working: { en: "Deriving the key…", ru: "Вычисляю ключ…", az: "Açar hesablanır…" }
 vault.mismatch: { en: "The passwords do not match", ru: "Пароли не совпадают", az: "Parollar uyğun gəlmir" }
+
+nav.integrations: { en: "Integrations", ru: "Интеграции", az: "İnteqrasiyalar" }
+nav.cloudflare: { en: "Cloudflare", ru: "Cloudflare", az: "Cloudflare" }
+int.github: { en: "GitHub", ru: "GitHub", az: "GitHub" }
+int.github_hint: { en: "Fine-grained token: Contents and Metadata read, Administration write (for deploy keys)", ru: "Fine-grained токен: Contents и Metadata — чтение, Administration — запись (для deploy-ключей)", az: "Fine-grained token: Contents və Metadata — oxuma, Administration — yazma (deploy açarları üçün)" }
+int.cloudflare_hint: { en: "API token: Zone Read, DNS Edit; Zone Edit and Account Read to add domains; Cache Purge", ru: "API-токен: Zone Read, DNS Edit; Zone Edit и Account Read — чтобы добавлять домены; Cache Purge", az: "API token: Zone Read, DNS Edit; domen əlavə etmək üçün Zone Edit və Account Read; Cache Purge" }
+int.token: { en: "Token", ru: "Токен", az: "Token" }
+int.connect: { en: "Connect", ru: "Подключить", az: "Qoş" }
+int.disconnect: { en: "Disconnect", ru: "Отключить", az: "Ayır" }
+int.connected_as: { en: "Connected as %{who}", ru: "Подключено: %{who}", az: "Qoşulub: %{who}" }
+int.not_connected: { en: "Not connected", ru: "Не подключено", az: "Qoşulmayıb" }
+int.connect_first: { en: "Connect %{what} in Settings → Integrations", ru: "Подключите %{what} в Настройки → Интеграции", az: "%{what}-i Ayarlar → İnteqrasiyalar bölməsində qoşun" }
+cf.zones: { en: "Domains", ru: "Домены", az: "Domenlər" }
+cf.records: { en: "DNS records", ru: "DNS-записи", az: "DNS qeydləri" }
+cf.add_zone: { en: "Add a domain", ru: "Добавить домен", az: "Domen əlavə et" }
+cf.add_zone_hint: { en: "example.com — then set these nameservers at your registrar", ru: "example.com — затем пропишите эти NS у регистратора", az: "example.com — sonra bu NS-ləri registratorda təyin edin" }
+cf.nameservers: { en: "Nameservers", ru: "NS-серверы", az: "NS serverlər" }
+cf.purge: { en: "Purge cache", ru: "Очистить кэш", az: "Keşi təmizlə" }
+cf.add_record: { en: "Add record", ru: "Добавить запись", az: "Qeyd əlavə et" }
+cf.name: { en: "Name", ru: "Имя", az: "Ad" }
+cf.content: { en: "Content", ru: "Значение", az: "Dəyər" }
+cf.proxied: { en: "Proxied", ru: "Через Cloudflare", az: "Cloudflare vasitəsilə" }
+cf.dns_only: { en: "DNS only", ru: "Только DNS", az: "Yalnız DNS" }
+cf.select_zone: { en: "Choose a domain", ru: "Выберите домен", az: "Domen seçin" }
+cf.loading: { en: "Loading from Cloudflare…", ru: "Загружаю из Cloudflare…", az: "Cloudflare-dən yüklənir…" }
+dns.title: { en: "DNS", ru: "DNS", az: "DNS" }
+dns.ok: { en: "points to this server", ru: "смотрит на этот сервер", az: "bu serverə yönəlib" }
+dns.missing: { en: "no record in %{zone}", ru: "нет записи в %{zone}", az: "%{zone}-də qeyd yoxdur" }
+dns.elsewhere: { en: "points to %{target}", ru: "смотрит на %{target}", az: "%{target}-ə yönəlib" }
+dns.no_zone: { en: "domain is not in your Cloudflare account", ru: "домена нет в вашем Cloudflare", az: "domen Cloudflare hesabınızda yoxdur" }
+dns.point_here: { en: "Point to this server", ru: "Направить на этот сервер", az: "Bu serverə yönəlt" }
+dns.sync: { en: "Point %{n} domains to this server", ru: "Направить доменов на сервер: %{n}", az: "Serverə yönəlt: %{n} domen" }
+repo.title: { en: "Repository", ru: "Репозиторий", az: "Repozitoriya" }
+repo.on_server: { en: "On the server", ru: "На сервере", az: "Serverdə" }
+repo.not_git: { en: "not a git checkout", ru: "не git-репозиторий", az: "git repozitoriyası deyil" }
+repo.linked: { en: "Deploys from", ru: "Деплой из", az: "Deploy mənbəyi" }
+repo.latest: { en: "Latest on GitHub", ru: "Последний на GitHub", az: "GitHub-da sonuncu" }
+repo.search: { en: "Find a repository…", ru: "Найти репозиторий…", az: "Repozitoriya tap…" }
+repo.branch: { en: "Branch", ru: "Ветка", az: "Budaq" }
+repo.connect: { en: "Connect & add deploy key", ru: "Подключить и добавить deploy-ключ", az: "Qoş və deploy açarı əlavə et" }
+repo.deploy: { en: "Deploy now", ru: "Задеплоить", az: "İndi deploy et" }
+repo.change: { en: "Change", ru: "Изменить", az: "Dəyiş" }
+repo.check: { en: "Check GitHub", ru: "Проверить GitHub", az: "GitHub-ı yoxla" }
+repo.up_to_date: { en: "up to date", ru: "актуально", az: "aktualdır" }
+repo.behind: { en: "new commits on GitHub", ru: "на GitHub есть новые коммиты", az: "GitHub-da yeni commitlər var" }

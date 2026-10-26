@@ -18,6 +18,10 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Secrets moved from the macOS Keychain to an encrypted vault in Sesame's own database: the key is derived from a master password with Argon2id (64 MiB, 3 passes) and every secret is sealed with XChaCha20-Poly1305 bound to its slot. Optional key-file mode without a password. Works the same on macOS and Windows and survives app updates.
 
 ### Added
+- GitHub: connect a token, link a site to a repository and branch, a per-site read-only deploy key created on the server (private key never leaves it; GitHub's host key pinned), one-click deploy (fetch + checkout, composer, migrations, caches, worker restarts), "new commits on GitHub" check.
+- Cloudflare: connect a token, list domains and DNS records, add/delete records, toggle proxied, add a domain (shows the nameservers), purge cache; DNS status per site and "point to this server" for missing or wrong records, with a one-click sync banner on the sites list.
+- Certificate install (`sesame do <server> cert <name> --cert … --key …`): checks the key matches, key readable by root and the web server group only.
+- Discovery reads each site's git checkout (branch, commit, GitHub remote).
 - Sesame Glass design: translucent light and dark themes over a blurred window, breadcrumbs in the titlebar, sidebar tree with server/site search, status bar, brand icons for detected software.
 - Russian and Azerbaijani translations; language and theme follow the system or are chosen in Settings.
 - Changes on servers, always previewed and confirmed (destructive ones by typing the name), run with a live log and recorded in an audit log:

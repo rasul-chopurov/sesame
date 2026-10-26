@@ -101,7 +101,7 @@ pub fn server(
         Some(s) => match section {
             Section::Overview => body.child(overview(id, s, cx)),
             Section::Sites => body.child(sites(app, id, s, cx)),
-            Section::Site(i) => body.child(site_detail(id, s, i, cx)),
+            Section::Site(i) => body.child(site_detail(app, id, s, i, cx)),
             Section::Processes => body.child(processes(id, s, cx)),
             Section::Services => body.child(services(id, s, cx)),
             Section::Databases => body.child(databases(id, s, app.db_name.clone(), cx)),
@@ -354,7 +354,11 @@ fn sites(app: &SesameApp, server: sesame_core::ServerId, s: &ServerSnapshot, cx:
     } else {
         grid
     };
-    v_flex().gap_4().child(toolbar).child(body)
+    v_flex()
+        .gap_4()
+        .child(toolbar)
+        .children(super::integrations::dns_banner(app, server, s, cx))
+        .child(body)
 }
 
 fn site_card(server: sesame_core::ServerId, i: usize, site: &Site, s: &ServerSnapshot, cx: &mut Context<SesameApp>) -> impl IntoElement {
@@ -437,7 +441,7 @@ fn site_card(server: sesame_core::ServerId, i: usize, site: &Site, s: &ServerSna
         )
 }
 
-fn site_detail(server: sesame_core::ServerId, s: &ServerSnapshot, i: usize, cx: &mut Context<SesameApp>) -> Div {
+fn site_detail(app: &SesameApp, server: sesame_core::ServerId, s: &ServerSnapshot, i: usize, cx: &mut Context<SesameApp>) -> Div {
     let g = Glass::get(cx).clone();
     let Some(site) = s.sites.get(i) else { return empty(tr("sites.none"), cx) };
     let title = site_title(site);
@@ -569,6 +573,8 @@ fn site_detail(server: sesame_core::ServerId, s: &ServerSnapshot, i: usize, cx: 
         .child(head)
         .child(div().text_xs().text_color(g.faint).child(tr("sites.disable_note")))
         .child(info)
+        .child(super::integrations::repo_card(app, server, site, s, cx))
+        .child(super::integrations::dns_card(app, server, site, cx))
         .when(!procs.is_empty(), |d| d.child(proc_card))
         .child(isolation)
 }
@@ -1112,6 +1118,7 @@ pub fn settings(app: &SesameApp, _window: &mut Window, cx: &mut Context<SesameAp
                         .into_any_element(),
                 )),
         )
+        .child(super::integrations::settings_card(app, cx))
         .child(
             card(&tr("settings.about"), cx)
                 .child(h_flex().gap_3().child(img(ImageSource::Resource(Resource::Embedded("logo.svg".into()))).size(px(32.))).child(

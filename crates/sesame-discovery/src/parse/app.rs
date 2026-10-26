@@ -1,6 +1,6 @@
 //! Phase 2 parsers: an app directory and a certificate.
 
-use sesame_core::snapshot::{AppEnv, Certificate, Framework};
+use sesame_core::snapshot::{AppEnv, Certificate, Framework, GitInfo};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
@@ -10,6 +10,7 @@ pub struct AppDetails {
     pub framework: Framework,
     pub version: Option<String>,
     pub env: Option<AppEnv>,
+    pub git: Option<GitInfo>,
 }
 
 pub fn app(body: &str) -> AppDetails {
@@ -53,6 +54,19 @@ pub fn app(body: &str) -> AppDetails {
                 _ => continue,
             };
             *slot = v;
+        } else if let Some(v) = line.strip_prefix("git_sha=") {
+            if !v.is_empty() {
+                d.git.get_or_insert_with(GitInfo::default).sha = v.to_string();
+            }
+        } else if let Some(v) = line.strip_prefix("git_branch=") {
+            if let Some(g) = d.git.as_mut() {
+                g.branch = Some(v.to_string()).filter(|b| !b.is_empty() && b != "HEAD");
+            }
+        } else if let Some(v) = line.strip_prefix("git_remote=") {
+            if let Some(g) = d.git.as_mut() {
+                g.remote = Some(v.to_string()).filter(|r| !r.is_empty());
+                g.github_repo = GitInfo::github_repo_of(v);
+            }
         } else if let Some(wp) = line.strip_prefix("wp:") {
             // define( 'DB_NAME', 'wordpress'
             let parts: Vec<&str> = wp.split('\'').collect();
@@ -142,6 +156,17 @@ mod tests {
         assert_eq!(env.app_url.as_deref(), Some("https://example.com"));
         assert_eq!(env.db_database.as_deref(), Some("shop"));
         assert_eq!(env.queue_connection.as_deref(), Some("redis"));
+    }
+
+    #[test]
+    fn git_checkout() {
+        let d = app("framework=laravel\ngit_sha=1a2b3c4\ngit_branch=main\ngit_remote=git@github.com:rasul-chopurov/shop.git\n");
+        let g = d.git.unwrap();
+        assert_eq!(g.sha, "1a2b3c4");
+        assert_eq!(g.branch.as_deref(), Some("main"));
+        assert_eq!(g.github_repo.as_deref(), Some("rasul-chopurov/shop"));
+        assert_eq!(GitInfo::github_repo_of("https://github.com/a/b"), Some("a/b".into()));
+        assert_eq!(GitInfo::github_repo_of("git@gitlab.com:a/b.git"), None);
     }
 
     #[test]

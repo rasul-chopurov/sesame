@@ -1,6 +1,7 @@
 //! The desktop window: glass titlebar with breadcrumbs, a sidebar tree of
 //! servers and their sections, the content panel and a status bar.
 
+mod integrations;
 mod jobs;
 pub mod theme;
 mod views;
@@ -117,6 +118,7 @@ pub enum Page {
     Updates,
     /// Create or unlock the encrypted vault; shown before anything else.
     Vault,
+    Cloudflare,
 }
 
 #[derive(Default)]
@@ -161,6 +163,9 @@ pub struct SesameApp {
     pub(crate) vault_pw2: Entity<InputState>,
     pub(crate) vault_busy: bool,
     pub(crate) vault_error: Option<String>,
+    pub(crate) gh: integrations::GhState,
+    pub(crate) cf: integrations::CfState,
+    pub(crate) int: integrations::Inputs,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -187,6 +192,7 @@ impl SesameApp {
         let filter = input(tr("nav.filter"), window, cx);
         let site_search = input(tr("sites.search"), window, cx);
         let db_name = input(tr("db.name_placeholder"), window, cx);
+        let int = integrations::Inputs::new(window, cx);
         let vault_pw = cx.new(|cx| InputState::new(window, cx).masked(true));
         let vault_pw2 = cx.new(|cx| InputState::new(window, cx).masked(true));
 
@@ -195,6 +201,9 @@ impl SesameApp {
             cx.subscribe(&site_search, |_, _, _: &InputEvent, cx| cx.notify()),
         ];
         subs.push(cx.subscribe(&db_name, |_, _, _: &InputEvent, cx| cx.notify()));
+        for input in int.all() {
+            subs.push(cx.subscribe(input, |_, _, _: &InputEvent, cx| cx.notify()));
+        }
         subs.push(cx.subscribe(&vault_pw, |this, _, e: &InputEvent, cx| {
             if matches!(e, InputEvent::PressEnter { .. }) {
                 this.submit_vault(false, cx);
@@ -248,8 +257,14 @@ impl SesameApp {
             vault_pw2,
             vault_busy: false,
             vault_error: None,
+            gh: Default::default(),
+            cf: Default::default(),
+            int,
             _subscriptions: subs,
         };
+        if this.page != Page::Vault && translucent {
+            this.load_integrations(cx);
+        }
         if translucent && this.page != Page::Vault && this.update_due() {
             this.check_updates(cx);
         }
@@ -289,6 +304,7 @@ impl SesameApp {
         let fields = [
             (&self.filter, tr("nav.filter")),
             (&self.site_search, tr("sites.search")),
+            (&self.int.repo_search, tr("repo.search")),
             (&self.form.key, tr("add.key_placeholder")),
             (&self.form.password, tr("add.password_placeholder")),
         ];
@@ -433,6 +449,9 @@ impl SesameApp {
                 match result {
                     Ok(Ok(vault)) => {
                         secrets::install(vault);
+                        if this.translucent {
+                            this.load_integrations(cx);
+                        }
                         this.page = match this.servers.first() {
                             Some(s) => Page::Server(s.id, Section::Overview),
                             None => Page::AddServer,
@@ -570,6 +589,7 @@ impl Render for SesameApp {
         }
         let content = match self.page {
             Page::Vault => div().into_any_element(),
+            Page::Cloudflare => integrations::cloudflare_page(self, cx).into_any_element(),
             Page::AddServer => views::add_server(self, cx).into_any_element(),
             Page::Settings => views::settings(self, window, cx).into_any_element(),
             Page::Updates => views::updates(self, cx).into_any_element(),
@@ -648,6 +668,7 @@ impl SesameApp {
             Page::Settings => crumbs = crumbs.child(sep()).child(tr("nav.settings")),
             Page::Updates => crumbs = crumbs.child(sep()).child(tr("nav.updates")),
             Page::Vault => {}
+            Page::Cloudflare => crumbs = crumbs.child(sep()).child("Cloudflare"),
         }
 
         let theme_icon = match self.theme_pref {
@@ -833,7 +854,7 @@ impl SesameApp {
                             .on_click(cx.listener(|this, _, _, cx| this.navigate(Page::AddServer, cx))),
                     ),
             )
-            .child(div().id("tree").flex_1().overflow_y_scroll().child(tree))
+            .child(div().id("tree").flex_1().overflow_y_scroll().child(tree).child(integrations::sidebar_entry(self, cx)))
     }
 
     fn render_statusbar(&self, cx: &mut Context<Self>) -> impl IntoElement {

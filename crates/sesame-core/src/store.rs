@@ -18,7 +18,20 @@ pub trait Store: Send + Sync {
     fn setting(&self, key: &str) -> Result<Option<String>>;
     fn set_setting(&self, key: &str, value: &str) -> Result<()>;
     fn log_audit(&self, entry: &AuditEntry) -> Result<()>;
+    /// The repository a site deploys from.
+    fn site_link(&self, server: ServerId, domain: &str) -> Result<Option<SiteLink>>;
+    fn set_site_link(&self, link: &SiteLink) -> Result<()>;
+    fn delete_site_link(&self, server: ServerId, domain: &str) -> Result<()>;
     fn audit(&self, server: Option<ServerId>, limit: usize) -> Result<Vec<AuditEntry>>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SiteLink {
+    pub server_id: ServerId,
+    pub domain: String,
+    pub app_path: String,
+    pub repo: String,
+    pub branch: String,
 }
 
 /// One change Sesame made (or tried to make) on a server. Never contains secrets.
@@ -87,6 +100,14 @@ impl SqliteStore {
                 actor TEXT NOT NULL,
                 ok INTEGER NOT NULL,
                 log TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS site_links (
+                server_id TEXT NOT NULL,
+                domain TEXT NOT NULL,
+                app_path TEXT NOT NULL,
+                repo TEXT NOT NULL,
+                branch TEXT NOT NULL,
+                PRIMARY KEY (server_id, domain)
             );
             CREATE TABLE IF NOT EXISTS vault_meta (
                 key TEXT PRIMARY KEY,
@@ -163,6 +184,41 @@ impl Store for SqliteStore {
         Ok(conn
             .query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| row.get(0))
             .optional()?)
+    }
+
+    fn site_link(&self, server: ServerId, domain: &str) -> Result<Option<SiteLink>> {
+        let conn = self.conn.lock().unwrap();
+        Ok(conn
+            .query_row(
+                "SELECT app_path, repo, branch FROM site_links WHERE server_id = ?1 AND domain = ?2",
+                params![server.to_string(), domain],
+                |r| {
+                    Ok(SiteLink {
+                        server_id: server,
+                        domain: domain.to_string(),
+                        app_path: r.get(0)?,
+                        repo: r.get(1)?,
+                        branch: r.get(2)?,
+                    })
+                },
+            )
+            .optional()?)
+    }
+
+    fn set_site_link(&self, l: &SiteLink) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO site_links (server_id, domain, app_path, repo, branch) VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(server_id, domain) DO UPDATE SET app_path = excluded.app_path, repo = excluded.repo, branch = excluded.branch",
+            params![l.server_id.to_string(), l.domain, l.app_path, l.repo, l.branch],
+        )?;
+        Ok(())
+    }
+
+    fn delete_site_link(&self, server: ServerId, domain: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM site_links WHERE server_id = ?1 AND domain = ?2", params![server.to_string(), domain])?;
+        Ok(())
     }
 
     fn log_audit(&self, e: &AuditEntry) -> Result<()> {
@@ -320,6 +376,19 @@ mod tests {
         let only_a: Vec<String> = store.audit(Some(a), 10).unwrap().into_iter().map(|e| e.title).collect();
         assert_eq!(only_a, ["op 3", "op 1"]);
         assert_eq!(store.audit(None, 2).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn site_links_upsert() {
+        let store = SqliteStore::in_memory().unwrap();
+        let id = uuid::Uuid::new_v4();
+        let mut l = SiteLink { server_id: id, domain: "shop.test".into(), app_path: "/var/www/shop".into(), repo: "a/shop".into(), branch: "main".into() };
+        store.set_site_link(&l).unwrap();
+        l.branch = "release".into();
+        store.set_site_link(&l).unwrap();
+        assert_eq!(store.site_link(id, "shop.test").unwrap(), Some(l));
+        store.delete_site_link(id, "shop.test").unwrap();
+        assert!(store.site_link(id, "shop.test").unwrap().is_none());
     }
 
     #[test]

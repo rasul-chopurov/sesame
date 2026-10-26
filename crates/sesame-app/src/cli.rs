@@ -27,6 +27,14 @@ pub enum DoAction {
     Service { kind: String, name: String, action: String },
     /// Laravel maintenance mode for an app directory: on|off.
     Maintenance { path: String, state: String },
+    /// Install a certificate + private key (PEM files) as /etc/ssl/sesame/<name>/.
+    Cert {
+        name: String,
+        #[arg(long)]
+        cert: String,
+        #[arg(long)]
+        key: String,
+    },
     /// Run Reverb under supervisor for the site with this domain.
     Reverb { domain: String, #[arg(long, default_value_t = 8080)] port: u16 },
 }
@@ -324,6 +332,11 @@ fn build_plan(
             actions::service(kind, name, action)
         }
         DoAction::Maintenance { path, state } => actions::maintenance(path, state == "on"),
+        DoAction::Cert { name, cert, key } => {
+            let cert = std::fs::read_to_string(cert).with_context(|| format!("read {cert}"))?;
+            let key = std::fs::read_to_string(key).with_context(|| format!("read {key}"))?;
+            actions::cert_install(name, &cert, &key)
+        }
         DoAction::Reverb { domain, port } => {
             let snap = snap.context("discover the server first")?;
             let site = snap

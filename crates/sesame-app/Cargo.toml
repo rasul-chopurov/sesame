@@ -16,6 +16,8 @@ sesame-discovery = { path = "../sesame-discovery" }
 sesame-update = { path = "../sesame-update" }
 sesame-ops = { path = "../sesame-ops" }
 sesame-provision = { path = "../sesame-provision" }
+sesame-github = { path = "../sesame-github" }
+sesame-cloudflare = { path = "../sesame-cloudflare" }
 gpui-kit.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true

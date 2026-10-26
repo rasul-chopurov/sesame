@@ -57,6 +57,7 @@ fn main() {
             .unwrap();
 
         let id = server.id;
+        cx.update_window(handle, |_, _, cx| view.update(cx, |v, cx| v.demo_integrations("203.0.113.10", cx))).unwrap();
         let mut pages: Vec<(&str, Page)> = vec![
             ("overview", Page::Server(id, Section::Overview)),
             ("sites", Page::Server(id, Section::Sites)),
@@ -70,6 +71,7 @@ fn main() {
             ("settings", Page::Settings),
             ("updates", Page::Updates),
             ("vault", Page::Vault),
+            ("cloudflare", Page::Cloudflare),
         ];
         if let Some(only) = &only {
             pages.retain(|(name, _)| only.split(',').any(|o| o == *name));

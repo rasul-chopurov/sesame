@@ -9,10 +9,11 @@ use gpui_kit::component::{Disableable as _, h_flex, v_flex};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use sesame_core::ops::Risk;
-use sesame_core::{AuditEntry, ServerId, Store as _, secrets};
+use sesame_core::{AuditEntry, ServerId, SiteLink, Store as _, secrets};
 use sesame_ops::{Event, Plan};
 use sesame_provision::Service;
 
+use super::integrations::ApiAction;
 use super::theme::Glass;
 use super::widgets::*;
 use super::SesameApp;
@@ -25,12 +26,22 @@ pub enum Rebuild {
     Uninstall(Service),
 }
 
+/// What to do after a plan succeeds.
+#[derive(Clone)]
+pub enum After {
+    /// Add the captured deploy key to GitHub and save the site's link.
+    DeployKey { link: SiteLink },
+}
+
 pub struct Pending {
     pub server: ServerId,
     pub plan: Plan,
     pub confirm: Entity<InputState>,
     pub rebuild: Option<Rebuild>,
     pub delete_data: bool,
+    /// A Cloudflare call instead of a server script.
+    pub api: Option<ApiAction>,
+    pub after: Option<After>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -63,7 +74,7 @@ impl SesameApp {
         match plan {
             Ok(plan) => {
                 let confirm = cx.new(|cx| InputState::new(window, cx));
-                self.pending = Some(Pending { server, plan, confirm, rebuild, delete_data: false });
+                self.pending = Some(Pending { server, plan, confirm, rebuild, delete_data: false, api: None, after: None });
             }
             Err(e) => {
                 self.job = Some(Job {
@@ -117,8 +128,12 @@ impl SesameApp {
 
     fn run_pending(&mut self, cx: &mut Context<Self>) {
         let Some(p) = self.pending.take() else { return };
+        if let Some(api) = p.api {
+            return self.run_api(p.plan, api, cx);
+        }
         let Some(server) = self.servers.iter().find(|s| s.id == p.server).cloned() else { return };
         let plan = p.plan;
+        let after = p.after;
         self.job = Some(Job {
             server: server.id,
             title: plan.title.clone(),
@@ -169,9 +184,10 @@ impl SesameApp {
                     Ok(Err(e)) => (false, format!("{e:#}"), JobState::Failed(format!("{e:#}")), vec![]),
                     Err(e) => (false, e.to_string(), JobState::Failed(e.to_string()), vec![]),
                 };
-                for (name, value) in &reveal {
+                for (name, value) in reveal.iter().filter(|(k, _)| k != "DEPLOY_PUBLIC_KEY") {
                     let _ = secrets::set_named(server_id, name, value);
                 }
+                let deploy_key = reveal.iter().find(|(k, _)| k == "DEPLOY_PUBLIC_KEY").map(|(_, v)| v.clone());
                 let _ = this.store.log_audit(&AuditEntry {
                     at: sesame_discovery::parse::app::now_rfc3339(),
                     server_id,
@@ -187,6 +203,9 @@ impl SesameApp {
                     job.current = job.steps.len();
                 }
                 if ok {
+                    if let (Some(After::DeployKey { link }), Some(key)) = (after.clone(), deploy_key) {
+                        this.finish_deploy_key(link, key, cx);
+                    }
                     this.discover(server_id, cx);
                 }
                 cx.notify();
