@@ -335,7 +335,9 @@ pub fn view(app: &SesameApp, server: ServerId, cx: &mut Context<SesameApp>) -> D
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // Explicit imports: the GPUI glob would shadow `#[test]`.
+    use super::key_bytes;
+    use gpui_kit::{Keystroke, Modifiers};
 
     fn ks(key: &str, ctrl: bool, ch: Option<&str>) -> Keystroke {
         Keystroke {
