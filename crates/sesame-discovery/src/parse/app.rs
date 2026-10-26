@@ -48,6 +48,8 @@ pub fn app(body: &str) -> AppDetails {
                 "QUEUE_CONNECTION" => &mut env.queue_connection,
                 "SESSION_DRIVER" => &mut env.session_driver,
                 "REDIS_HOST" => &mut env.redis_host,
+                "REDIS_USERNAME" => &mut env.redis_username,
+                "REDIS_PREFIX" => &mut env.redis_prefix,
                 "MAIL_MAILER" => &mut env.mail_mailer,
                 "MAIL_HOST" => &mut env.mail_host,
                 "BROADCAST_CONNECTION" | "BROADCAST_DRIVER" => &mut env.broadcast_connection,

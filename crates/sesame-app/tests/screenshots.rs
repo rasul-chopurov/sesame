@@ -62,6 +62,7 @@ fn main() {
             ("overview", Page::Server(id, Section::Overview)),
             ("sites", Page::Server(id, Section::Sites)),
             ("site", Page::Server(id, Section::Site(0))),
+            ("new-site", Page::Server(id, Section::NewSite)),
             ("processes", Page::Server(id, Section::Processes)),
             ("services", Page::Server(id, Section::Services)),
             ("databases", Page::Server(id, Section::Databases)),

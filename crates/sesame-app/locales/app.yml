@@ -280,3 +280,33 @@ cf.delete: { en: "Delete", ru: "Удалить", az: "Sil" }
 cf.no_records: { en: "No records match", ru: "Нет подходящих записей", az: "Uyğun qeyd yoxdur" }
 cf.no_domains: { en: "No domains match", ru: "Нет подходящих доменов", az: "Uyğun domen yoxdur" }
 cf.add_hint: { en: "Name: @ for the root, or a subdomain like www", ru: "Имя: @ для корня или субдомен, например www", az: "Ad: kök üçün @ və ya www kimi subdomen" }
+ns.title: { en: "New site", ru: "Новый сайт", az: "Yeni sayt" }
+ns.button: { en: "New site", ru: "Новый сайт", az: "Yeni sayt" }
+ns.lead: { en: "Every site gets its own Linux user, PHP pool and database user. The web server can read only its public folder.", ru: "У каждого сайта свой Linux-пользователь, свой PHP-пул и свой пользователь БД. Веб-сервер видит только его публичную папку.", az: "Hər saytın öz Linux istifadəçisi, PHP pulu və baza istifadəçisi olur. Veb server yalnız onun public qovluğunu görür." }
+ns.domain: { en: "Domain", ru: "Домен", az: "Domen" }
+ns.kind: { en: "Type", ru: "Тип", az: "Tip" }
+ns.static: { en: "Static", ru: "Статический", az: "Statik" }
+ns.runtime: { en: "PHP runtime", ru: "PHP", az: "PHP" }
+ns.fpm: { en: "PHP-FPM pool", ru: "Пул PHP-FPM", az: "PHP-FPM pulu" }
+ns.octane: { en: "Octane (FrankenPHP)", ru: "Octane (FrankenPHP)", az: "Octane (FrankenPHP)" }
+ns.source: { en: "Code", ru: "Код", az: "Kod" }
+ns.skeleton: { en: "New Laravel app", ru: "Новое Laravel-приложение", az: "Yeni Laravel tətbiqi" }
+ns.placeholder: { en: "Placeholder page", ru: "Страница-заглушка", az: "Müvəqqəti səhifə" }
+ns.github: { en: "Public GitHub repository", ru: "Публичный репозиторий GitHub", az: "Açıq GitHub repozitoriyası" }
+ns.repo_hint: { en: "owner/name and branch; private repositories connect from the site page after creation", ru: "owner/name и ветка; приватные репозитории подключаются со страницы сайта после создания", az: "owner/name və budaq; gizli repozitoriyalar yaradıldıqdan sonra sayt səhifəsindən qoşulur" }
+ns.root: { en: "Web root", ru: "Веб-корень", az: "Veb kök" }
+ns.services: { en: "Site services", ru: "Сервисы сайта", az: "Sayt xidmətləri" }
+ns.database: { en: "Database", ru: "База данных", az: "Baza" }
+ns.none: { en: "None", ru: "Нет", az: "Yoxdur" }
+ns.redis: { en: "Redis (own ACL user)", ru: "Redis (свой ACL-пользователь)", az: "Redis (öz ACL istifadəçisi)" }
+ns.queue: { en: "Queue worker", ru: "Обработчик очереди", az: "Növbə işçisi" }
+ns.scheduler: { en: "Scheduler (cron)", ru: "Планировщик (cron)", az: "Planlayıcı (cron)" }
+ns.not_installed: { en: "%{what} is not installed on this server — install it in Services first", ru: "%{what} не установлен на сервере — сначала установите в «Сервисах»", az: "%{what} serverdə quraşdırılmayıb — əvvəlcə «Xidmətlər»də quraşdırın" }
+ns.create: { en: "Review & create", ru: "Проверить и создать", az: "Yoxla və yarat" }
+sub.title: { en: "Subdomains", ru: "Субдомены", az: "Subdomenlər" }
+sub.none: { en: "No subdomains yet", ru: "Субдоменов пока нет", az: "Hələ subdomen yoxdur" }
+sub.add: { en: "Add subdomain", ru: "Добавить субдомен", az: "Subdomen əlavə et" }
+sub.hint: { en: "A subdomain is a separate isolated site: own folder, user, PHP pool and services", ru: "Субдомен — отдельный изолированный сайт: своя папка, пользователь, PHP-пул и сервисы", az: "Subdomen ayrıca izolə olunmuş saytdır: öz qovluğu, istifadəçisi, PHP pulu və xidmətləri" }
+svc_site.on: { en: "on", ru: "включено", az: "aktiv" }
+svc_site.add: { en: "Add", ru: "Добавить", az: "Əlavə et" }
+svc_site.workers: { en: "%{n} workers", ru: "воркеров: %{n}", az: "işçi: %{n}" }

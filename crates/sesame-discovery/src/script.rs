@@ -95,6 +95,8 @@ pub const ENV_KEYS: &[&str] = &[
     "QUEUE_CONNECTION",
     "SESSION_DRIVER",
     "REDIS_HOST",
+    "REDIS_USERNAME",
+    "REDIS_PREFIX",
     "MAIL_MAILER",
     "MAIL_HOST",
     "BROADCAST_CONNECTION",

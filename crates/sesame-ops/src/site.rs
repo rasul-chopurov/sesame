@@ -683,3 +683,80 @@ mod site_service_tests {
         assert!(queue_for_site("lara.response.az", "/x", "redis; rm", 1).is_err());
     }
 }
+
+/// A database and user for an existing site, written to its `.env`, then migrated.
+pub fn database_for_site(domain: &str, app_path: &str, engine: DatabaseKind, laravel: bool) -> Result<Plan> {
+    if !valid_domain(domain) || !app_path.starts_with('/') || app_path.contains("..") || app_path.contains('\'') {
+        bail!("invalid site");
+    }
+    let db = slug(domain);
+    let mut plan = crate::actions::db_create(engine, &db, &db, None)?;
+    plan.op = "site_database";
+    plan.title = format!("database for {domain}");
+    plan.secret_scope = Some(domain.to_string());
+    if laravel {
+        let pw = plan.reveal.iter().find(|(k, _)| k == "DB_PASSWORD").map(|(_, v)| v.clone()).unwrap_or_default();
+        let (conn, port) = if engine == DatabaseKind::Postgres { ("pgsql", "5432") } else { ("mysql", "3306") };
+        let ext = format!(
+            "v=$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;')\n\
+             if ! php -m | grep -qi '^pdo_{conn}$'; then apt-get -o DPkg::Lock::Timeout=300 -o Dpkg::Use-Pty=0 -y -q install php$v-{conn} >/dev/null; systemctl reload php$v-fpm 2>/dev/null || true; echo \"installed php$v-{conn}\"; fi"
+        );
+        plan.steps.insert(0, Step::new("PHP database driver", ext));
+        let mut env = set_env_script(
+            app_path,
+            &[
+                ("DB_CONNECTION", conn.into()),
+                ("DB_HOST", "127.0.0.1".into()),
+                ("DB_PORT", port.into()),
+                ("DB_DATABASE", db.clone()),
+                ("DB_USERNAME", db.clone()),
+                ("DB_PASSWORD", pw),
+            ],
+        );
+        env = env.replace("echo '.env updated'", "echo '.env updated'\nphp artisan migrate --force --no-interaction");
+        plan.steps.push(Step::new("write .env and migrate", env));
+        plan.details.push("DB_* written to the site's .env, then php artisan migrate".into());
+    }
+    Ok(plan)
+}
+
+/// The Laravel scheduler in the site owner's crontab.
+pub fn scheduler_for_site(domain: &str, app_path: &str) -> Result<Plan> {
+    if !valid_domain(domain) || !app_path.starts_with('/') || app_path.contains("..") || app_path.contains('\'') {
+        bail!("invalid site");
+    }
+    let script = format!(
+        "owner=$(stat -c %U {app_q})\n\
+         {{ crontab -u \"$owner\" -l 2>/dev/null | grep -v 'schedule:run' || true; echo '* * * * * cd {app_path} && php artisan schedule:run >> /dev/null 2>&1'; }} | crontab -u \"$owner\" -\n\
+         crontab -u \"$owner\" -l | grep -q 'schedule:run' && echo \"scheduler added for $owner\"",
+        app_q = q(app_path)
+    );
+    Ok(Plan {
+        op: "site_scheduler",
+        title: format!("scheduler for {domain}"),
+        risk: Risk::Change,
+        details: vec!["php artisan schedule:run every minute, as the site's user".into()],
+        confirm_word: None,
+        steps: vec![Step::new("add the cron entry", script)],
+        reveal: vec![],
+        secret_scope: None,
+    })
+}
+
+#[cfg(test)]
+mod more_site_tests {
+    use super::*;
+
+    #[test]
+    fn database_and_scheduler_for_site() {
+        let p = database_for_site("lara.response.az", "/home/s_lara_response_az/lara.response.az", DatabaseKind::Postgres, true).unwrap();
+        assert_eq!(p.secret_scope.as_deref(), Some("lara.response.az"));
+        assert!(p.steps.last().unwrap().script.contains("migrate --force"));
+        for s in &p.steps {
+            let ok = std::process::Command::new("sh").args(["-n", "-c", &s.script]).status().unwrap().success();
+            assert!(ok, "{}", s.title);
+        }
+        let c = scheduler_for_site("lara.response.az", "/home/s_lara_response_az/lara.response.az").unwrap();
+        assert!(c.steps[0].script.contains("crontab -u \"$owner\""));
+    }
+}

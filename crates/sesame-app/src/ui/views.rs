@@ -102,6 +102,7 @@ pub fn server(
             Section::Overview => body.child(overview(id, s, cx)),
             Section::Sites => body.child(sites(app, id, s, cx)),
             Section::Site(i) => body.child(site_detail(app, id, s, i, cx)),
+            Section::NewSite => body.child(super::newsite::wizard(app, id, s, cx)),
             Section::Processes => body.child(processes(id, s, cx)),
             Section::Services => body.child(services(id, s, cx)),
             Section::Databases => body.child(databases(id, s, app.db_name.clone(), cx)),
@@ -328,7 +329,15 @@ fn sites(app: &SesameApp, server: sesame_core::ServerId, s: &ServerSnapshot, cx:
     let toolbar = h_flex()
         .gap_3()
         .child(div().w(px(380.)).child(Input::new(&app.site_search).prefix(icon(IconName::Search, g.faint)).cleanable(true)))
-        .child(chips);
+        .child(chips)
+        .child(div().flex_1())
+        .child(
+            Button::new("new-site")
+                .primary()
+                .icon(IconName::Plus)
+                .label(tr("ns.button"))
+                .on_click(cx.listener(move |this, _, window, cx| this.open_new_site(server, None, window, cx))),
+        );
 
     let visible: Vec<(usize, &Site)> = s
         .sites
@@ -573,6 +582,8 @@ fn site_detail(app: &SesameApp, server: sesame_core::ServerId, s: &ServerSnapsho
         .child(head)
         .child(div().text_xs().text_color(g.faint).child(tr("sites.disable_note")))
         .child(info)
+        .child(super::newsite::site_services_card(app, server, site, s, cx))
+        .child(super::newsite::subdomains_card(app, server, site, s, cx))
         .child(super::integrations::repo_card(app, server, site, s, cx))
         .child(super::integrations::dns_card(app, server, site, cx))
         .when(!procs.is_empty(), |d| d.child(proc_card))

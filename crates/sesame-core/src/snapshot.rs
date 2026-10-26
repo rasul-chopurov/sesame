@@ -171,6 +171,10 @@ pub struct AppEnv {
     pub queue_connection: Option<String>,
     pub session_driver: Option<String>,
     pub redis_host: Option<String>,
+    #[serde(default)]
+    pub redis_username: Option<String>,
+    #[serde(default)]
+    pub redis_prefix: Option<String>,
     pub mail_mailer: Option<String>,
     pub mail_host: Option<String>,
     pub broadcast_connection: Option<String>,
