@@ -6,6 +6,10 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-10-26
+
+First public alpha. macOS builds are not notarized yet; Windows builds are experimental.
+
 ### Added
 - MCP (`sesame mcp`) and REST (`sesame serve`, `sesame api-token`) for AI agents; changes wait for Allow/Deny in the app.
 - Mail: Resend integration (domain, DKIM/SPF in Cloudflare, verification, per-site sending key as MAIL_* in `.env`); Stalwart mail server recipe.
@@ -16,26 +20,6 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Prepare a server for Laravel from zero: base packages, security updates, swap, PHP, Composer, Caddy, supervisor, fail2ban, ufw.
 - Windows build checked in CI.
 - Sesame Cloud (self-hosted): `sesame-cloud` web API with owner/admin/developer/viewer roles, agent tokens, approvals and audit; Vue web app installable as a PWA.
-
-## [Unreleased]
-
-### Fixed
-- A vault test removed the real `vault.key` of a key-file vault (it deleted the default path instead of its own temp file). The vault now removes only the key file it was opened with, tests can never resolve the real data directory, every vault reset or password change first copies `state.db` and `vault.key` to `backups/`, and resetting a vault needs typing `reset`.
-- Master passwords may be any non-empty length.
-- A site's credentials no longer overwrite server-wide ones in the vault (site secrets are stored per domain).
-
-### Fixed (found on a real Ubuntu 24.04 arm64 server)
-- Elasticsearch 9 listened on all interfaces because its security auto-config writes `http.host: 0.0.0.0`; the recipe now pins network, http and transport hosts to 127.0.0.1.
-- MongoDB scripts reported success on errors (`mongosh` with a heredoc exits 0); scripts now run through `mongosh --file` and authenticate as the Sesame admin.
-- Reinstalling MongoDB over kept data no longer tries to create a second admin or reveals a password that was never set.
-- Every plan step now sees `/etc/os-release` (each step runs in a fresh shell).
-- Backups are written with `umask 077`.
-- PostgreSQL version shown as `18.6` instead of the package string.
-
-### Changed
-- Secrets moved from the macOS Keychain to an encrypted vault in Sesame's own database: the key is derived from a master password with Argon2id (64 MiB, 3 passes) and every secret is sealed with XChaCha20-Poly1305 bound to its slot. Optional key-file mode without a password. Works the same on macOS and Windows and survives app updates.
-
-### Added
 - Embedded SSH terminal (PTY, xterm-256color, colours, cursor, Ctrl keys, arrows, paste) and "Open in Terminal.app".
 - Site file manager over SFTP, confined to the site directory (lexical and realpath checks, symlink escapes refused): browse, filter, upload, download, new folder, delete with confirmation, edit text files.
 - phpMyAdmin and pgAdmin 4 in Services: listen on the server's 127.0.0.1 only and open through an SSH tunnel from the app (`sesame panel <server> phpmyadmin`).
@@ -63,17 +47,25 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - In-app updates from GitHub Releases: SemVer channels (stable / beta), changelog of every version since yours, ed25519-signed archives, atomic `.app` replacement with rollback.
 - `sesame update [--install] [--channel stable|beta]`.
 - Release pipeline: signed macOS (arm64, x64) `.dmg`/`.zip` and experimental Windows builds on every `v*` tag; app icon.
-
-## [0.1.0-alpha.1] - 2026-10-26
-
-First public alpha.
-
-### Added
 - Native macOS app (Rust + GPUI): servers sidebar, Overview / Sites / Processes / Databases / Mail & Cron / Security views, light and dark themes.
-- SSH connection with ssh-agent, key file or password (stored in the macOS Keychain); host keys checked against `~/.ssh/known_hosts`.
 - Read-only discovery in two SSH round trips: OS and resources, systemd and supervisor (Octane, queue, Horizon, Reverb roles), listening ports, sites from FrankenPHP/Caddy, Nginx and Apache, Laravel/WordPress detection with non-secret `.env` details, MySQL/MariaDB/PostgreSQL/Redis/MongoDB, mail, PHP and FPM pools, cron, certificates with expiry, ufw/fail2ban, Docker.
 - "Needs attention" insights: failed processes, open ports, inactive firewall, expiring certificates, unused PHP-FPM, full disk.
 - `sesame` CLI: `add`, `servers`, `remove`, `discover` (JSON), `import-snapshot`, `ops`.
+- SSH connection with ssh-agent, key file or password (kept in the encrypted vault); host keys checked against `~/.ssh/known_hosts`.
+
+### Changed
+- Secrets moved from the macOS Keychain to an encrypted vault in Sesame's own database: the key is derived from a master password with Argon2id (64 MiB, 3 passes) and every secret is sealed with XChaCha20-Poly1305 bound to its slot. Optional key-file mode without a password. Works the same on macOS and Windows and survives app updates.
+
+### Fixed
+- A vault test removed the real `vault.key` of a key-file vault (it deleted the default path instead of its own temp file). The vault now removes only the key file it was opened with, tests can never resolve the real data directory, every vault reset or password change first copies `state.db` and `vault.key` to `backups/`, and resetting a vault needs typing `reset`.
+- Master passwords may be any non-empty length.
+- A site's credentials no longer overwrite server-wide ones in the vault (site secrets are stored per domain).
+- Elasticsearch 9 listened on all interfaces because its security auto-config writes `http.host: 0.0.0.0`; the recipe now pins network, http and transport hosts to 127.0.0.1.
+- MongoDB scripts reported success on errors (`mongosh` with a heredoc exits 0); scripts now run through `mongosh --file` and authenticate as the Sesame admin.
+- Reinstalling MongoDB over kept data no longer tries to create a second admin or reveals a password that was never set.
+- Every plan step now sees `/etc/os-release` (each step runs in a fresh shell).
+- Backups are written with `umask 077`.
+- PostgreSQL version shown as `18.6` instead of the package string.
 
 [Unreleased]: https://github.com/rasul-chopurov/sesame/compare/v0.1.0-alpha.1...HEAD
 [0.1.0-alpha.1]: https://github.com/rasul-chopurov/sesame/releases/tag/v0.1.0-alpha.1

@@ -36,6 +36,10 @@ jobs:
         env:
           SESAME_SIGNING_KEY: ${{ secrets.SESAME_SIGNING_KEY }}
         run: |
+          if [ -z "$SESAME_SIGNING_KEY" ]; then
+            echo "::warning::SESAME_SIGNING_KEY is not set — publishing unsigned archives (in-app updates will refuse them)"
+            exit 0
+          fi
           cargo build --release --locked -p sesame-update --bin sesame-sign
           target/release/sesame-sign sign dist/*.zip dist/*.dmg
       - uses: actions/upload-artifact@v4
@@ -65,7 +69,7 @@ jobs:
           mkdir dist
           cp target/release/sesame.exe dist/
           (cd dist && 7z a "Sesame-$VERSION-windows-x64.zip" sesame.exe >/dev/null && rm sesame.exe)
-          target/release/sesame-sign.exe sign dist/*.zip
+          if [ -n "$SESAME_SIGNING_KEY" ]; then target/release/sesame-sign.exe sign dist/*.zip; else echo "::warning::unsigned Windows archive"; fi
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
