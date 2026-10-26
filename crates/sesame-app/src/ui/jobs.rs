@@ -131,9 +131,12 @@ impl SesameApp {
         if let Some(api) = p.api {
             return self.run_api(p.plan, api, cx);
         }
-        let Some(server) = self.servers.iter().find(|s| s.id == p.server).cloned() else { return };
-        let plan = p.plan;
-        let after = p.after;
+        self.run_plan_now(p.server, p.plan, p.after, cx);
+    }
+
+    /// Runs a plan the user has already confirmed.
+    pub(crate) fn run_plan_now(&mut self, server_id: ServerId, plan: Plan, after: Option<After>, cx: &mut Context<Self>) {
+        let Some(server) = self.servers.iter().find(|s| s.id == server_id).cloned() else { return };
         self.job = Some(Job {
             server: server.id,
             title: plan.title.clone(),
@@ -153,7 +156,6 @@ impl SesameApp {
             let _ = session.close().await;
             out
         });
-        let server_id = p.server;
         cx.spawn(async move |this, cx| {
             while let Some(event) = rx.recv().await {
                 let alive = this

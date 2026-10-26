@@ -7666,6 +7666,7 @@ dependencies = [
  "sesame-discovery",
  "sesame-engine",
  "sesame-github",
+ "sesame-mail",
  "sesame-ops",
  "sesame-provision",
  "sesame-ssh",
@@ -7732,6 +7733,7 @@ dependencies = [
  "sesame-cloudflare",
  "sesame-core",
  "sesame-discovery",
+ "sesame-mail",
  "sesame-ops",
  "sesame-provision",
  "sesame-ssh",
@@ -7748,6 +7750,17 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "sesame-mail"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sesame-cloudflare",
 ]
 
 [[package]]

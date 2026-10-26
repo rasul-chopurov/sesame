@@ -38,7 +38,9 @@ It is built for how Laravel actually runs in production today: FrankenPHP and Oc
 | 🔑 **Connect** | ssh-agent, key file or password (encrypted in a local vault). Host keys verified against `~/.ssh/known_hosts`; a changed key refuses to connect. |
 | 🔍 **Discover** | One read-only probe, two SSH round trips: OS and resources · systemd and supervisor (Octane, queue, Horizon, Reverb recognised) · listening ports · sites from **FrankenPHP/Caddy, Nginx, Apache** · Laravel and WordPress with non-secret `.env` details · MySQL, MariaDB, PostgreSQL, Redis, MongoDB · mail · PHP and FPM pools · cron · certificates and expiry · ufw and fail2ban · Docker. |
 | 🚨 **Needs attention** | Failed processes, ports open to the world, inactive firewall, expiring certificates, PHP-FPM running for nobody, full disks. |
-| 🤖 **AI-friendly** | Every action is a typed operation. `sesame discover root@host` prints JSON today; MCP and REST servers for agents are on the roadmap. |
+| 🤖 **AI agents** | `sesame mcp` for Claude Code, Claude Desktop and Cursor; `sesame serve` for REST. 30 tools; reading is immediate, every change waits for **Allow** in the app and lands in the audit log with the agent's name. |
+| ✉️ **Mail** | Resend in one click: domain, DKIM/SPF in Cloudflare, verification and a domain-limited key in the site's `.env`. Stalwart mail server in the services catalog. |
+| ⌘ **Command palette** | ⌘K jumps to any server, section, site or action. |
 | 🎨 **Glass UI, EN / RU / AZ** | Translucent light and dark themes over a blurred window, breadcrumbs in the titlebar, a sidebar tree with search, sites as searchable cards. English, Russian and Azerbaijani. |
 | ⬆️ **Updates** | Checks GitHub Releases, shows the changelog of every version since yours, installs signed builds automatically if you want. |
 | 🔒 **Safe by default** | Discovery never changes anything and never reads passwords or keys from `.env`. |
@@ -76,7 +78,11 @@ sesame servers                           # list saved servers
 sesame discover prod                     # discover, save, print JSON
 sesame discover root@203.0.113.10        # ad-hoc, nothing saved
 sesame ops                               # operations exposed to agents
+sesame mcp                               # MCP server on stdio
+sesame api-token && sesame serve         # REST on 127.0.0.1:7878
 ```
+
+Connect Claude Code: `claude mcp add sesame -- /Applications/Sesame.app/Contents/MacOS/sesame mcp`.
 
 State lives in `~/Library/Application Support/dev.sesame.Sesame/state.db` (override with `SESAME_DATA_DIR`). Secrets never touch it.
 
@@ -84,27 +90,33 @@ State lives in `~/Library/Application Support/dev.sesame.Sesame/state.db` (overr
 
 - [x] SSH, read-only discovery, insights, light and dark themes, CLI
 - [x] Glass design, Russian translation, sites as searchable cards, in-app updates with changelog
-- [ ] Command palette ⌘K
+- [x] Command palette ⌘K
 - [ ] Maintenance mode · disable/enable · per-site isolation (own Linux user, PHP-FPM pool or Octane, DB user, Redis ACL)
 - [x] Start/stop/restart services, clean up unused ones — previewed, confirmed, audited
 - [x] Databases: create/drop databases and users for MySQL, MariaDB, PostgreSQL, MongoDB (backup before drop)
 - [x] One-click services: Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 (RustFS), Reverb
-- [ ] Cloudflare: DNS, cache purge, Origin certificates
-- [ ] Deploys and a "new Laravel site" wizard
-- [ ] MCP and REST API for AI agents
+- [x] Cloudflare: zones, DNS records, cache purge, point a site at its server
+- [x] Deploys from GitHub and a "new isolated site" wizard, SFTP files with an editor, terminal
+- [x] MCP and REST API for AI agents, with in-app approvals
+- [x] Mail: Resend domains and site keys; Stalwart mail server (experimental)
+- [ ] Site owners and delegated access (one Linux user per owner, SFTP keys per person)
 - [ ] Provision a fresh server from zero
-- [ ] Windows · mobile · Sesame Cloud
+- [ ] Windows · mobile · Sesame Cloud ([plan](docs/cloud-plan.md))
 
 ## Architecture
 
 ```text
 crates/
   sesame-update      GitHub Releases updates, ed25519 signatures, install
-  sesame-core        data model, SQLite store, keychain secrets, operation registry
+  sesame-core        data model, SQLite store, encrypted vault, operation registry
   sesame-ssh         SSH transport (russh): auth, known_hosts, exec
   sesame-discovery   read-only probe + parsers + insights
   sesame-ops         plans, runner, audit: service control, databases, maintenance
   sesame-provision   service recipes (install / uninstall)
+  sesame-engine      the tool registry behind CLI, MCP and REST, approvals
+  sesame-cloudflare  Cloudflare API
+  sesame-github      GitHub API, deploy keys
+  sesame-mail        Resend API and mail DNS
   sesame-app         GPUI window and the `sesame` CLI
 ```
 

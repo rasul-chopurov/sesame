@@ -25,6 +25,15 @@ use crate::runtime;
 
 pub const GITHUB_TOKEN: &str = "GITHUB_TOKEN";
 pub const CLOUDFLARE_TOKEN: &str = "CLOUDFLARE_TOKEN";
+pub const RESEND_TOKEN: &str = "RESEND_TOKEN";
+
+#[derive(Default)]
+pub struct RsState {
+    pub connected: bool,
+    pub domains: Vec<sesame_mail::Domain>,
+    pub loading: bool,
+    pub error: Option<String>,
+}
 
 #[derive(Default)]
 pub struct GhState {
@@ -68,11 +77,16 @@ pub enum ApiAction {
     Delete { zone_id: String, record_id: String },
     CreateZone { account_id: String, name: String },
     Purge { zone_id: String },
+    /// Add a domain to Resend, publish its records in Cloudflare, verify, and
+    /// (for a Laravel site) give the site its own sending key in `.env`.
+    ResendConnect { domain: String, zone_id: String, site: Option<(ServerId, String)> },
+    ResendVerify { domain_id: String },
 }
 
 pub struct Inputs {
     pub gh_token: Entity<InputState>,
     pub cf_token: Entity<InputState>,
+    pub rs_token: Entity<InputState>,
     pub repo_search: Entity<InputState>,
     pub new_zone: Entity<InputState>,
     pub rec_name: Entity<InputState>,
@@ -89,6 +103,7 @@ impl Inputs {
         Self {
             gh_token: masked(window, cx),
             cf_token: masked(window, cx),
+            rs_token: masked(window, cx),
             repo_search: plain(tr("repo.search"), window, cx),
             new_zone: plain("example.com".into(), window, cx),
             rec_name: plain("www".into(), window, cx),
@@ -99,10 +114,11 @@ impl Inputs {
         }
     }
 
-    pub fn all(&self) -> [&Entity<InputState>; 9] {
+    pub fn all(&self) -> [&Entity<InputState>; 10] {
         [
             &self.gh_token,
             &self.cf_token,
+            &self.rs_token,
             &self.repo_search,
             &self.new_zone,
             &self.rec_name,
@@ -134,6 +150,62 @@ impl SesameApp {
         if secrets::get_global(CLOUDFLARE_TOKEN).ok().flatten().is_some() {
             self.load_cloudflare(cx);
         }
+        if secrets::get_global(RESEND_TOKEN).ok().flatten().is_some() {
+            self.load_resend(cx);
+        }
+    }
+
+    pub(crate) fn connect_resend(&mut self, cx: &mut Context<Self>) {
+        let token = self.int.rs_token.read(cx).value().trim().to_string();
+        if token.is_empty() {
+            return;
+        }
+        if let Err(e) = secrets::set_global(RESEND_TOKEN, &token) {
+            self.rs.error = Some(e.to_string());
+            return cx.notify();
+        }
+        self.load_resend(cx);
+    }
+
+    pub(crate) fn disconnect_resend(&mut self, cx: &mut Context<Self>) {
+        let _ = secrets::delete_global(RESEND_TOKEN);
+        self.rs = RsState::default();
+        cx.notify();
+    }
+
+    pub(crate) fn load_resend(&mut self, cx: &mut Context<Self>) {
+        let Some(token) = secrets::get_global(RESEND_TOKEN).ok().flatten() else { return };
+        self.rs.loading = true;
+        self.rs.error = None;
+        cx.notify();
+        let job = runtime::get().spawn(async move {
+            let rs = sesame_mail::Client::new(token)?;
+            let mut domains = rs.domains().await?;
+            // The list has no records; fetch them for each domain.
+            for d in domains.iter_mut() {
+                if let Ok(full) = rs.domain(&d.id).await {
+                    *d = full;
+                }
+            }
+            anyhow::Ok(domains)
+        });
+        cx.spawn(async move |this, cx| {
+            let result = job.await;
+            this.update(cx, |this, cx| {
+                this.rs.loading = false;
+                match result {
+                    Ok(Ok(domains)) => {
+                        this.rs.connected = true;
+                        this.rs.domains = domains;
+                    }
+                    Ok(Err(e)) => this.rs.error = Some(format!("{e:#}")),
+                    Err(e) => this.rs.error = Some(e.to_string()),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 
     pub(crate) fn connect_github(&mut self, cx: &mut Context<Self>) {
@@ -263,9 +335,11 @@ impl SesameApp {
         });
         cx.notify();
         let task = action.clone();
+        let resend = secrets::get_global(RESEND_TOKEN).ok().flatten();
         let job = runtime::get().spawn(async move {
             let cf = sesame_cloudflare::Client::new(token)?;
             let mut lines = Vec::new();
+            let mut key = None;
             match task {
                 ApiAction::Upsert { zone_id, records } => {
                     for r in records {
@@ -286,16 +360,53 @@ impl SesameApp {
                     cf.purge_everything(&zone_id).await?;
                     lines.push("cache purged".into());
                 }
+                ApiAction::ResendConnect { domain, zone_id, site } => {
+                    let rs = sesame_mail::Client::new(resend.clone().ok_or_else(|| anyhow::anyhow!("Resend is not connected"))?)?;
+                    let existing = rs.domains().await?.into_iter().find(|d| d.name == domain);
+                    let d = match existing {
+                        Some(d) => rs.domain(&d.id).await?,
+                        None => {
+                            let d = rs.create_domain(&domain, "eu-west-1").await?;
+                            lines.push(format!("{} added to Resend", d.name));
+                            d
+                        }
+                    };
+                    let zone_records = cf.records(&zone_id).await?;
+                    for change in sesame_mail::diff(&sesame_mail::cloudflare_records(&d), &zone_records) {
+                        match change {
+                            sesame_mail::Change::Create(r) => {
+                                let r = cf.create_record(&zone_id, &r).await?;
+                                lines.push(format!("{} {} added", r.kind, r.name));
+                            }
+                            sesame_mail::Change::Update(r) => {
+                                let r = cf.update_record(&zone_id, &r).await?;
+                                lines.push(format!("{} {} updated", r.kind, r.name));
+                            }
+                            sesame_mail::Change::Same => {}
+                        }
+                    }
+                    rs.verify(&d.id).await?;
+                    lines.push("verification started (usually a few minutes)".into());
+                    if let Some((_, app)) = &site {
+                        key = Some(rs.sending_key(&format!("sesame {domain}"), &d.id).await?);
+                        lines.push(format!("sending key for {domain} created; next: MAIL_* in {app}/.env"));
+                    }
+                }
+                ApiAction::ResendVerify { domain_id } => {
+                    let rs = sesame_mail::Client::new(resend.clone().ok_or_else(|| anyhow::anyhow!("Resend is not connected"))?)?;
+                    rs.verify(&domain_id).await?;
+                    lines.push("verification requested".into());
+                }
             }
-            anyhow::Ok(lines)
+            anyhow::Ok((lines, key))
         });
         cx.spawn(async move |this, cx| {
             let result = job.await;
             this.update(cx, |this, cx| {
-                let (ok, log, state, lines) = match result {
-                    Ok(Ok(lines)) => (true, lines.join("\n"), JobState::Done, lines),
-                    Ok(Err(e)) => (false, format!("{e:#}"), JobState::Failed(format!("{e:#}")), vec![]),
-                    Err(e) => (false, e.to_string(), JobState::Failed(e.to_string()), vec![]),
+                let (ok, log, state, lines, key) = match result {
+                    Ok(Ok((lines, key))) => (true, lines.join("\n"), JobState::Done, lines, key),
+                    Ok(Err(e)) => (false, format!("{e:#}"), JobState::Failed(format!("{e:#}")), vec![], None),
+                    Err(e) => (false, e.to_string(), JobState::Failed(e.to_string()), vec![], None),
                 };
                 let _ = this.store.log_audit(&AuditEntry {
                     at: sesame_discovery::parse::app::now_rfc3339(),
@@ -313,6 +424,31 @@ impl SesameApp {
                 }
                 if ok {
                     this.load_cloudflare(cx);
+                    if matches!(action, ApiAction::ResendConnect { .. } | ApiAction::ResendVerify { .. }) {
+                        this.load_resend(cx);
+                    }
+                }
+                // Resend gave the site a key: write it to the site's .env.
+                if let (Some(key), ApiAction::ResendConnect { domain, site: Some((server, app)), .. }) = (key, &action) {
+                    let smtp = sesame_ops::site::Smtp {
+                        host: sesame_mail::SMTP_HOST.into(),
+                        port: sesame_mail::SMTP_PORT,
+                        username: sesame_mail::SMTP_USER.into(),
+                        password: key,
+                        from: format!("hello@{domain}"),
+                    };
+                    match sesame_ops::site::mail_for_site(domain, app, &smtp) {
+                        Ok(plan) => {
+                            // Confirmed together with the Resend step.
+                            this.run_plan_now(*server, plan, None, cx);
+                            return;
+                        }
+                        Err(e) => {
+                            if let Some(job) = this.job.as_mut() {
+                                job.state = JobState::Failed(e.to_string());
+                            }
+                        }
+                    }
                 }
                 cx.notify();
             })
@@ -549,6 +685,19 @@ pub fn settings_card(app: &SesameApp, cx: &mut Context<SesameApp>) -> Div {
             app.cf.error.clone(),
             Box::new(|this, cx| this.connect_cloudflare(cx)),
             Box::new(|this, cx| this.disconnect_cloudflare(cx)),
+            cx,
+        ))
+        .child(row(
+            "Resend",
+            "resend",
+            if app.rs.connected { trp("int.connected_as", &[("who", &format!("{} domains", app.rs.domains.len()))]) } else { tr("int.not_connected") },
+            tr("int.resend_hint"),
+            &app.int.rs_token,
+            app.rs.connected,
+            app.rs.loading,
+            app.rs.error.clone(),
+            Box::new(|this, cx| this.connect_resend(cx)),
+            Box::new(|this, cx| this.disconnect_resend(cx)),
             cx,
         ))
 }
@@ -1127,6 +1276,88 @@ pub fn dns_card(app: &SesameApp, server: ServerId, site: &Site, cx: &mut Context
         ));
     }
     c
+}
+
+/// Mail for a site: its domain in Resend, the DNS records, and the site's key.
+pub fn mail_card(app: &SesameApp, server: ServerId, site: &Site, cx: &mut Context<SesameApp>) -> Div {
+    let g = Glass::get(cx).clone();
+    let mut c = card(&tr("mail.title"), cx);
+    if !app.rs.connected {
+        return c.child(div().text_xs().text_color(g.faint).child(trp("int.connect_first", &[("what", "Resend")])));
+    }
+    let Some(domain) = site.domains.iter().find(|d| *d != "*" && !d.starts_with("www.")).cloned() else { return c };
+    let laravel = site.framework == Framework::Laravel;
+    match app.rs.domains.iter().find(|d| d.name == domain) {
+        Some(d) => {
+            let verified = d.status == "verified";
+            c = c.child(
+                h_flex()
+                    .gap_3()
+                    .child(dot(if verified { g.ok } else { g.warn }))
+                    .child(mono(d.name.clone()))
+                    .child(pill(d.status.replace('_', " "), if verified { g.ok } else { g.warn }))
+                    .child(div().text_xs().text_color(g.faint).child(d.region.clone())),
+            );
+            for r in &d.records {
+                let ok = r.status == "verified";
+                c = c.child(
+                    h_flex()
+                        .gap_3()
+                        .min_h(px(24.))
+                        .child(dot(if ok { g.ok } else { g.faint }))
+                        .child(div().w(px(56.)).text_xs().text_color(g.dim).child(r.kind.clone()))
+                        .child(div().w(px(260.)).child(mono(sesame_mail::full_name(&r.name, &d.name))))
+                        .child(div().flex_1().overflow_hidden().text_xs().text_color(g.faint).child(r.value.chars().take(60).collect::<String>())),
+                );
+            }
+            let has_key = secrets::get_named(server, &format!("{domain}/MAIL_PASSWORD")).ok().flatten().is_some();
+            let id = d.id.clone();
+            c = c.child(
+                h_flex()
+                    .gap_2()
+                    .when(!verified, |h| {
+                        h.child(Button::new("mail-verify").ghost().icon(IconName::RefreshCw).label(tr("mail.verify")).on_click(cx.listener(move |this, _, window, cx| {
+                            this.request_api(tr("mail.verify"), vec![], Risk::Change, None, ApiAction::ResendVerify { domain_id: id.clone() }, window, cx)
+                        })))
+                    })
+                    .when(laravel && !has_key, |h| h.child(connect_button(app, server, site, &domain, cx)))
+                    .when(has_key, |h| h.child(div().text_xs().text_color(g.ok).child(tr("mail.site_ready")))),
+            );
+        }
+        None => {
+            c = c
+                .child(div().text_color(g.dim).child(if laravel { tr("mail.lead_laravel") } else { tr("mail.lead") }))
+                .child(h_flex().child(connect_button(app, server, site, &domain, cx)));
+        }
+    }
+    c
+}
+
+fn connect_button(app: &SesameApp, server: ServerId, site: &Site, domain: &str, cx: &mut Context<SesameApp>) -> AnyElement {
+    let g = Glass::get(cx).clone();
+    let Some(zone) = sesame_cloudflare::zone_for(domain, &app.cf.zones).cloned() else {
+        return div().text_xs().text_color(g.faint).child(tr("dns.no_zone")).into_any_element();
+    };
+    let laravel = site.framework == Framework::Laravel;
+    let app_path = site.app_path.clone().filter(|_| laravel);
+    let domain = domain.to_string();
+    Button::new("mail-connect")
+        .primary()
+        .icon(IconName::Mail)
+        .label(tr("mail.connect"))
+        .on_click(cx.listener(move |this, _, window, cx| {
+            let mut details = vec![
+                trp("mail.step_domain", &[("domain", &domain)]),
+                trp("mail.step_dns", &[("zone", &zone.name)]),
+                tr("mail.step_verify"),
+            ];
+            if let Some(app) = &app_path {
+                details.push(trp("mail.step_env", &[("path", app)]));
+            }
+            let action = ApiAction::ResendConnect { domain: domain.clone(), zone_id: zone.id.clone(), site: app_path.clone().map(|a| (server, a)) };
+            this.request_api(trp("mail.plan_title", &[("domain", &domain)]), details, Risk::Change, None, action, window, cx);
+        }))
+        .into_any_element()
 }
 
 /// Banner on the sites list: domains that are not pointed at the server yet.

@@ -133,6 +133,20 @@ fn main() {
                     v.demo_job(&plan, lines.iter().map(|s| s.to_string()).collect(), cx);
                 }),
             ),
+            (
+                "palette",
+                Box::new(|v, w, cx| {
+                    v.navigate(Page::Server(id, Section::Overview), cx);
+                    v.demo_palette("", w, cx);
+                }),
+            ),
+            (
+                "approval",
+                Box::new(|v, _, cx| {
+                    v.navigate(Page::Server(id, Section::Services), cx);
+                    v.demo_approval(id, cx);
+                }),
+            ),
         ];
         for (name, apply) in shots.iter().filter(|(n, _)| want(n)) {
             cx.update_window(handle, |_, window, cx| {

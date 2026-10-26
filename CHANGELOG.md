@@ -6,6 +6,15 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- MCP (`sesame mcp`) and REST (`sesame serve`, `sesame api-token`) for AI agents; changes wait for Allow/Deny in the app.
+- Mail: Resend integration (domain, DKIM/SPF in Cloudflare, verification, per-site sending key as MAIL_* in `.env`); Stalwart mail server recipe.
+- Command palette ⌘K.
+- Removing a server from Sesame asks for its name.
+- New landing page in EN/AZ/RU.
+
+## [Unreleased]
+
 ### Fixed
 - A vault test removed the real `vault.key` of a key-file vault (it deleted the default path instead of its own temp file). The vault now removes only the key file it was opened with, tests can never resolve the real data directory, every vault reset or password change first copies `state.db` and `vault.key` to `backups/`, and resetting a vault needs typing `reset`.
 - Master passwords may be any non-empty length.

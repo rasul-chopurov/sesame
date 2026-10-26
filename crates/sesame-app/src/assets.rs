@@ -29,6 +29,7 @@ embedded!(
     "brands/caddy.svg",
     "brands/cloudflare.svg",
     "brands/debian.svg",
+    "brands/resend.svg",
     "brands/docker.svg",
     "brands/elasticsearch.svg",
     "brands/github.svg",

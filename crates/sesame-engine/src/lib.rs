@@ -179,6 +179,14 @@ impl Engine {
                 let limit = args.get("limit").and_then(Value::as_u64).unwrap_or(20) as usize;
                 Ok(serde_json::to_value(self.store.audit(server, limit)?)?)
             }
+            "mail_domains" => {
+                let rs = self.resend()?;
+                let mut out = Vec::new();
+                for d in rs.domains().await? {
+                    out.push(rs.domain(&d.id).await.unwrap_or(d));
+                }
+                Ok(serde_json::to_value(out)?)
+            }
             "cloudflare_zones" => {
                 let cf = self.cloudflare()?;
                 Ok(serde_json::to_value(cf.zones().await?)?)
@@ -195,6 +203,11 @@ impl Engine {
     fn cloudflare(&self) -> Result<sesame_cloudflare::Client> {
         let token = secrets::get_global("CLOUDFLARE_TOKEN")?.context("Cloudflare is not connected in Sesame (Settings → Integrations)")?;
         sesame_cloudflare::Client::new(token)
+    }
+
+    fn resend(&self) -> Result<sesame_mail::Client> {
+        let token = secrets::get_global("RESEND_TOKEN")?.context("Resend is not connected in Sesame (Settings → Integrations)")?;
+        sesame_mail::Client::new(token)
     }
 
     async fn zone_id(&self, cf: &sesame_cloudflare::Client, zone: &str) -> Result<String> {
@@ -320,6 +333,30 @@ impl Engine {
                 let opts = actions::DeployOptions { public_https: false, laravel, migrate: laravel, restart: vec![] };
                 actions::deploy(&link.app_path, &link.repo, &link.branch, &opts)?
             }
+            "site_mail_resend" => {
+                let domain = str_arg(args, "domain")?.to_lowercase();
+                let snap = need_snap()?;
+                let site = snap.sites.iter().find(|s| s.domains.iter().any(|d| *d == domain)).with_context(|| format!("no site {domain}"))?;
+                let laravel = site.framework == sesame_core::snapshot::Framework::Laravel;
+                let mut details = vec![
+                    format!("add {domain} to Resend (EU region)"),
+                    "publish DKIM, SPF and the bounce MX in Cloudflare (DNS only; another provider's SPF is kept)".into(),
+                    "ask Resend to verify".into(),
+                ];
+                if laravel {
+                    details.push("a sending key limited to this domain, written as MAIL_* to .env".into());
+                }
+                Plan {
+                    op: "site_mail_resend",
+                    title: format!("mail for {domain} via Resend"),
+                    risk: Risk::Change,
+                    details,
+                    confirm_word: None,
+                    steps: vec![sesame_ops::Step::new("resend", serde_json::to_string(&json!({ "domain": domain, "app": site.app_path.clone().filter(|_| laravel) }))?)],
+                    reveal: vec![],
+                    secret_scope: Some(domain.clone()),
+                }
+            }
             "run_command" => {
                 let command = str_arg(args, "command")?;
                 Plan {
@@ -376,6 +413,7 @@ impl Engine {
         self.consent(actor, server.as_ref(), &plan, consent).await?;
         let result: Result<(String, Vec<(String, String)>)> = match &server {
             None => run_cloudflare(&self.cloudflare()?, &plan).await.map(|tail| (tail, vec![])),
+            Some(server) if plan.op == "site_mail_resend" => self.run_resend(server, &plan).await,
             Some(server) => async {
                 let session = sesame_ssh::Session::connect(server).await?;
                 let out = sesame_ops::execute(&session, &plan, None).await;
@@ -419,6 +457,51 @@ impl Engine {
             "secrets_stored_in_vault": stored,
             "secrets": if share { json!(reveal.into_iter().collect::<std::collections::BTreeMap<_, _>>()) } else { json!("hidden from agents; enable Settings → Agents → share secrets to return them") },
         }))
+    }
+}
+
+impl Engine {
+    /// Resend + Cloudflare, then MAIL_* on the server for a Laravel site.
+    async fn run_resend(&self, server: &ServerConfig, plan: &Plan) -> Result<(String, Vec<(String, String)>)> {
+        let spec: Value = serde_json::from_str(&plan.steps[0].script)?;
+        let domain = str_arg(&spec, "domain")?;
+        let rs = self.resend()?;
+        let cf = self.cloudflare()?;
+        let zones = cf.zones().await?;
+        let zone = sesame_cloudflare::zone_for(domain, &zones).with_context(|| format!("no Cloudflare zone for {domain}"))?.clone();
+        let mut lines = Vec::new();
+        let d = match rs.domains().await?.into_iter().find(|d| d.name == domain) {
+            Some(d) => rs.domain(&d.id).await?,
+            None => rs.create_domain(domain, "eu-west-1").await?,
+        };
+        for change in sesame_mail::diff(&sesame_mail::cloudflare_records(&d), &cf.records(&zone.id).await?) {
+            match change {
+                sesame_mail::Change::Create(r) => lines.push(format!("{} {} added", cf.create_record(&zone.id, &r).await?.kind, r.name)),
+                sesame_mail::Change::Update(r) => lines.push(format!("{} {} updated", cf.update_record(&zone.id, &r).await?.kind, r.name)),
+                sesame_mail::Change::Same => {}
+            }
+        }
+        rs.verify(&d.id).await?;
+        lines.push("verification requested".into());
+        let mut reveal = Vec::new();
+        if let Some(app) = spec.get("app").and_then(Value::as_str) {
+            let key = rs.sending_key(&format!("sesame {domain}"), &d.id).await?;
+            let smtp = sesame_ops::site::Smtp {
+                host: sesame_mail::SMTP_HOST.into(),
+                port: sesame_mail::SMTP_PORT,
+                username: sesame_mail::SMTP_USER.into(),
+                password: key,
+                from: format!("hello@{domain}"),
+            };
+            let env_plan = sesame_ops::site::mail_for_site(domain, app, &smtp)?;
+            let session = sesame_ssh::Session::connect(server).await?;
+            let out = sesame_ops::execute(&session, &env_plan, None).await;
+            let _ = session.close().await;
+            let out = out?;
+            lines.push(out.tail);
+            reveal = out.reveal;
+        }
+        Ok((lines.join("\n"), reveal))
     }
 }
 

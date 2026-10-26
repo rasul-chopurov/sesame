@@ -564,6 +564,54 @@ fn set_env_script(app: &str, pairs: &[(&str, String)]) -> String {
     )
 }
 
+/// Outgoing mail for a Laravel site over SMTP (Resend, Stalwart or any relay):
+/// MAIL_* in `.env`. SMTP needs no extra composer package.
+pub fn mail_for_site(domain: &str, app_path: &str, smtp: &Smtp) -> Result<Plan> {
+    if !valid_domain(domain) || !app_path.starts_with('/') || app_path.contains("..") || app_path.contains('\'') {
+        bail!("invalid site");
+    }
+    let safe = |v: &str| !v.is_empty() && v.chars().all(|c| c.is_ascii_alphanumeric() || "._-@+".contains(c));
+    if !safe(&smtp.host) || !safe(&smtp.username) || !safe(&smtp.password) || !safe(&smtp.from) {
+        bail!("invalid SMTP settings");
+    }
+    let env = set_env_script(
+        app_path,
+        &[
+            ("MAIL_MAILER", "smtp".into()),
+            ("MAIL_HOST", smtp.host.clone()),
+            ("MAIL_PORT", smtp.port.to_string()),
+            ("MAIL_USERNAME", smtp.username.clone()),
+            ("MAIL_PASSWORD", smtp.password.clone()),
+            ("MAIL_ENCRYPTION", "tls".into()),
+            ("MAIL_SCHEME", "smtp".into()),
+            ("MAIL_FROM_ADDRESS", smtp.from.clone()),
+        ],
+    );
+    Ok(Plan {
+        op: "site_mail",
+        title: format!("mail for {domain} via {}", smtp.host),
+        secret_scope: Some(domain.to_string()),
+        risk: Risk::Change,
+        details: vec![
+            format!("sends through {}:{} as {}", smtp.host, smtp.port, smtp.username),
+            format!("MAIL_* in the site's .env, from {}", smtp.from),
+        ],
+        confirm_word: None,
+        steps: vec![Step::new("update .env", env)],
+        reveal: vec![("MAIL_PASSWORD".into(), smtp.password.clone())],
+    })
+}
+
+/// An SMTP relay a site sends through.
+#[derive(Debug, Clone)]
+pub struct Smtp {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub password: String,
+    pub from: String,
+}
+
 /// A Redis ACL user for one site that can only touch keys under `<slug>:`,
 /// written to the site's `.env` (REDIS_USERNAME/REDIS_PASSWORD/REDIS_PREFIX).
 /// `admin_password` is the server's `requirepass`, when Redis has one.
@@ -746,6 +794,16 @@ pub fn scheduler_for_site(domain: &str, app_path: &str) -> Result<Plan> {
 #[cfg(test)]
 mod more_site_tests {
     use super::*;
+
+    #[test]
+    fn mail_for_site_writes_smtp_env() {
+        let smtp = Smtp { host: "smtp.resend.com".into(), port: 587, username: "resend".into(), password: "re_abc123".into(), from: "hello@lara.response.az".into() };
+        let p = mail_for_site("lara.response.az", "/home/s_lara_response_az/lara.response.az", &smtp).unwrap();
+        assert!(p.steps[0].script.contains("set_env MAIL_HOST smtp.resend.com"));
+        assert_eq!(p.secret_scope.as_deref(), Some("lara.response.az"));
+        let bad = Smtp { password: "x'; rm -rf /".into(), ..smtp };
+        assert!(mail_for_site("lara.response.az", "/home/s/x", &bad).is_err());
+    }
 
     #[test]
     fn database_and_scheduler_for_site() {

@@ -3,6 +3,7 @@
 
 mod integrations;
 mod agents;
+mod palette;
 mod files;
 mod jobs;
 mod newsite;
@@ -34,6 +35,7 @@ use widgets::*;
 pub fn run() {
     gpui_kit::application().with_assets(crate::assets::AppAssets).run(|cx| {
         gpui_kit::init(cx);
+        palette::bind_keys(cx);
         let store = match SqliteStore::open_default() {
             Ok(s) => Arc::new(s),
             Err(e) => {
@@ -107,7 +109,7 @@ impl Section {
         }
     }
 
-    fn icon(self) -> IconName {
+    pub(crate) fn icon(self) -> IconName {
         match self {
             Section::Overview => IconName::Gauge,
             Section::Sites | Section::Site(_) | Section::NewSite | Section::Files(_) => IconName::Globe,
@@ -190,6 +192,8 @@ pub struct SesameApp {
     pub(crate) terminal: Option<terminal::TerminalState>,
     pub(crate) confirm_forget: Option<ServerId>,
     pub(crate) approvals: Vec<sesame_core::Approval>,
+    pub(crate) rs: integrations::RsState,
+    pub(crate) palette: Option<palette::Palette>,
     pub(crate) api_token: Option<String>,
     pub(crate) forget_input: Entity<InputState>,
     _subscriptions: Vec<Subscription>,
@@ -305,6 +309,8 @@ impl SesameApp {
             terminal: None,
             confirm_forget: None,
             approvals: vec![],
+            rs: Default::default(),
+            palette: None,
             api_token: None,
             forget_input,
             _subscriptions: subs,
@@ -703,6 +709,7 @@ impl Render for SesameApp {
             .text_color(g.text)
             .text_sm()
             .font_family(".SystemUIFont")
+            .on_action(cx.listener(|this, _: &palette::OpenPalette, window, cx| this.open_palette(window, cx)))
             .child(
                 // Soft glows behind everything.
                 div()
@@ -740,6 +747,7 @@ impl Render for SesameApp {
             .child(self.render_statusbar(cx))
             .children(self.render_confirm(cx))
             .children(self.render_approvals(cx))
+            .children(self.render_palette(cx))
             .into_any_element()
     }
 }
@@ -794,6 +802,16 @@ impl SesameApp {
             );
         }
         right = right
+            .child(
+                tool("tb-palette")
+                    .child(
+                        h_flex()
+                            .gap_1()
+                            .child(icon(IconName::Search, g.dim))
+                            .child(div().text_xs().text_color(g.faint).child("⌘K")),
+                    )
+                    .on_click(cx.listener(|this, _, window, cx| this.open_palette(window, cx))),
+            )
             .child(
                 tool("tb-lang")
                     .child(div().text_xs().font_weight(FontWeight::SEMIBOLD).text_color(g.dim).child(match lang {

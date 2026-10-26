@@ -630,6 +630,7 @@ fn site_detail(app: &SesameApp, server: sesame_core::ServerId, s: &ServerSnapsho
         .child(super::newsite::subdomains_card(app, server, site, s, cx))
         .child(super::integrations::repo_card(app, server, site, s, cx))
         .child(super::integrations::dns_card(app, server, site, cx))
+        .child(super::integrations::mail_card(app, server, site, cx))
         .when(!procs.is_empty(), |d| d.child(proc_card))
         .child(isolation)
 }
@@ -715,6 +716,7 @@ fn service_desc(svc: Service) -> &'static str {
         Service::MongoDb => "svc.mongodb",
         Service::Elasticsearch => "svc.elasticsearch",
         Service::RustFs => "svc.s3",
+        Service::Stalwart => "svc.stalwart",
     }
 }
 

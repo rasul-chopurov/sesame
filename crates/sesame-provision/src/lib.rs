@@ -20,16 +20,26 @@ pub enum Service {
     MongoDb,
     Elasticsearch,
     RustFs,
+    Stalwart,
 }
 
+/// Stalwart release Sesame installs, with the SHA-256 of each build
+/// (from the GitHub release's asset digests).
+const STALWART_VERSION: &str = "v0.16.27";
+const STALWART_SHA256: [(&str, &str); 2] = [
+    ("x86_64", "3d4548053e7130cdc6288134e28aecc5004f22549cc52a1dbda0ca48ff0b301a"),
+    ("aarch64", "215301c8449e3bf8efd4c39cd557dc65dc37ec5bedab47f15c22ef24631100d7"),
+];
+
 impl Service {
-    pub const ALL: [Service; 6] = [
+    pub const ALL: [Service; 7] = [
         Service::Redis,
         Service::Postgres,
         Service::MariaDb,
         Service::MongoDb,
         Service::Elasticsearch,
         Service::RustFs,
+        Service::Stalwart,
     ];
 
     pub fn name(self) -> &'static str {
@@ -40,6 +50,7 @@ impl Service {
             Service::MongoDb => "MongoDB",
             Service::Elasticsearch => "Elasticsearch",
             Service::RustFs => "RustFS",
+            Service::Stalwart => "Stalwart Mail",
         }
     }
 
@@ -51,6 +62,7 @@ impl Service {
             Service::MongoDb => "mongodb",
             Service::Elasticsearch => "elasticsearch",
             Service::RustFs => "rustfs",
+            Service::Stalwart => "stalwart",
         }
     }
 }
@@ -81,10 +93,18 @@ pub fn detect(service: Service, s: &ServerSnapshot) -> Status {
             (has_unit(s, "elasticsearch") || s.ports.iter().any(|p| p.port == 9200)).then(String::new)
         }
         Service::RustFs => (has_unit(s, "rustfs") || s.ports.iter().any(|p| p.process == "rustfs")).then(String::new),
+        Service::Stalwart => (has_unit(s, "stalwart") || s.ports.iter().any(|p| p.process == "stalwart")).then(String::new),
     };
     let conflict = match service {
         Service::MariaDb if found.is_none() && engine(s, DatabaseKind::MySql).is_some() => Some("MySQL".to_string()),
         Service::RustFs if found.is_none() && s.ports.iter().any(|p| p.port == 9000) => Some("port 9000".to_string()),
+        Service::Stalwart if found.is_none() => {
+            let mta = ["postfix", "exim4", "sendmail"].into_iter().find(|m| has_unit(s, m));
+            match mta {
+                Some(m) => Some(m.to_string()),
+                None => s.ports.iter().find(|p| [25, 465, 587, 993, 8080].contains(&p.port)).map(|p| format!("port {}", p.port)),
+            }
+        }
         _ => None,
     };
     Status { installed: found.is_some(), version: found.filter(|v| !v.is_empty()), conflict }
@@ -282,6 +302,71 @@ pub fn install(service: Service, s: &ServerSnapshot) -> Result<Plan> {
             reveal.push(("AWS_ENDPOINT".into(), "http://127.0.0.1:9000".into()));
             reveal.push(("AWS_USE_PATH_STYLE_ENDPOINT".into(), "true".into()));
         }
+        Service::Stalwart => {
+            let sums = STALWART_SHA256.iter().map(|(a, h)| format!("{a}) SUM={h};;")).collect::<Vec<_>>().join(" ");
+            steps.push(Step::new(
+                format!("download Stalwart {STALWART_VERSION} and check its SHA-256"),
+                format!(
+                    "{}
+A=$(uname -m)
+case \"$A\" in {sums} *) echo \"unsupported CPU $A\"; exit 1;; esac
+                     tmp=$(mktemp -d)
+                     curl -fsSL -o \"$tmp/s.tgz\" \"https://github.com/stalwartlabs/stalwart/releases/download/{STALWART_VERSION}/stalwart-$A-unknown-linux-gnu.tar.gz\"
+                     echo \"$SUM  $tmp/s.tgz\" | sha256sum -c --quiet || {{ echo 'checksum mismatch — refusing to install'; rm -rf \"$tmp\"; exit 1; }}
+                     tar -xzf \"$tmp/s.tgz\" -C \"$tmp\"
+                     install -m 755 \"$tmp/stalwart\" /usr/local/bin/stalwart
+                     rm -rf \"$tmp\"
+echo 'Stalwart {STALWART_VERSION} verified'",
+                    apt("curl ca-certificates")
+                ),
+            ));
+            steps.push(Step::new(
+                "create the service",
+                format!(
+                    "id stalwart >/dev/null 2>&1 || useradd stalwart -s /usr/sbin/nologin -M -r -U
+                     install -d -o stalwart -g stalwart -m 750 /etc/stalwart /var/lib/stalwart /var/log/stalwart
+                     if [ ! -e /etc/stalwart/stalwart.env ]; then
+                     cat > /etc/stalwart/stalwart.env <<'ENV'
+                     STALWART_RECOVERY_ADMIN=admin:{pw}
+                     ENV
+fi
+                     chown root:stalwart /etc/stalwart/stalwart.env && chmod 640 /etc/stalwart/stalwart.env
+                     cat > /etc/systemd/system/stalwart.service <<'UNIT'
+                     [Unit]
+Description=Stalwart
+Conflicts=postfix.service sendmail.service exim4.service
+After=network-online.target
+
+                     [Service]
+Type=simple
+LimitNOFILE=65536
+KillMode=process
+KillSignal=SIGINT
+Restart=on-failure
+RestartSec=5
+                     EnvironmentFile=-/etc/stalwart/stalwart.env
+ExecStart=/usr/local/bin/stalwart --config=/etc/stalwart/config.json
+                     SyslogIdentifier=stalwart
+User=stalwart
+Group=stalwart
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+                     [Install]
+WantedBy=multi-user.target
+UNIT
+                     systemctl daemon-reload
+systemctl enable --now stalwart
+sleep 3
+systemctl is-active stalwart"
+                ),
+            ));
+            details.push(format!("Stalwart {STALWART_VERSION}: SMTP, IMAP and JMAP in one Rust binary, checksum-verified"));
+            details.push("admin user `admin`, password generated and kept in the vault".into());
+            details.push("its setup page is on port 8080 — keep 8080 closed in your provider's firewall; open it through an SSH tunnel".into());
+            details.push("many providers (Hetzner included) block outgoing port 25 on new servers: relay outgoing mail through Resend".into());
+            reveal.push(("STALWART_ADMIN_USER".into(), "admin".into()));
+            reveal.push(("STALWART_ADMIN_PASSWORD".into(), pw));
+        }
     }
     Ok(Plan {
         op: "service_install",
@@ -303,12 +388,18 @@ pub fn uninstall(service: Service, keep_data: bool) -> Result<Plan> {
         Service::MongoDb => ("mongod", "'mongodb-org*'", "/var/lib/mongodb", "rm -f /etc/apt/sources.list.d/mongodb-org-8.0.list"),
         Service::Elasticsearch => ("elasticsearch", "elasticsearch", "/var/lib/elasticsearch", "rm -f /etc/apt/sources.list.d/elastic-9.x.list"),
         Service::RustFs => ("rustfs", "", "/var/lib/rustfs", ""),
+        Service::Stalwart => ("stalwart", "", "/var/lib/stalwart", ""),
     };
     let mut steps = vec![Step::new(
         format!("stop {unit}"),
         format!("systemctl disable --now {unit} 2>/dev/null || true\necho stopped"),
     )];
-    if service == Service::RustFs {
+    if service == Service::Stalwart {
+        steps.push(Step::new(
+            "remove Stalwart",
+            "rm -f /etc/systemd/system/stalwart.service /usr/local/bin/stalwart\nsystemctl daemon-reload\necho removed",
+        ));
+    } else if service == Service::RustFs {
         steps.push(Step::new(
             "remove RustFS",
             "rm -f /etc/systemd/system/rustfs.service /usr/local/bin/rustfs\nsystemctl daemon-reload\nrm -rf /etc/rustfs",
@@ -324,6 +415,9 @@ pub fn uninstall(service: Service, keep_data: bool) -> Result<Plan> {
         steps.push(Step::new(format!("delete {data}"), format!("rm -rf {}\necho deleted", q(data))));
         if service == Service::RustFs {
             steps.push(Step::new("remove the rustfs user", "userdel rustfs 2>/dev/null || true"));
+        }
+        if service == Service::Stalwart {
+            steps.push(Step::new("remove Stalwart's settings and user", "rm -rf /etc/stalwart /var/log/stalwart\nuserdel stalwart 2>/dev/null || true"));
         }
     }
     let mut details = vec![format!("{} stops and is removed", service.name())];

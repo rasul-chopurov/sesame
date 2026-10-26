@@ -124,6 +124,7 @@ svc.mariadb: { en: "MySQL-compatible database", ru: "База, совмести�
 svc.mongodb: { en: "Document database", ru: "Документная база данных", az: "Sənəd yönümlü baza" }
 svc.elasticsearch: { en: "Full-text search (needs 2 GB+ RAM)", ru: "Полнотекстовый поиск (нужно от 2 GB RAM)", az: "Tam mətn axtarışı (2 GB+ RAM lazımdır)" }
 svc.s3: { en: "S3-compatible object storage (RustFS)", ru: "S3-совместимое хранилище (RustFS)", az: "S3 uyğun obyekt yaddaşı (RustFS)" }
+svc.stalwart: { en: "Mail server: SMTP, IMAP, JMAP, accounts (Stalwart)", ru: "Почтовый сервер: SMTP, IMAP, JMAP, ящики (Stalwart)", az: "Poçt serveri: SMTP, IMAP, JMAP, qutular (Stalwart)" }
 svc.reverb: { en: "WebSockets for Laravel (per site)", ru: "WebSocket для Laravel (на сайт)", az: "Laravel üçün WebSocket (sayt üzrə)" }
 
 db.version: { en: "Version", ru: "Версия", az: "Versiya" }
@@ -366,3 +367,21 @@ agents.password_note: { en: "With a master password, add SESAME_MASTER_PASSWORD 
 approve.title: { en: "%{agent} wants to:", ru: "%{agent} хочет:", az: "%{agent} istəyir:" }
 approve.allow: { en: "Allow", ru: "Разрешить", az: "İcazə ver" }
 approve.deny: { en: "Deny", ru: "Отклонить", az: "Rədd et" }
+int.resend_hint: { en: "A Resend API key with full access: Sesame adds domains, publishes their DNS in Cloudflare and gives each site its own sending key.", ru: "API-ключ Resend с полным доступом: Sesame добавляет домены, публикует их DNS в Cloudflare и выдаёт каждому сайту свой ключ отправки.", az: "Tam icazəli Resend API açarı: Sesame domenləri əlavə edir, onların DNS-ini Cloudflare-də dərc edir və hər sayta öz göndərmə açarını verir." }
+mail.lead: { en: "Send mail from this domain through Resend. Sesame adds the domain and its DNS records for you.", ru: "Отправляйте почту с этого домена через Resend. Sesame сам добавит домен и его DNS-записи.", az: "Bu domendən Resend vasitəsilə məktub göndərin. Sesame domeni və DNS qeydlərini özü əlavə edir." }
+mail.lead_laravel: { en: "Send this site's mail through Resend: the domain, its DNS records and MAIL_* in .env, in one step.", ru: "Почта этого сайта через Resend: домен, его DNS-записи и MAIL_* в .env — за один шаг.", az: "Bu saytın məktubları Resend ilə: domen, DNS qeydləri və .env-də MAIL_* — bir addımda." }
+mail.connect: { en: "Connect mail (Resend)", ru: "Подключить почту (Resend)", az: "Poçtu qoş (Resend)" }
+mail.verify: { en: "Check DNS again", ru: "Проверить DNS снова", az: "DNS-i yenidən yoxla" }
+mail.site_ready: { en: "The site sends through Resend with its own key", ru: "Сайт отправляет почту через Resend своим ключом", az: "Sayt öz açarı ilə Resend vasitəsilə göndərir" }
+mail.plan_title: { en: "Mail for %{domain} via Resend", ru: "Почта для %{domain} через Resend", az: "%{domain} üçün Resend ilə poçt" }
+mail.step_domain: { en: "add %{domain} to Resend (EU region)", ru: "добавить %{domain} в Resend (регион EU)", az: "%{domain}-i Resend-ə əlavə et (EU regionu)" }
+mail.step_dns: { en: "publish DKIM, SPF and MX for bounces in the %{zone} zone (DNS only, an existing SPF of another provider is kept)", ru: "опубликовать DKIM, SPF и MX для возвратов в зоне %{zone} (без прокси, чужой SPF не трогаем)", az: "%{zone} zonasında DKIM, SPF və geri qayıdanlar üçün MX dərc et (proksisiz, başqa provayderin SPF-inə toxunulmur)" }
+mail.step_verify: { en: "ask Resend to verify the domain", ru: "запросить у Resend проверку домена", az: "Resend-dən domeni yoxlamağı istə" }
+mail.step_env: { en: "a sending key limited to this domain, written as MAIL_* to %{path}/.env (SMTP, no extra package)", ru: "ключ отправки только для этого домена, записывается как MAIL_* в %{path}/.env (SMTP, без лишних пакетов)", az: "yalnız bu domen üçün göndərmə açarı, %{path}/.env faylına MAIL_* kimi yazılır (SMTP, əlavə paket yoxdur)" }
+palette.placeholder: { en: "Go to a server, section or site, or run a command…", ru: "Перейти к серверу, разделу или сайту или выполнить команду…", az: "Serverə, bölməyə və ya sayta keç, ya da əmr icra et…" }
+palette.go: { en: "go", ru: "перейти", az: "keç" }
+palette.run: { en: "run", ru: "выполнить", az: "icra et" }
+palette.light: { en: "Theme: light", ru: "Тема: светлая", az: "Mövzu: açıq" }
+palette.dark: { en: "Theme: dark", ru: "Тема: тёмная", az: "Mövzu: tünd" }
+palette.system: { en: "Theme: system", ru: "Тема: как в системе", az: "Mövzu: sistem" }
+palette.keys: { en: "↑↓ choose · ↵ open · esc close", ru: "↑↓ выбрать · ↵ открыть · esc закрыть", az: "↑↓ seç · ↵ aç · esc bağla" }
