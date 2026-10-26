@@ -4,232 +4,228 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Sesame — откройте свои серверы. Нативный менеджер серверов для Laravel</title>
-  <meta name="description" content="Sesame — нативный менеджер серверов для Laravel-сообщества, удобный для ИИ-агентов. Дайте SSH — он найдёт все сайты, базы, почту и процессы, а затем поможет вести изолированные сайты, сервисы, деплои и DNS в Cloudflare.">
+  <meta name="description" content="Sesame — нативный менеджер серверов с открытым кодом для Laravel-сообщества. Дайте SSH: он найдёт все сайты, базы и процессы, поможет вести изолированные сайты, сервисы, деплои и DNS в Cloudflare, а ИИ-агенты работают только с вашего разрешения.">
   <link rel="canonical" href="https://sesame.response.az/ru/">
   <link rel="alternate" hreflang="en" href="https://sesame.response.az/">
-  <link rel="alternate" hreflang="az" href="https://sesame.response.az/az/">
   <link rel="alternate" hreflang="ru" href="https://sesame.response.az/ru/">
+  <link rel="alternate" hreflang="az" href="https://sesame.response.az/az/">
   <link rel="alternate" hreflang="x-default" href="https://sesame.response.az/">
-  <meta name="theme-color" content="#07060b" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#fbf6ee" media="(prefers-color-scheme: light)">
   <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="../assets/logo.svg">
+  <meta name="theme-color" content="#B33A16">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Sesame">
-  <meta property="og:locale" content="ru_RU">
   <meta property="og:title" content="Sesame — откройте свои серверы. Нативный менеджер серверов для Laravel">
-  <meta property="og:description" content="Sesame — нативный менеджер серверов для Laravel-сообщества, удобный для ИИ-агентов. Дайте SSH — он найдёт все сайты, базы, почту и процессы, а затем поможет вести изолированные сайты, сервисы, деплои и DNS в Cloudflare.">
+  <meta property="og:description" content="Sesame — нативный менеджер серверов с открытым кодом для Laravel-сообщества. Дайте SSH: он найдёт все сайты, базы и процессы, поможет вести изолированные сайты, сервисы, деплои и DNS в Cloudflare, а ИИ-агенты работают только с вашего разрешения.">
   <meta property="og:url" content="https://sesame.response.az/ru/">
   <meta property="og:image" content="https://sesame.response.az/assets/og.jpg">
+  <meta property="og:locale" content="ru_RU">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../assets/site.css">
-  <link rel="preload" as="image" href="../assets/screens/overview-dark-ru.webp" type="image/webp">
+  <script defer src="../assets/site.js"></script>
 </head>
 <body>
-  <div class="backdrop" aria-hidden="true"><span></span></div>
-  <div class="grain" aria-hidden="true"></div>
-
-  <header class="nav" aria-label="Sesame">
-    <a class="brand" href="../ru/"><img src="../assets/logo.svg" alt="" width="26" height="26"><span>Sesame</span></a>
-    <nav class="nav-links" aria-label="Sections"><a href="#features">Возможности</a><a href="#security">Безопасность</a><a href="#cli">CLI</a><a href="#roadmap">Планы</a></nav>
-    <div class="lang" role="navigation" aria-label="Language"><a href="../" lang="en" hreflang="en">EN</a><a href="../az/" lang="az" hreflang="az">AZ</a><a href="../ru/" lang="ru" hreflang="ru" aria-current="page">RU</a></div>
-    <a class="btn btn-primary btn-sm" href="https://github.com/rasul-chopurov/sesame/releases">Скачать для macOS<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg></span></a>
+  <a class="skip" href="#main">Skip</a>
+  <header class="nav">
+    <div class="frame bar">
+      <a class="brand" href="../ru/"><img src="../assets/logo.svg" width="26" height="26" alt="">Sesame</a>
+      <nav class="links" aria-label="Sections"><a href="#how">Как работает</a><a href="#features">Возможности</a><a href="#agents">Агенты</a><a href="#security">Безопасность</a><a href="#pricing">Цены</a><a href="#faq">Вопросы</a></nav>
+      <div class="right">
+        <div class="langs" aria-label="Language"><a href="../" lang="en" hreflang="en">EN</a><a href="../az/" lang="az" hreflang="az">AZ</a><a href="../ru/" lang="ru" hreflang="ru" aria-current="page">RU</a></div>
+        <a class="btn sm" href="https://github.com/rasul-chopurov/sesame/releases"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg>Скачать Sesame</a>
+        <button class="burger" type="button" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="wrap hero-grid">
-        <div class="reveal">
-          <span class="eyebrow"><span class="dot"></span>Альфа · v0.1.0-alpha.1 · Apache-2.0</span>
-          <h1 id="hero-title">Откройте свои <em>серверы.</em></h1>
-          <p class="lead">Нативный менеджер серверов для Laravel-сообщества, удобный для ИИ-агентов. Дайте SSH — он найдёт все сайты, базы, почту и процессы и поможет ими управлять.</p>
-          <div class="cta">
-            <a class="btn btn-primary" href="https://github.com/rasul-chopurov/sesame/releases">Скачать для macOS<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg></span></a>
-            <a class="btn btn-ghost" href="https://github.com/rasul-chopurov/sesame">Открыть на GitHub<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></span></a>
+  <main id="main">
+    <section class="hero">
+      <div class="frame">
+        <div class="hero-copy">
+          <span class="pill">Открытый код · Apache-2.0 · v0.1.0-alpha.1</span>
+          <h1>Откройте свои <em>серверы.</em></h1>
+          <p class="lead">Нативный менеджер серверов для Laravel. Дайте SSH — он найдёт все сайты, базы и процессы на сервере и поможет ими управлять.</p>
+          <div class="ctas">
+            <a class="btn light" href="https://github.com/rasul-chopurov/sesame/releases"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg>Скачать Sesame</a>
+            <a class="btn outline" href="https://github.com/rasul-chopurov/sesame">GitHub →</a>
           </div>
-          <div class="meta"><span>macOS · скоро Windows</span><span>Rust + GPUI</span><span>Без агента на сервере</span></div>
+          <p class="micro">Бесплатно и с открытым кодом. Сейчас macOS, следом Windows. На сервер ничего ставить не нужно.</p>
         </div>
-        <div class="hero-shot reveal d2">
-          <div class="bezel"><div class="core"><img src="../assets/screens/overview-dark-ru.webp" width="1600" height="1018" fetchpriority="high" alt="Обзор сервера с подсказками"></div></div>
-          <div class="float bezel"><div class="core"><img src="../assets/screens/job-done-light-ru.webp" width="1600" height="1018" loading="lazy" alt=""></div></div>
+        <figure class="product"><img src="../assets/screens/overview-dark-ru.webp" width="1600" height="1018" fetchpriority="high" alt="Sesame: обзор сервера с подсказками"></figure>
+      </div>
+    </section>
+
+    <section id="how" class="row">
+      <div class="frame">
+        <div class="head reveal">
+          <span class="eyebrow">Как работает</span>
+          <h2>От входа по SSH до понятной картины за минуту.</h2>
+        </div>
+        <div class="steps">
+        <div class="step reveal">
+          <span class="mono k">01 · Первая минута</span>
+          <h3>Подключение</h3>
+          <p>ssh-agent, ключ или пароль. Ключ хоста сверяется с known_hosts. Ни агента, ни демона, ни открытого порта.</p>
+        </div>
+        <div class="step reveal">
+          <span class="mono k">02 · Вторая минута</span>
+          <h3>Обнаружение</h3>
+          <p>Одна проверка только на чтение находит сайты в Caddy, Nginx и Apache, Laravel-приложения, воркеры, базы, cron, сертификаты и файрвол.</p>
+        </div>
+        <div class="step reveal">
+          <span class="mono k">03 · Когда будете готовы</span>
+          <h3>Управление</h3>
+          <p>Новые изолированные сайты, сервисы в один клик, базы, деплои из GitHub и DNS в Cloudflare — каждое изменение сначала показывается.</p>
+        </div>
+        </div>
+        <div class="probe reveal" aria-hidden="true">
+          <div class="probe-top"><span class="mono">sesame discover prod</span><span class="dot ok"></span></div>
+          <ul><li class="reveal"><span class="dot ok"></span><span class="mono">frankenphp</span><span class="dim">3 сайта · Octane</span></li><li class="reveal"><span class="dot ok"></span><span class="mono">postgresql 18</span><span class="dim">4 базы · 212 МБ</span></li><li class="reveal"><span class="dot ok"></span><span class="mono">redis</span><span class="dim">ACL на сайт</span></li><li class="reveal"><span class="dot ok"></span><span class="mono">supervisor</span><span class="dim">очередь ×2 · reverb</span></li><li class="reveal"><span class="dot warn"></span><span class="mono">ufw</span><span class="dim">выключен</span></li><li class="reveal"><span class="dot warn"></span><span class="mono">сертификат</span><span class="dim">shop.example.com · 9 дней</span></li></ul>
         </div>
       </div>
     </section>
 
-    <section id="features" aria-labelledby="features-title">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="eyebrow"><span class="dot"></span>Что умеет</span>
-          <h2 id="features-title">Всё, что есть на сервере, в одном спокойном окне.</h2>
-          <p>Sesame смотрит на сервер так же, как вы, — по SSH и сначала только на чтение — и превращает найденное в понятную картину, с которой можно работать.</p>
+    <div id="features"></div>
+    <section class="row">
+      <div class="frame split">
+        <div class="copy reveal">
+          <span class="eyebrow">Изолированные сайты</span>
+          <h2>Каждый сайт — в своей комнате.</h2>
+          <p>У каждого нового сайта свой Linux-пользователь, свой пул PHP-FPM или процесс Octane, свой пользователь базы и Redis ACL только на его ключи. Веб-сервер читает public/ — но никогда ваш .env.</p>
+          <ul class="chips"><li>свой пользователь</li><li>свой пул</li><li>своя база</li><li>Redis ACL</li><li>поддомены</li></ul>
         </div>
-        <div class="bento">
-      <article class="card wide bezel reveal">
-        <div class="core">
-          <div class="text">
-            <span class="tag">Обнаружение</span>
-            <h3>Видно, что на самом деле работает</h3>
-            <p>Одна проверка только на чтение находит сайты в FrankenPHP/Caddy, Nginx и Apache, Laravel-приложения и драйверы из их .env, процессы supervisor, базы, cron, сертификаты и файрвол — и подсказывает, что требует внимания.</p>
-            <ul><li>FrankenPHP</li><li>Octane</li><li>Nginx</li><li>MySQL</li><li>PostgreSQL</li><li>Redis</li><li>cron</li><li>ufw</li></ul>
-          </div>
-          <figure class="shot"><img src="../assets/screens/overview-dark-ru.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Обзор сервера с подсказками"></figure>
+        <figure class="shot reveal"><img src="../assets/screens/sites-light-ru.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Сайты карточками с поиском"></figure>
+      </div>
+    </section>
+    <section class="row flip">
+      <div class="frame split">
+        <div class="copy reveal">
+          <span class="eyebrow">Сервисы</span>
+          <h2>Базы в один клик. Ничего, пока не попросите.</h2>
+          <p>Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 на RustFS и Reverb. Только localhost, пароли генерируются и хранятся в зашифрованном хранилище. phpMyAdmin и pgAdmin открываются через SSH-туннель, а не в интернет.</p>
+          <ul class="chips"><li>только localhost</li><li>данные сохраняются</li><li>панели через туннель</li></ul>
         </div>
-      </article>
-      <article class="card narrow bezel reveal d1">
-        <div class="core">
-          <div class="text">
-            <span class="tag">Изолированные сайты</span>
-            <h3>Новый сайт — в своей комнате</h3>
-            <p>У каждого сайта свой Linux-пользователь, свой пул PHP-FPM или Octane, свой пользователь базы и Redis ACL. Веб-сервер читает public/ — но никогда ваш .env.</p>
-            <ul><li>свой пользователь</li><li>свой пул</li><li>своя база</li><li>Redis ACL</li></ul>
-          </div>
-          <figure class="shot"><img src="../assets/screens/sites-light-ru.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Сайты карточками с поиском"></figure>
+        <figure class="shot reveal"><img src="../assets/screens/services-dark-ru.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Сервисы в один клик"></figure>
+      </div>
+    </section>
+    <section class="row">
+      <div class="frame split">
+        <div class="copy reveal">
+          <span class="eyebrow">Деплои и DNS</span>
+          <h2>Push в GitHub. Направить домен. Готово.</h2>
+          <p>Привяжите сайт к репозиторию и ветке: Sesame добавит deploy-ключ только на чтение, заберёт код, поставит зависимости, выполнит миграции и перезапустит воркеры. Зоны и записи Cloudflare — рядом с сайтом, с кнопкой «направить на этот сервер».</p>
+          <ul class="chips"><li>deploy-ключи</li><li>миграции</li><li>DNS-записи</li><li>очистка кэша</li></ul>
         </div>
-      </article>
-      <article class="card narrow bezel reveal">
-        <div class="core">
-          <div class="text">
-            <span class="tag">Сервисы</span>
-            <h3>Базы в один клик</h3>
-            <p>Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 на RustFS и Reverb — только на localhost, со сгенерированными паролями. Ничего не ставится, пока вы не попросите.</p>
-            <ul><li>только localhost</li><li>данные сохраняются при удалении</li></ul>
-          </div>
-          <figure class="shot"><img src="../assets/screens/services-dark-ru.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Сервисы в один клик"></figure>
+        <figure class="shot reveal"><img src="../assets/screens/cloudflare-dark-ru.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="DNS-записи в Cloudflare"></figure>
+      </div>
+    </section>
+    <section class="row flip">
+      <div class="frame split">
+        <div class="copy reveal">
+          <span class="eyebrow">Файлы и терминал</span>
+          <h2>Когда нужно своими руками.</h2>
+          <p>Файловый менеджер по SFTP, запертый в папке одного сайта, с небольшим редактором. Настоящий терминал xterm-256color в том же окне.</p>
+          <ul class="chips"><li>SFTP-клетка</li><li>редактор</li><li>PTY-терминал</li></ul>
         </div>
-      </article>
-      <article class="card wide bezel reveal d1">
-        <div class="core">
-          <div class="text">
-            <span class="tag">Деплои</span>
-            <h3>Push в GitHub — деплой в Sesame</h3>
-            <p>Привяжите сайт к репозиторию и ветке. Sesame создаст на сервере deploy-ключ только на чтение, затем заберёт код, поставит зависимости, выполнит миграции и перезапустит воркеры.</p>
-            <ul><li>deploy-ключи</li><li>миграции</li><li>воркеры</li></ul>
-          </div>
-          <figure class="shot"><img src="../assets/screens/site-dark-ru.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Сайт с репозиторием и DNS"></figure>
-        </div>
-      </article>
-      <article class="card full bezel reveal">
-        <div class="core">
-          <div class="text">
-            <span class="tag">Cloudflare</span>
-            <h3>DNS без лишних вкладок</h3>
-            <p>Домены, записи, прокси вкл/выкл, очистка кэша — и кнопка «направить на этот сервер» для каждого сайта, который ещё туда не смотрит.</p>
-            <ul><li>DNS-записи</li><li>прокси</li><li>кэш</li></ul>
-          </div>
-          <figure class="shot"><img src="../assets/screens/cloudflare-dark-ru.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="DNS-записи в Cloudflare"></figure>
-        </div>
-      </article>
-        </div>
+        <figure class="shot reveal"><img src="../assets/screens/site-dark-ru.webp" width="1600" height="1018" loading="lazy" decoding="async" alt="Сайт с репозиторием и DNS"></figure>
       </div>
     </section>
 
-    <section id="security" aria-labelledby="security-title">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="eyebrow"><span class="dot"></span>Безопасность по умолчанию</span>
-          <h2 id="security-title">Каждое изменение видно до того, как оно произойдёт.</h2>
-          <p>Sesame никогда не меняет сервер за вашей спиной. План показывается заранее, необратимые шаги просят ввести имя, и всё попадает в журнал действий.</p>
+    <section id="agents" class="row">
+      <div class="frame split">
+        <div class="copy reveal">
+          <span class="eyebrow">ИИ-агенты</span>
+          <h2>Пусть Claude ведёт ваши серверы. На ваших условиях.</h2>
+          <p>Sesame говорит на MCP и REST. Агенты читают всё сразу, а каждое изменение всплывает в приложении и не выполняется, пока вы не нажмёте «Разрешить». Каждый шаг пишется в журнал с именем агента.</p>
+          <div class="approve" aria-hidden="true">
+            <div class="ap-top"><span class="dot ok"></span><b>Claude Code хочет:</b><span class="tagc">change</span></div>
+            <p class="ap-what">установить Redis на prod</p>
+            <ul><li>слушает 127.0.0.1:6379</li><li>пароль сгенерирован и сохранён в хранилище</li></ul>
+            <div class="ap-btns"><span class="btn ghost sm">Отклонить</span><span class="btn sm">Разрешить</span></div>
+          </div>
         </div>
-        <div class="principles">
-      <div class="bezel reveal d0"><div class="core">
-        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span>
-        <h3>Сначала только чтение</h3>
-        <p>Обнаружение ничего не записывает и не читает пароли и ключи из .env.</p>
-      </div></div>
-      <div class="bezel reveal d1"><div class="core">
-        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.4 3.2 7.9 7.5 9 4.3-1.1 7.5-4.6 7.5-9V6L12 3Z"/><path d="m9 12 2 2 4-4"/></svg></span>
-        <h3>Зашифрованное хранилище</h3>
-        <p>Секреты шифруются XChaCha20-Poly1305 ключом, выведенным из мастер-пароля через Argon2id.</p>
-      </div></div>
-      <div class="bezel reveal d2"><div class="core">
-        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></span>
-        <h3>Подтвердить, потом выполнить</h3>
-        <p>Каждый план перечисляет шаги. Перед удалением — бэкап и ввод имени.</p>
-      </div></div>
-      <div class="bezel reveal d0"><div class="core">
-        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/></svg></span>
-        <h3>Не в командной строке</h3>
-        <p>Пароли идут через stdin и heredoc — никогда в argv и никогда в ps.</p>
-      </div></div>
+        <div class="code reveal">
+          <div class="tabs" role="tablist"><button type="button" role="tab" class="tab" aria-selected="true" data-tab="MCP">MCP</button><button type="button" role="tab" class="tab" aria-selected="false" data-tab="REST">REST</button><button type="button" role="tab" class="tab" aria-selected="false" data-tab="CLI">CLI</button></div>
+          <pre class="pane" data-pane="MCP"><code><span class="c"># Claude Code</span>
+claude mcp add sesame -- sesame mcp
+
+<span class="c"># Claude Desktop, Cursor</span>
+{ "mcpServers": { "sesame": {
+    "command": "sesame", "args": ["mcp"] } } }</code></pre><pre class="pane" data-pane="REST" hidden><code>sesame api-token        <span class="c"># shown once</span>
+sesame serve            <span class="c"># 127.0.0.1:7878</span>
+
+curl -X POST localhost:7878/v1/tools/list_sites \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"server":"prod"}'</code></pre><pre class="pane" data-pane="CLI" hidden><code>sesame add prod root@203.0.113.10
+sesame discover prod
+sesame do prod new-site shop.example.com \
+  --database postgres --redis --queue
+sesame do prod install redis</code></pre>
         </div>
-        <div class="bezel reveal" style="margin-top:18px"><div class="core"><img src="../assets/screens/confirm-drop-dark-ru.webp" width="1600" height="1018" loading="lazy" alt="Подтверждение необратимого изменения"></div></div>
+      </div>
+      <div class="frame nums"><div class="num reveal"><b>28</b><span>инструментов для агентов</span></div><div class="num reveal"><b>7</b><span>сервисов в один клик</span></div><div class="num reveal"><b>3</b><span>языка</span></div><div class="num reveal"><b>0</b><span>агентов на сервере</span></div></div>
+    </section>
+
+    <section id="security" class="row">
+      <div class="frame">
+        <div class="head reveal">
+          <span class="eyebrow">Локально по устройству</span>
+          <h2>Ваши серверы, ваш Mac, ваши ключи.</h2>
+        </div>
+        <div class="cells"><div class="cell reveal"><span class="mono k">01</span><h3>Сначала только чтение</h3><p>Обнаружение ничего не пишет и не читает пароли и ключи из .env.</p></div><div class="cell reveal"><span class="mono k">02</span><h3>Зашифрованное хранилище</h3><p>XChaCha20-Poly1305 ключом из мастер-пароля через Argon2id.</p></div><div class="cell reveal"><span class="mono k">03</span><h3>Подтвердить, потом выполнить</h3><p>План перечисляет шаги. Перед удалением — бэкап и ввод имени.</p></div><div class="cell reveal"><span class="mono k">04</span><h3>Не в командной строке</h3><p>Секреты идут через stdin — никогда в argv и никогда в ps.</p></div><div class="cell reveal"><span class="mono k">05</span><h3>Подписанные обновления</h3><p>Релизы проверяются подписью ed25519, прежде чем заменить приложение.</p></div></div>
       </div>
     </section>
 
-    <section id="cli" aria-labelledby="cli-title">
-      <div class="wrap cli-grid">
-        <div class="section-head reveal" style="margin:0">
-          <span class="eyebrow"><span class="dot"></span>Для ИИ-агентов</span>
-          <h2 id="cli-title">Каждое действие — типизированная операция.</h2>
-          <p>Приложение и CLI sesame выполняют одни и те же планы, поэтому скрипты и ИИ-агенты могут делать то же, что и вы, — с тем же предпросмотром и тем же журналом. Следом — MCP и REST.</p>
+    <section id="pricing" class="row">
+      <div class="frame">
+        <div class="head reveal">
+          <span class="eyebrow">Цены</span>
+          <h2>Бесплатно там, где работает на вашей машине.</h2>
         </div>
-        <div class="bezel reveal d1"><div class="core">
-          <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i></div>
-<pre class="term"><code><span class="c"># сохранить сервер и осмотреться</span>
-<span class="p">$</span> <b>sesame add</b> prod root@203.0.113.10
-<span class="p">$</span> <b>sesame discover</b> prod
-
-<span class="c"># изолированный Laravel-сайт с PostgreSQL</span>
-<span class="p">$</span> <b>sesame do</b> prod new-site shop.example.com --db postgres --yes
-
-<span class="c"># Redis только на localhost, пароль сгенерирован</span>
-<span class="p">$</span> <b>sesame do</b> prod install redis --yes</code></pre>
-        </div></div>
-      </div>
-      <div class="wrap principles pillars-row">
-      <div class="bezel reveal d0"><div class="core">
-        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/></svg></span>
-        <h3>Нативный и быстрый</h3>
-        <p>Rust и GPUI. Без Electron и JVM — открывается мгновенно и остаётся лёгким.</p>
-      </div></div>
-      <div class="bezel reveal d1"><div class="core">
-        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/></svg></span>
-        <h3>Ничего не ставить</h3>
-        <p>Обычный SSH. Ни агента, ни демона, ни открытых портов на сервере.</p>
-      </div></div>
-      <div class="bezel reveal d2"><div class="core">
-        <span class="glyph"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg></span>
-        <h3>Три языка</h3>
-        <p>English, Русский и Azərbaycanca, светлая и тёмная стеклянные темы.</p>
-      </div></div>
+        <div class="plans">
+        <div class="plan main reveal">
+          <h3>Self-hosted</h3>
+          <p class="price"><b>$0</b><span>навсегда</span></p>
+          <ul><li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>Сколько угодно серверов и сайтов</li><li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>MCP и REST для агентов</li><li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>Cloudflare и GitHub</li><li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>Apache-2.0, можно форкать</li></ul>
+          <a class="btn" href="https://github.com/rasul-chopurov/sesame/releases">Скачать Sesame</a>
+        </div>
+        <div class="plan reveal">
+          <h3>Sesame Cloud</h3>
+          <p class="price"><b>Позже</b><span>для команд</span></p>
+          <ul><li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>Общие серверы для команды</li><li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>Веб- и мобильная панель</li><li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>Роли, подтверждения и журнал в одном месте</li><li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>Оповещения и бэкапы по расписанию</li></ul>
+          <a class="btn ghost" href="https://github.com/rasul-chopurov/sesame">Следить на GitHub</a>
+        </div>
+        </div>
+        <p class="micro center">Десктоп-приложение остаётся бесплатным и открытым. Cloud будет платным за хостинг, а не за то, что у вас уже есть.</p>
       </div>
     </section>
 
-    <section id="roadmap" aria-labelledby="roadmap-title">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="eyebrow"><span class="dot"></span>Планы</span>
-          <h2 id="roadmap-title">Куда идёт Sesame.</h2>
-        </div>
-        <div class="road">
-          <div class="bezel reveal"><div class="core done"><h3><svg class="i" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg> Уже есть</h3><ul><li>Обнаружение только на чтение и подсказки</li><li>Мастер изолированного сайта</li><li>Сервисы в один клик</li><li>Базы с бэкапами</li><li>Деплои из GitHub</li><li>DNS в Cloudflare</li><li>Зашифрованное хранилище, подписанные обновления</li></ul></div></div>
-          <div class="bezel reveal d1"><div class="core"><h3><svg class="i" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg> Дальше</h3><ul><li>MCP и REST API для ИИ-агентов</li><li>Командная палитра ⌘K</li><li>Живые метрики и логи</li><li>Подготовка нового сервера с нуля</li><li>Windows, мобильная версия и Sesame Cloud</li></ul></div></div>
-        </div>
+    <section id="faq" class="row">
+      <div class="frame narrow">
+        <h2 class="reveal">Вопросы</h2>
+        <div class="faq"><details class="reveal"><summary>Чем это отличается от Forge или Ploi?</summary><p>Это веб-панели, у которых остаётся доступ к вашим серверам. Sesame — приложение на вашем Mac, работает по обычному SSH: ключи остаются у вас, а сервер, настроенный вручную, тоже можно взять под управление.</p></details><details class="reveal"><summary>А от Coolify?</summary><p>Coolify живёт на сервере и собирает контейнеры. Sesame ничего не ставит на сервер и ведёт классический стек Laravel: Caddy или Nginx, PHP-FPM или Octane, supervisor, системные базы.</p></details><details class="reveal"><summary>Что он меняет на сервере?</summary><p>При обнаружении — ничего. Всё остальное — план, который вы видите заранее; необратимые шаги просят ввести имя, перед удалением базы делается бэкап.</p></details><details class="reveal"><summary>Где хранятся пароли?</summary><p>В зашифрованном хранилище на вашем Mac, которое открывается мастер-паролем или файлом-ключом. Никогда в открытом виде в базе и никогда в логах.</p></details><details class="reveal"><summary>Какие серверы поддерживаются?</summary><p>Ubuntu 22.04/24.04 и Debian 12, amd64 и arm64. Обнаружение работает на большинстве Linux-серверов.</p></details></div>
       </div>
     </section>
 
-    <section class="final" aria-labelledby="final-title">
-      <div class="wrap reveal">
-        <img src="../assets/logo.svg" alt="" width="72" height="72" style="margin:0 auto 26px;border-radius:18px">
-        <h2 id="final-title">Откройте свои серверы.</h2>
-        <p>Sesame — открытый код под лицензией Apache-2.0. Попробуйте альфу сначала на тестовом сервере и расскажите, что он нашёл.</p>
-        <div class="cta">
-          <a class="btn btn-primary" href="https://github.com/rasul-chopurov/sesame/releases">Скачать для macOS<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg></span></a>
-          <a class="btn btn-ghost" href="https://github.com/rasul-chopurov/sesame">Открыть на GitHub<span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></span></a>
-        </div>
+    <section class="final">
+      <div class="frame">
+        <h2>Откройте свои серверы.</h2>
+        <p>Попробуйте альфу сначала на тестовом сервере — и расскажите, что он нашёл.</p>
+        <a class="btn light" href="https://github.com/rasul-chopurov/sesame/releases"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg>Скачать Sesame</a>
       </div>
     </section>
   </main>
 
-  <footer>
-    <div class="wrap">
-      <span>© 2026 Sesame · Открытый код, Apache-2.0</span>
-      <nav aria-label="Footer"><a href="https://github.com/rasul-chopurov/sesame">GitHub</a><a href="https://github.com/rasul-chopurov/sesame/releases">Релизы</a><a href="https://github.com/rasul-chopurov/sesame/blob/main/CHANGELOG.md">Изменения</a><a href="https://github.com/rasul-chopurov/sesame/blob/main/SECURITY.md">Безопасность</a></nav>
+  <footer class="foot">
+    <div class="frame cols">
+      <div class="about">
+        <a class="brand" href="../ru/"><img src="../assets/logo.svg" width="22" height="22" alt="">Sesame</a>
+        <p>Sesame — нативный менеджер серверов для Laravel-сообщества, удобный для ИИ-агентов, на Rust и GPUI. Он находит по SSH всё, что работает на сервере, и ведёт изолированные сайты, сервисы, базы, деплои и DNS в Cloudflare.</p>
+      </div>
+      <div><h4>Продукт</h4><a href="https://github.com/rasul-chopurov/sesame/releases">Релизы</a><a href="https://github.com/rasul-chopurov/sesame/blob/main/CHANGELOG.md">Изменения</a><a href="https://github.com/rasul-chopurov/sesame#roadmap">Планы</a></div><div><h4>Проект</h4><a href="https://github.com/rasul-chopurov/sesame">GitHub</a><a href="https://github.com/rasul-chopurov/sesame/blob/main/CONTRIBUTING.md">Участие</a><a href="https://github.com/rasul-chopurov/sesame/blob/main/SECURITY.md">Безопасность</a></div>
     </div>
+    <div class="frame copy-line"><span>© 2026 Sesame · Открытый код, Apache-2.0</span><span class="langs"><a href="../" lang="en" hreflang="en">EN</a><a href="../az/" lang="az" hreflang="az">AZ</a><a href="../ru/" lang="ru" hreflang="ru" aria-current="page">RU</a></span></div>
   </footer>
-  <script src="../assets/site.js" defer></script>
 </body>
 </html>

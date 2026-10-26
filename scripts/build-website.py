@@ -9,189 +9,258 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path
 SITE = "https://sesame.response.az"
 GH = "https://github.com/rasul-chopurov/sesame"
 REL = GH + "/releases"
+VERSION = "v0.1.0-alpha.1"
 
-ICON = {
- "arrow": '<svg class="i" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>',
- "down": '<svg class="i" viewBox="0 0 24 24"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg>',
- "eye": '<svg class="i" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
- "shield": '<svg class="i" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.4 3.2 7.9 7.5 9 4.3-1.1 7.5-4.6 7.5-9V6L12 3Z"/><path d="m9 12 2 2 4-4"/></svg>',
- "bolt": '<svg class="i" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/></svg>',
- "spark": '<svg class="i" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>',
- "globe": '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/></svg>',
- "check": '<svg class="i" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg>',
-}
+e = html.escape
 
 T = {
 "en": {
  "dir": "", "lang": "en", "locale": "en_US",
  "title": "Sesame — open your servers. A native server manager for Laravel",
- "desc": "Sesame is a native, AI-friendly server manager for the Laravel community. Give it SSH and it finds every site, database, mail setup and process — then runs isolated sites, services, deploys and Cloudflare DNS for you.",
- "nav": ["Features", "Security", "CLI", "Roadmap"],
- "download": "Download for macOS", "github": "View on GitHub",
- "badge": "Alpha · v0.1.0-alpha.1 · Apache-2.0",
+ "desc": "Sesame is a native, open-source server manager for the Laravel community. Give it SSH: it finds every site, database and process, runs isolated sites, services, deploys and Cloudflare DNS, and lets AI agents help — with your approval.",
+ "nav": ["How it works", "Features", "Agents", "Security", "Pricing", "FAQ"],
+ "download": "Download Sesame", "github": "GitHub",
+ "eyebrow": "Open source · Apache-2.0 · " + VERSION,
  "h1": "Open your <em>servers.</em>",
- "lead": "A native, AI-friendly server manager for the Laravel community. Give it SSH — it finds every site, database, mail setup and process, and runs them with you.",
- "meta": ["macOS · Windows soon", "Rust + GPUI", "No agent on your server"],
- "feat_eyebrow": "What it does", "feat_h": "Everything on the box, in one calm window.",
- "feat_p": "Sesame reads your server the way you would — over SSH, read-only first — and turns what it finds into something you can act on.",
- "cards": [
-  ("Discover", "See what is really running", "One read-only probe finds sites in FrankenPHP/Caddy, Nginx and Apache, Laravel apps and their .env drivers, supervisor workers, databases, cron, certificates and the firewall — and tells you what needs attention.", ["FrankenPHP", "Octane", "Nginx", "MySQL", "PostgreSQL", "Redis", "cron", "ufw"], "overview-dark"),
-  ("Isolated sites", "A new site, sealed off", "Each site gets its own Linux user, its own PHP-FPM pool or Octane, its own database user and Redis ACL. The web server can read public/ — never your .env.", ["own user", "own pool", "own DB", "Redis ACL"], "sites-light"),
-  ("Services", "Databases in one click", "Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 on RustFS and Reverb — bound to localhost, with generated passwords. Nothing is installed until you ask.", ["localhost only", "keep data on uninstall"], "services-dark"),
-  ("Deploys", "Push to GitHub, deploy in Sesame", "Link a site to a repository and branch. Sesame creates a read-only deploy key on the server, then fetches, installs, migrates and restarts workers.", ["deploy keys", "migrations", "workers"], "site-dark"),
-  ("Cloudflare", "DNS without the tab-switching", "Domains, records, proxy on or off, cache purge — and a “point to this server” button for every site that isn’t pointed yet.", ["DNS records", "proxy", "cache purge"], "cloudflare-dark"),
+ "lead": "A native server manager for Laravel. Give it SSH — it finds every site, database and process on the box, and runs them with you.",
+ "micro": "Free and open source. macOS today, Windows next. Nothing to install on your server.",
+ "hero_alt": "Sesame showing a server overview with insights",
+ "how_eyebrow": "How it works", "how_h": "From an SSH login to a calm picture in a minute.",
+ "how": [
+  ("Minute one", "Connect", "Your ssh-agent, a key or a password. Host keys are checked against known_hosts. No agent, no daemon, no open port."),
+  ("Minute two", "Discover", "One read-only probe finds sites in Caddy, Nginx and Apache, Laravel apps, workers, databases, cron, certificates and the firewall."),
+  ("When you're ready", "Run", "New isolated sites, one-click services, databases, deploys from GitHub and Cloudflare DNS — each change previewed first."),
  ],
- "sec_eyebrow": "Safe by design", "sec_h": "Every change is shown before it happens.",
- "sec_p": "Sesame never changes a server behind your back. Plans are previewed, destructive steps ask you to type the name, and everything lands in an audit log.",
- "principles": [
-  ("eye", "Read-only first", "Discovery never writes. It never reads passwords or keys from .env either."),
-  ("shield", "Encrypted vault", "Secrets are sealed with XChaCha20-Poly1305 under a key derived from your master password with Argon2id."),
-  ("check", "Confirm, then run", "Each plan lists its steps. Drops back up first and need you to type the name."),
-  ("bolt", "Off the command line", "Passwords travel over stdin and heredocs — never in argv, never in ps."),
+ "probe": [("ok", "frankenphp", "3 sites · Octane"), ("ok", "postgresql 18", "4 databases · 212 MB"), ("ok", "redis", "ACL per site"), ("ok", "supervisor", "queue ×2 · reverb"), ("warn", "ufw", "inactive"), ("warn", "certificate", "shop.example.com · 9 days")],
+ "f": [
+  ("Isolated sites", "Every site in its own room.", "Each new site gets its own Linux user, its own PHP-FPM pool or Octane process, its own database user and a Redis ACL limited to its keys. The web server reads public/ — never your .env.", ["own user", "own pool", "own DB", "Redis ACL", "subdomains"], "sites-light", "Sites as searchable cards"),
+  ("Services", "Databases in one click. Nothing until you ask.", "Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 on RustFS and Reverb. Bound to localhost, passwords generated and sealed in the vault. phpMyAdmin and pgAdmin open through an SSH tunnel, never in public.", ["localhost only", "keep data on uninstall", "admin panels via tunnel"], "services-dark", "One-click services"),
+  ("Deploys & DNS", "Push to GitHub. Point the domain. Done.", "Link a site to a repository and branch: Sesame adds a read-only deploy key, fetches, installs, migrates and restarts workers. Cloudflare zones and records live next to the site, with a “point to this server” button.", ["deploy keys", "migrations", "DNS records", "cache purge"], "cloudflare-dark", "Cloudflare DNS records"),
+  ("Files & terminal", "When you need your hands on it.", "A file manager jailed to one site over SFTP, with a small editor. A real terminal, xterm-256color, in the same window.", ["SFTP jail", "editor", "PTY terminal"], "site-dark", "A site with repository and DNS"),
  ],
- "sec_shot_alt": "Confirming a destructive change",
- "cli_eyebrow": "AI-friendly", "cli_h": "Every action is a typed operation.",
- "cli_p": "The app and the sesame CLI run the same plans, so scripts and AI agents can do what you do — with the same previews and the same audit log. MCP and REST are next.",
- "cli_c": ["# save a server and look around", "# an isolated Laravel site with PostgreSQL", "# Redis, bound to localhost, password generated"],
- "pillars_eyebrow": "Native", "pillars": [("Native & fast", "Rust and GPUI. No Electron, no JVM — it opens instantly and stays light."), ("Nothing to install", "Plain SSH. No agent, no daemon, no open ports on your server."), ("Three languages", "English, Русский and Azərbaycanca, with light and dark glass themes.")],
- "road_eyebrow": "Roadmap", "road_h": "Where Sesame is going.",
- "road_done": "Shipped", "road_next": "Next",
- "done": ["Read-only discovery and insights", "Isolated new-site wizard", "One-click services", "Databases with backups", "GitHub deploys", "Cloudflare DNS", "Encrypted vault, signed updates"],
- "next": ["MCP and REST API for AI agents", "Command palette ⌘K", "Live metrics and logs", "Provision a fresh server from zero", "Windows, mobile and Sesame Cloud"],
- "final_h": "Open your servers.", "final_p": "Sesame is open source under Apache-2.0. Try the alpha on a disposable server first — and tell us what it finds.",
- "foot": "Open source under Apache-2.0", "foot_links": ["GitHub", "Releases", "Changelog", "Security"],
- "shot_alts": {"overview-dark": "Server overview with insights", "sites-light": "Sites as searchable cards", "services-dark": "One-click services", "site-dark": "A site with repository and DNS", "cloudflare-dark": "Cloudflare DNS records"},
-},
-"az": {
- "dir": "az/", "lang": "az", "locale": "az_AZ",
- "title": "Sesame — serverlərinizi açın. Laravel üçün nativ server meneceri",
- "desc": "Sesame Laravel icması üçün nativ, süni intellektə uyğun server meneceridir. SSH girişi verin — o, bütün saytları, bazaları, poçtu və prosesləri tapır, sonra izolə edilmiş saytları, xidmətləri, deployları və Cloudflare DNS-i idarə edir.",
- "nav": ["İmkanlar", "Təhlükəsizlik", "CLI", "Yol xəritəsi"],
- "download": "macOS üçün yüklə", "github": "GitHub-da bax",
- "badge": "Alfa · v0.1.0-alpha.1 · Apache-2.0",
- "h1": "Serverlərinizi <em>açın.</em>",
- "lead": "Laravel icması üçün nativ, süni intellektə uyğun server meneceri. SSH verin — bütün saytları, bazaları, poçtu və prosesləri tapır və onları sizinlə birlikdə idarə edir.",
- "meta": ["macOS · tezliklə Windows", "Rust + GPUI", "Serverdə agent yoxdur"],
- "feat_eyebrow": "Nə edir", "feat_h": "Serverdəki hər şey bir sakit pəncərədə.",
- "feat_p": "Sesame serverinizi sizin kimi oxuyur — SSH ilə, əvvəlcə yalnız oxuma rejimində — və tapdıqlarını idarə edilə bilən bir mənzərəyə çevirir.",
- "cards": [
-  ("Kəşf", "Həqiqətən nə işlədiyini görün", "Bir oxuma yoxlaması FrankenPHP/Caddy, Nginx və Apache-dəki saytları, Laravel tətbiqlərini və onların .env drayverlərini, supervisor proseslərini, bazaları, cron-u, sertifikatları və firewall-u tapır — və nəyin diqqət tələb etdiyini göstərir.", ["FrankenPHP", "Octane", "Nginx", "MySQL", "PostgreSQL", "Redis", "cron", "ufw"], "overview-dark"),
-  ("İzolə edilmiş saytlar", "Yeni sayt, tam ayrılmış", "Hər sayt öz Linux istifadəçisini, öz PHP-FPM pulunu və ya Octane-ı, öz baza istifadəçisini və Redis ACL-ni alır. Veb server yalnız public/ qovluğunu oxuyur — .env faylınızı heç vaxt.", ["öz istifadəçi", "öz pul", "öz baza", "Redis ACL"], "sites-light"),
-  ("Xidmətlər", "Bazalar bir kliklə", "Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, RustFS üzərində S3 və Reverb — yalnız localhost-da, yaradılmış parollarla. Siz istəməyincə heç nə quraşdırılmır.", ["yalnız localhost", "silərkən məlumat qalır"], "services-dark"),
-  ("Deploylar", "GitHub-a push, Sesame-də deploy", "Saytı repozitoriya və budaqla əlaqələndirin. Sesame serverdə yalnız oxuma üçün deploy açarı yaradır, sonra kodu çəkir, asılılıqları quraşdırır, miqrasiyaları işə salır və prosesləri yenidən başladır.", ["deploy açarları", "miqrasiyalar", "workerlər"], "site-dark"),
-  ("Cloudflare", "Tablar arasında keçid olmadan DNS", "Domenlər, qeydlər, proksi aç/bağla, keşin təmizlənməsi — və hələ serverə yönəlməmiş hər sayt üçün «bu serverə yönəlt» düyməsi.", ["DNS qeydləri", "proksi", "keş"], "cloudflare-dark"),
+ "agents_eyebrow": "AI agents", "agents_h": "Let Claude run your servers. On your terms.",
+ "agents_p": "Sesame speaks MCP and REST. Agents read everything at once; every change pops up in the app, and nothing runs until you press Allow. Every step lands in the audit log with the agent's name.",
+ "surfaces": ["MCP", "REST", "CLI"],
+ "approve_who": "Claude Code wants to:", "approve_what": "install Redis on prod", "approve_d": ["listens on 127.0.0.1:6379", "password generated, stored in the vault"], "approve_deny": "Deny", "approve_allow": "Allow",
+ "nums": [("28", "agent tools"), ("7", "one-click services"), ("3", "languages"), ("0", "agents on your server")],
+ "trust_eyebrow": "Local by design", "trust_h": "Your servers, your Mac, your keys.",
+ "trust": [
+  ("Read-only first", "Discovery never writes, and never reads passwords or keys from .env."),
+  ("Encrypted vault", "XChaCha20-Poly1305 under a key from your master password via Argon2id."),
+  ("Confirm, then run", "Plans list their steps. Drops back up first and ask you to type the name."),
+  ("Off the command line", "Secrets travel over stdin — never in argv, never in ps."),
+  ("Signed updates", "Releases are verified with ed25519 before they replace the app."),
  ],
- "sec_eyebrow": "Təhlükəsiz dizayn", "sec_h": "Hər dəyişiklik baş verməzdən əvvəl göstərilir.",
- "sec_p": "Sesame serveri xəbəriniz olmadan dəyişmir. Planlar əvvəlcədən göstərilir, geri qaytarılmaz addımlar adı yazmağınızı tələb edir və hər şey audit jurnalına düşür.",
- "principles": [
-  ("eye", "Əvvəlcə yalnız oxuma", "Kəşf heç nə yazmır. .env-dən parol və açarları da oxumur."),
-  ("shield", "Şifrəli anbar", "Sirlər master paroldan Argon2id ilə alınan açarla XChaCha20-Poly1305 vasitəsilə şifrələnir."),
-  ("check", "Təsdiqlə, sonra icra et", "Hər plan addımlarını göstərir. Silmədən əvvəl ehtiyat nüsxə çıxarılır və adı yazmaq lazımdır."),
-  ("bolt", "Komanda sətrindən kənarda", "Parollar stdin və heredoc ilə ötürülür — heç vaxt argv-də, heç vaxt ps-də görünmür."),
+ "price_eyebrow": "Pricing", "price_h": "Free where it runs on your machine.",
+ "plans": [
+  ("Self-hosted", "$0", "forever", ["Unlimited servers and sites", "MCP and REST for agents", "Cloudflare and GitHub", "Apache-2.0, fork it"], "Download Sesame", True),
+  ("Sesame Cloud", "Later", "for teams", ["Servers shared with your team", "Web and mobile dashboards", "Roles, approvals and audit in one place", "Alerts and scheduled backups"], "Follow on GitHub", False),
  ],
- "sec_shot_alt": "Geri qaytarılmaz dəyişikliyin təsdiqi",
- "cli_eyebrow": "Süni intellektə uyğun", "cli_h": "Hər əməliyyat tipli əməliyyatdır.",
- "cli_p": "Tətbiq və sesame CLI eyni planları icra edir — skriptlər və süni intellekt agentləri də sizin etdiyinizi edə bilər, eyni ön baxış və eyni audit jurnalı ilə. Növbəti addım MCP və REST-dir.",
- "cli_c": ["# serveri yadda saxla və yoxla", "# PostgreSQL ilə izolə edilmiş Laravel saytı", "# Redis, yalnız localhost-da, parol yaradılır"],
- "pillars_eyebrow": "Nativ", "pillars": [("Nativ və sürətli", "Rust və GPUI. Electron yox, JVM yox — dərhal açılır və yüngül qalır."), ("Heç nə quraşdırmaq lazım deyil", "Adi SSH. Serverdə agent, xidmət və ya açıq port yoxdur."), ("Üç dil", "English, Русский və Azərbaycanca, açıq və tünd şüşə mövzuları ilə.")],
- "road_eyebrow": "Yol xəritəsi", "road_h": "Sesame hara gedir.",
- "road_done": "Hazırdır", "road_next": "Növbəti",
- "done": ["Yalnız oxuma kəşfi və məsləhətlər", "İzolə edilmiş yeni sayt ustası", "Bir kliklə xidmətlər", "Ehtiyat nüsxəli bazalar", "GitHub deployları", "Cloudflare DNS", "Şifrəli anbar, imzalı yeniləmələr"],
- "next": ["Süni intellekt agentləri üçün MCP və REST API", "Komanda paneli ⌘K", "Canlı metrikalar və loglar", "Sıfırdan yeni server qurulması", "Windows, mobil və Sesame Cloud"],
- "final_h": "Serverlərinizi açın.", "final_p": "Sesame Apache-2.0 lisenziyası ilə açıq mənbəlidir. Alfa versiyanı əvvəlcə test serverində sınayın — və nə tapdığını bizə deyin.",
- "foot": "Açıq mənbə, Apache-2.0", "foot_links": ["GitHub", "Buraxılışlar", "Dəyişikliklər", "Təhlükəsizlik"],
- "shot_alts": {"overview-dark": "Məsləhətlərlə server icmalı", "sites-light": "Axtarışlı sayt kartları", "services-dark": "Bir kliklə xidmətlər", "site-dark": "Repozitoriya və DNS ilə sayt", "cloudflare-dark": "Cloudflare DNS qeydləri"},
+ "price_micro": "The desktop app stays free and open source. Cloud will pay for the hosting, not for the features you already have.",
+ "faq_h": "Questions",
+ "faq": [
+  ("How is this different from Forge or Ploi?", "They are web dashboards that keep access to your servers. Sesame is an app on your Mac that talks plain SSH, so your keys stay with you and it can adopt a server you set up by hand."),
+  ("And from Coolify?", "Coolify runs on the server and builds containers. Sesame installs nothing on the server and manages the classic Laravel stack: Caddy or Nginx, PHP-FPM or Octane, supervisor, system databases."),
+  ("What does it change on my server?", "Nothing during discovery. Everything else is a plan you see first — with destructive steps asking you to type the name, and a backup before any drop."),
+  ("Where are my passwords?", "In an encrypted vault on your Mac, unlocked with your master password or a key file. Never in the plain database, never in logs."),
+  ("Which servers are supported?", "Ubuntu 22.04/24.04 and Debian 12, amd64 and arm64. Discovery works on most Linux servers."),
+ ],
+ "final_h": "Open your servers.", "final_p": "Try the alpha on a test server first — and tell us what it found.",
+ "foot_about": "Sesame is a native, AI-friendly server manager for the Laravel community, written in Rust with GPUI. It discovers what runs on a server over SSH and manages isolated sites, services, databases, deploys and Cloudflare DNS.",
+ "foot_cols": [("Product", [("Releases", REL), ("Changelog", GH + "/blob/main/CHANGELOG.md"), ("Roadmap", GH + "#roadmap")]), ("Project", [("GitHub", GH), ("Contributing", GH + "/blob/main/CONTRIBUTING.md"), ("Security", GH + "/blob/main/SECURITY.md")])],
+ "foot_copy": "Open source, Apache-2.0",
 },
 "ru": {
  "dir": "ru/", "lang": "ru", "locale": "ru_RU",
  "title": "Sesame — откройте свои серверы. Нативный менеджер серверов для Laravel",
- "desc": "Sesame — нативный менеджер серверов для Laravel-сообщества, удобный для ИИ-агентов. Дайте SSH — он найдёт все сайты, базы, почту и процессы, а затем поможет вести изолированные сайты, сервисы, деплои и DNS в Cloudflare.",
- "nav": ["Возможности", "Безопасность", "CLI", "Планы"],
- "download": "Скачать для macOS", "github": "Открыть на GitHub",
- "badge": "Альфа · v0.1.0-alpha.1 · Apache-2.0",
+ "desc": "Sesame — нативный менеджер серверов с открытым кодом для Laravel-сообщества. Дайте SSH: он найдёт все сайты, базы и процессы, поможет вести изолированные сайты, сервисы, деплои и DNS в Cloudflare, а ИИ-агенты работают только с вашего разрешения.",
+ "nav": ["Как работает", "Возможности", "Агенты", "Безопасность", "Цены", "Вопросы"],
+ "download": "Скачать Sesame", "github": "GitHub",
+ "eyebrow": "Открытый код · Apache-2.0 · " + VERSION,
  "h1": "Откройте свои <em>серверы.</em>",
- "lead": "Нативный менеджер серверов для Laravel-сообщества, удобный для ИИ-агентов. Дайте SSH — он найдёт все сайты, базы, почту и процессы и поможет ими управлять.",
- "meta": ["macOS · скоро Windows", "Rust + GPUI", "Без агента на сервере"],
- "feat_eyebrow": "Что умеет", "feat_h": "Всё, что есть на сервере, в одном спокойном окне.",
- "feat_p": "Sesame смотрит на сервер так же, как вы, — по SSH и сначала только на чтение — и превращает найденное в понятную картину, с которой можно работать.",
- "cards": [
-  ("Обнаружение", "Видно, что на самом деле работает", "Одна проверка только на чтение находит сайты в FrankenPHP/Caddy, Nginx и Apache, Laravel-приложения и драйверы из их .env, процессы supervisor, базы, cron, сертификаты и файрвол — и подсказывает, что требует внимания.", ["FrankenPHP", "Octane", "Nginx", "MySQL", "PostgreSQL", "Redis", "cron", "ufw"], "overview-dark"),
-  ("Изолированные сайты", "Новый сайт — в своей комнате", "У каждого сайта свой Linux-пользователь, свой пул PHP-FPM или Octane, свой пользователь базы и Redis ACL. Веб-сервер читает public/ — но никогда ваш .env.", ["свой пользователь", "свой пул", "своя база", "Redis ACL"], "sites-light"),
-  ("Сервисы", "Базы в один клик", "Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 на RustFS и Reverb — только на localhost, со сгенерированными паролями. Ничего не ставится, пока вы не попросите.", ["только localhost", "данные сохраняются при удалении"], "services-dark"),
-  ("Деплои", "Push в GitHub — деплой в Sesame", "Привяжите сайт к репозиторию и ветке. Sesame создаст на сервере deploy-ключ только на чтение, затем заберёт код, поставит зависимости, выполнит миграции и перезапустит воркеры.", ["deploy-ключи", "миграции", "воркеры"], "site-dark"),
-  ("Cloudflare", "DNS без лишних вкладок", "Домены, записи, прокси вкл/выкл, очистка кэша — и кнопка «направить на этот сервер» для каждого сайта, который ещё туда не смотрит.", ["DNS-записи", "прокси", "кэш"], "cloudflare-dark"),
+ "lead": "Нативный менеджер серверов для Laravel. Дайте SSH — он найдёт все сайты, базы и процессы на сервере и поможет ими управлять.",
+ "micro": "Бесплатно и с открытым кодом. Сейчас macOS, следом Windows. На сервер ничего ставить не нужно.",
+ "hero_alt": "Sesame: обзор сервера с подсказками",
+ "how_eyebrow": "Как работает", "how_h": "От входа по SSH до понятной картины за минуту.",
+ "how": [
+  ("Первая минута", "Подключение", "ssh-agent, ключ или пароль. Ключ хоста сверяется с known_hosts. Ни агента, ни демона, ни открытого порта."),
+  ("Вторая минута", "Обнаружение", "Одна проверка только на чтение находит сайты в Caddy, Nginx и Apache, Laravel-приложения, воркеры, базы, cron, сертификаты и файрвол."),
+  ("Когда будете готовы", "Управление", "Новые изолированные сайты, сервисы в один клик, базы, деплои из GitHub и DNS в Cloudflare — каждое изменение сначала показывается."),
  ],
- "sec_eyebrow": "Безопасность по умолчанию", "sec_h": "Каждое изменение видно до того, как оно произойдёт.",
- "sec_p": "Sesame никогда не меняет сервер за вашей спиной. План показывается заранее, необратимые шаги просят ввести имя, и всё попадает в журнал действий.",
- "principles": [
-  ("eye", "Сначала только чтение", "Обнаружение ничего не записывает и не читает пароли и ключи из .env."),
-  ("shield", "Зашифрованное хранилище", "Секреты шифруются XChaCha20-Poly1305 ключом, выведенным из мастер-пароля через Argon2id."),
-  ("check", "Подтвердить, потом выполнить", "Каждый план перечисляет шаги. Перед удалением — бэкап и ввод имени."),
-  ("bolt", "Не в командной строке", "Пароли идут через stdin и heredoc — никогда в argv и никогда в ps."),
+ "probe": [("ok", "frankenphp", "3 сайта · Octane"), ("ok", "postgresql 18", "4 базы · 212 МБ"), ("ok", "redis", "ACL на сайт"), ("ok", "supervisor", "очередь ×2 · reverb"), ("warn", "ufw", "выключен"), ("warn", "сертификат", "shop.example.com · 9 дней")],
+ "f": [
+  ("Изолированные сайты", "Каждый сайт — в своей комнате.", "У каждого нового сайта свой Linux-пользователь, свой пул PHP-FPM или процесс Octane, свой пользователь базы и Redis ACL только на его ключи. Веб-сервер читает public/ — но никогда ваш .env.", ["свой пользователь", "свой пул", "своя база", "Redis ACL", "поддомены"], "sites-light", "Сайты карточками с поиском"),
+  ("Сервисы", "Базы в один клик. Ничего, пока не попросите.", "Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 на RustFS и Reverb. Только localhost, пароли генерируются и хранятся в зашифрованном хранилище. phpMyAdmin и pgAdmin открываются через SSH-туннель, а не в интернет.", ["только localhost", "данные сохраняются", "панели через туннель"], "services-dark", "Сервисы в один клик"),
+  ("Деплои и DNS", "Push в GitHub. Направить домен. Готово.", "Привяжите сайт к репозиторию и ветке: Sesame добавит deploy-ключ только на чтение, заберёт код, поставит зависимости, выполнит миграции и перезапустит воркеры. Зоны и записи Cloudflare — рядом с сайтом, с кнопкой «направить на этот сервер».", ["deploy-ключи", "миграции", "DNS-записи", "очистка кэша"], "cloudflare-dark", "DNS-записи в Cloudflare"),
+  ("Файлы и терминал", "Когда нужно своими руками.", "Файловый менеджер по SFTP, запертый в папке одного сайта, с небольшим редактором. Настоящий терминал xterm-256color в том же окне.", ["SFTP-клетка", "редактор", "PTY-терминал"], "site-dark", "Сайт с репозиторием и DNS"),
  ],
- "sec_shot_alt": "Подтверждение необратимого изменения",
- "cli_eyebrow": "Для ИИ-агентов", "cli_h": "Каждое действие — типизированная операция.",
- "cli_p": "Приложение и CLI sesame выполняют одни и те же планы, поэтому скрипты и ИИ-агенты могут делать то же, что и вы, — с тем же предпросмотром и тем же журналом. Следом — MCP и REST.",
- "cli_c": ["# сохранить сервер и осмотреться", "# изолированный Laravel-сайт с PostgreSQL", "# Redis только на localhost, пароль сгенерирован"],
- "pillars_eyebrow": "Нативно", "pillars": [("Нативный и быстрый", "Rust и GPUI. Без Electron и JVM — открывается мгновенно и остаётся лёгким."), ("Ничего не ставить", "Обычный SSH. Ни агента, ни демона, ни открытых портов на сервере."), ("Три языка", "English, Русский и Azərbaycanca, светлая и тёмная стеклянные темы.")],
- "road_eyebrow": "Планы", "road_h": "Куда идёт Sesame.",
- "road_done": "Уже есть", "road_next": "Дальше",
- "done": ["Обнаружение только на чтение и подсказки", "Мастер изолированного сайта", "Сервисы в один клик", "Базы с бэкапами", "Деплои из GitHub", "DNS в Cloudflare", "Зашифрованное хранилище, подписанные обновления"],
- "next": ["MCP и REST API для ИИ-агентов", "Командная палитра ⌘K", "Живые метрики и логи", "Подготовка нового сервера с нуля", "Windows, мобильная версия и Sesame Cloud"],
- "final_h": "Откройте свои серверы.", "final_p": "Sesame — открытый код под лицензией Apache-2.0. Попробуйте альфу сначала на тестовом сервере и расскажите, что он нашёл.",
- "foot": "Открытый код, Apache-2.0", "foot_links": ["GitHub", "Релизы", "Изменения", "Безопасность"],
- "shot_alts": {"overview-dark": "Обзор сервера с подсказками", "sites-light": "Сайты карточками с поиском", "services-dark": "Сервисы в один клик", "site-dark": "Сайт с репозиторием и DNS", "cloudflare-dark": "DNS-записи в Cloudflare"},
+ "agents_eyebrow": "ИИ-агенты", "agents_h": "Пусть Claude ведёт ваши серверы. На ваших условиях.",
+ "agents_p": "Sesame говорит на MCP и REST. Агенты читают всё сразу, а каждое изменение всплывает в приложении и не выполняется, пока вы не нажмёте «Разрешить». Каждый шаг пишется в журнал с именем агента.",
+ "surfaces": ["MCP", "REST", "CLI"],
+ "approve_who": "Claude Code хочет:", "approve_what": "установить Redis на prod", "approve_d": ["слушает 127.0.0.1:6379", "пароль сгенерирован и сохранён в хранилище"], "approve_deny": "Отклонить", "approve_allow": "Разрешить",
+ "nums": [("28", "инструментов для агентов"), ("7", "сервисов в один клик"), ("3", "языка"), ("0", "агентов на сервере")],
+ "trust_eyebrow": "Локально по устройству", "trust_h": "Ваши серверы, ваш Mac, ваши ключи.",
+ "trust": [
+  ("Сначала только чтение", "Обнаружение ничего не пишет и не читает пароли и ключи из .env."),
+  ("Зашифрованное хранилище", "XChaCha20-Poly1305 ключом из мастер-пароля через Argon2id."),
+  ("Подтвердить, потом выполнить", "План перечисляет шаги. Перед удалением — бэкап и ввод имени."),
+  ("Не в командной строке", "Секреты идут через stdin — никогда в argv и никогда в ps."),
+  ("Подписанные обновления", "Релизы проверяются подписью ed25519, прежде чем заменить приложение."),
+ ],
+ "price_eyebrow": "Цены", "price_h": "Бесплатно там, где работает на вашей машине.",
+ "plans": [
+  ("Self-hosted", "$0", "навсегда", ["Сколько угодно серверов и сайтов", "MCP и REST для агентов", "Cloudflare и GitHub", "Apache-2.0, можно форкать"], "Скачать Sesame", True),
+  ("Sesame Cloud", "Позже", "для команд", ["Общие серверы для команды", "Веб- и мобильная панель", "Роли, подтверждения и журнал в одном месте", "Оповещения и бэкапы по расписанию"], "Следить на GitHub", False),
+ ],
+ "price_micro": "Десктоп-приложение остаётся бесплатным и открытым. Cloud будет платным за хостинг, а не за то, что у вас уже есть.",
+ "faq_h": "Вопросы",
+ "faq": [
+  ("Чем это отличается от Forge или Ploi?", "Это веб-панели, у которых остаётся доступ к вашим серверам. Sesame — приложение на вашем Mac, работает по обычному SSH: ключи остаются у вас, а сервер, настроенный вручную, тоже можно взять под управление."),
+  ("А от Coolify?", "Coolify живёт на сервере и собирает контейнеры. Sesame ничего не ставит на сервер и ведёт классический стек Laravel: Caddy или Nginx, PHP-FPM или Octane, supervisor, системные базы."),
+  ("Что он меняет на сервере?", "При обнаружении — ничего. Всё остальное — план, который вы видите заранее; необратимые шаги просят ввести имя, перед удалением базы делается бэкап."),
+  ("Где хранятся пароли?", "В зашифрованном хранилище на вашем Mac, которое открывается мастер-паролем или файлом-ключом. Никогда в открытом виде в базе и никогда в логах."),
+  ("Какие серверы поддерживаются?", "Ubuntu 22.04/24.04 и Debian 12, amd64 и arm64. Обнаружение работает на большинстве Linux-серверов."),
+ ],
+ "final_h": "Откройте свои серверы.", "final_p": "Попробуйте альфу сначала на тестовом сервере — и расскажите, что он нашёл.",
+ "foot_about": "Sesame — нативный менеджер серверов для Laravel-сообщества, удобный для ИИ-агентов, на Rust и GPUI. Он находит по SSH всё, что работает на сервере, и ведёт изолированные сайты, сервисы, базы, деплои и DNS в Cloudflare.",
+ "foot_cols": [("Продукт", [("Релизы", REL), ("Изменения", GH + "/blob/main/CHANGELOG.md"), ("Планы", GH + "#roadmap")]), ("Проект", [("GitHub", GH), ("Участие", GH + "/blob/main/CONTRIBUTING.md"), ("Безопасность", GH + "/blob/main/SECURITY.md")])],
+ "foot_copy": "Открытый код, Apache-2.0",
+},
+"az": {
+ "dir": "az/", "lang": "az", "locale": "az_AZ",
+ "title": "Sesame — serverlərinizi açın. Laravel üçün nativ server meneceri",
+ "desc": "Sesame Laravel icması üçün açıq mənbəli nativ server meneceridir. SSH verin: bütün saytları, bazaları və prosesləri tapır, izolə edilmiş saytları, xidmətləri, deployları və Cloudflare DNS-i idarə edir, süni intellekt agentləri isə yalnız sizin icazənizlə işləyir.",
+ "nav": ["Necə işləyir", "İmkanlar", "Agentlər", "Təhlükəsizlik", "Qiymət", "Suallar"],
+ "download": "Sesame-i yüklə", "github": "GitHub",
+ "eyebrow": "Açıq mənbə · Apache-2.0 · " + VERSION,
+ "h1": "Serverlərinizi <em>açın.</em>",
+ "lead": "Laravel üçün nativ server meneceri. SSH verin — serverdəki bütün saytları, bazaları və prosesləri tapır və onları sizinlə birlikdə idarə edir.",
+ "micro": "Pulsuz və açıq mənbə. İndi macOS, sonra Windows. Serverə heç nə quraşdırmaq lazım deyil.",
+ "hero_alt": "Sesame: məsləhətlərlə server icmalı",
+ "how_eyebrow": "Necə işləyir", "how_h": "SSH girişindən aydın mənzərəyə bir dəqiqədə.",
+ "how": [
+  ("Birinci dəqiqə", "Qoşulma", "ssh-agent, açar və ya parol. Host açarı known_hosts ilə yoxlanılır. Agent, xidmət və ya açıq port yoxdur."),
+  ("İkinci dəqiqə", "Kəşf", "Yalnız oxuyan bir yoxlama Caddy, Nginx və Apache-dəki saytları, Laravel tətbiqlərini, worker-ləri, bazaları, cron-u, sertifikatları və firewall-u tapır."),
+  ("Hazır olanda", "İdarəetmə", "Yeni izolə edilmiş saytlar, bir kliklə xidmətlər, bazalar, GitHub-dan deploy və Cloudflare DNS — hər dəyişiklik əvvəlcə göstərilir."),
+ ],
+ "probe": [("ok", "frankenphp", "3 sayt · Octane"), ("ok", "postgresql 18", "4 baza · 212 MB"), ("ok", "redis", "hər sayta ACL"), ("ok", "supervisor", "növbə ×2 · reverb"), ("warn", "ufw", "söndürülüb"), ("warn", "sertifikat", "shop.example.com · 9 gün")],
+ "f": [
+  ("İzolə edilmiş saytlar", "Hər sayt öz otağında.", "Hər yeni saytın öz Linux istifadəçisi, öz PHP-FPM pool-u və ya Octane prosesi, öz baza istifadəçisi və yalnız öz açarlarına çıxışı olan Redis ACL-i var. Veb server public/ qovluğunu oxuyur — .env-i heç vaxt.", ["öz istifadəçi", "öz pool", "öz baza", "Redis ACL", "subdomenlər"], "sites-light", "Axtarışlı sayt kartları"),
+  ("Xidmətlər", "Bazalar bir kliklə. Siz istəməyincə heç nə.", "Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, RustFS üzərində S3 və Reverb. Yalnız localhost, parollar yaradılır və şifrəli anbarda saxlanılır. phpMyAdmin və pgAdmin SSH tuneli ilə açılır, internetə yox.", ["yalnız localhost", "məlumat saxlanılır", "panellər tunel ilə"], "services-dark", "Bir kliklə xidmətlər"),
+  ("Deploy və DNS", "GitHub-a push. Domeni yönləndir. Hazır.", "Saytı repozitoriya və branch-a bağlayın: Sesame yalnız oxuma deploy açarı əlavə edir, kodu çəkir, asılılıqları qurur, miqrasiyaları icra edir və worker-ləri yenidən başladır. Cloudflare zonaları və qeydləri saytın yanındadır, «bu serverə yönləndir» düyməsi ilə.", ["deploy açarları", "miqrasiyalar", "DNS qeydləri", "keşin təmizlənməsi"], "cloudflare-dark", "Cloudflare DNS qeydləri"),
+  ("Fayllar və terminal", "Öz əlinizlə lazım olanda.", "Bir saytın qovluğuna bağlanmış SFTP fayl meneceri və kiçik redaktor. Eyni pəncərədə əsl xterm-256color terminal.", ["SFTP qəfəsi", "redaktor", "PTY terminal"], "site-dark", "Repozitoriya və DNS ilə sayt"),
+ ],
+ "agents_eyebrow": "Süni intellekt agentləri", "agents_h": "Qoy Claude serverlərinizi idarə etsin. Sizin şərtlərinizlə.",
+ "agents_p": "Sesame MCP və REST dilində danışır. Agentlər hər şeyi dərhal oxuyur, hər dəyişiklik isə tətbiqdə görünür və siz «İcazə ver» basmayınca icra olunmur. Hər addım agentin adı ilə jurnala yazılır.",
+ "surfaces": ["MCP", "REST", "CLI"],
+ "approve_who": "Claude Code istəyir:", "approve_what": "prod-a Redis quraşdırmaq", "approve_d": ["127.0.0.1:6379-da dinləyir", "parol yaradılıb və anbarda saxlanılıb"], "approve_deny": "Rədd et", "approve_allow": "İcazə ver",
+ "nums": [("28", "agent aləti"), ("7", "bir kliklə xidmət"), ("3", "dil"), ("0", "serverdə agent")],
+ "trust_eyebrow": "Lokal quruluş", "trust_h": "Sizin serverlər, sizin Mac, sizin açarlar.",
+ "trust": [
+  ("Əvvəlcə yalnız oxuma", "Kəşf heç nə yazmır və .env-dən parol və açar oxumur."),
+  ("Şifrəli anbar", "Master paroldan Argon2id ilə alınan açarla XChaCha20-Poly1305."),
+  ("Təsdiqlə, sonra icra et", "Plan addımları göstərir. Silmədən əvvəl ehtiyat nüsxə və adın yazılması."),
+  ("Komanda sətrindən kənar", "Sirlər stdin ilə ötürülür — heç vaxt argv-də, heç vaxt ps-də."),
+  ("İmzalı yeniləmələr", "Buraxılışlar tətbiqi əvəz etməzdən əvvəl ed25519 imzası ilə yoxlanılır."),
+ ],
+ "price_eyebrow": "Qiymət", "price_h": "Sizin maşınınızda işləyəndə pulsuzdur.",
+ "plans": [
+  ("Self-hosted", "$0", "həmişəlik", ["Limitsiz server və sayt", "Agentlər üçün MCP və REST", "Cloudflare və GitHub", "Apache-2.0, fork edə bilərsiniz"], "Sesame-i yüklə", True),
+  ("Sesame Cloud", "Sonra", "komandalar üçün", ["Komanda ilə ortaq serverlər", "Veb və mobil panel", "Rollar, təsdiqlər və jurnal bir yerdə", "Bildirişlər və planlı ehtiyat nüsxələr"], "GitHub-da izlə", False),
+ ],
+ "price_micro": "Masaüstü tətbiq pulsuz və açıq mənbə olaraq qalır. Cloud hostinq üçün ödənişli olacaq, artıq sizdə olan imkanlar üçün yox.",
+ "faq_h": "Suallar",
+ "faq": [
+  ("Forge və ya Ploi-dən fərqi nədir?", "Onlar serverlərinizə çıxışı saxlayan veb panellərdir. Sesame Mac-inizdə işləyən tətbiqdir və adi SSH ilə danışır: açarlar sizdə qalır, əl ilə qurulmuş serveri də idarəyə götürmək olar."),
+  ("Bəs Coolify-dan?", "Coolify serverdə işləyir və konteynerlər qurur. Sesame serverə heç nə quraşdırmır və klassik Laravel stekini idarə edir: Caddy və ya Nginx, PHP-FPM və ya Octane, supervisor, sistem bazaları."),
+  ("Serverdə nəyi dəyişir?", "Kəşf zamanı heç nəyi. Qalan hər şey əvvəlcədən gördüyünüz plandır; geri qaytarılmaz addımlar adı yazmağı tələb edir, bazanı silməzdən əvvəl ehtiyat nüsxə çıxarılır."),
+  ("Parollar harada saxlanılır?", "Mac-inizdəki şifrəli anbarda, master parol və ya açar faylı ilə açılır. Heç vaxt açıq şəkildə bazada və ya loglarda deyil."),
+  ("Hansı serverlər dəstəklənir?", "Ubuntu 22.04/24.04 və Debian 12, amd64 və arm64. Kəşf əksər Linux serverlərində işləyir."),
+ ],
+ "final_h": "Serverlərinizi açın.", "final_p": "Alfa versiyanı əvvəlcə test serverində sınayın — və nə tapdığını bizə deyin.",
+ "foot_about": "Sesame Laravel icması üçün süni intellektə uyğun nativ server meneceridir, Rust və GPUI ilə yazılıb. SSH ilə serverdə işləyən hər şeyi tapır və izolə edilmiş saytları, xidmətləri, bazaları, deployları və Cloudflare DNS-i idarə edir.",
+ "foot_cols": [("Məhsul", [("Buraxılışlar", REL), ("Dəyişikliklər", GH + "/blob/main/CHANGELOG.md"), ("Yol xəritəsi", GH + "#roadmap")]), ("Layihə", [("GitHub", GH), ("İştirak", GH + "/blob/main/CONTRIBUTING.md"), ("Təhlükəsizlik", GH + "/blob/main/SECURITY.md")])],
+ "foot_copy": "Açıq mənbə, Apache-2.0",
 },
 }
 
-e = html.escape
+CHECK = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>'
+DOWN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg>'
+
+SURFACES = {
+ "MCP": '''<span class="c"># Claude Code</span>
+claude mcp add sesame -- sesame mcp
+
+<span class="c"># Claude Desktop, Cursor</span>
+{ "mcpServers": { "sesame": {
+    "command": "sesame", "args": ["mcp"] } } }''',
+ "REST": '''sesame api-token        <span class="c"># shown once</span>
+sesame serve            <span class="c"># 127.0.0.1:7878</span>
+
+curl -X POST localhost:7878/v1/tools/list_sites \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -d '{"server":"prod"}\'''',
+ "CLI": '''sesame add prod root@203.0.113.10
+sesame discover prod
+sesame do prod new-site shop.example.com \\
+  --database postgres --redis --queue
+sesame do prod install redis''',
+}
+
 
 def page(code):
     t = T[code]
     up = "../" if t["dir"] else ""
     shot = lambda name: f"{up}assets/screens/{name}-{code}.webp"
     alts = "\n".join(f'  <link rel="alternate" hreflang="{c}" href="{SITE}/{T[c]["dir"]}">' for c in T)
-    parts = []
-    for c in ["en", "az", "ru"]:
-        href = (up + T[c]["dir"]) or "./"
-        cur = ' aria-current="page"' if c == code else ""
-        parts.append(f'<a href="{href}" lang="{c}" hreflang="{c}"{cur}>{c.upper()}</a>')
-    langs = "".join(parts)
-    cards_html = []
-    layout = ["wide", "narrow", "narrow", "wide", "full"]
-    for i, (tag, h, p, chips, img) in enumerate(t["cards"]):
-        chips_html = "".join(f"<li>{e(c)}</li>" for c in chips)
-        cards_html.append(f'''
-      <article class="card {layout[i]} bezel reveal{' d1' if i % 2 else ''}">
-        <div class="core">
-          <div class="text">
-            <span class="tag">{e(tag)}</span>
-            <h3>{e(h)}</h3>
-            <p>{e(p)}</p>
-            <ul>{chips_html}</ul>
-          </div>
-          <figure class="shot"><img src="{shot(img)}" width="1600" height="1018" loading="lazy" decoding="async" alt="{e(t['shot_alts'][img])}"></figure>
+    cur = ' aria-current="page"'
+    langs = "".join(
+        f'<a href="{(up + T[c]["dir"]) or "./"}" lang="{c}" hreflang="{c}"{cur if c == code else ""}>{c.upper()}</a>'
+        for c in ["en", "az", "ru"])
+    ids = ["how", "features", "agents", "security", "pricing", "faq"]
+    nav = "".join(f'<a href="#{i}">{e(n)}</a>' for i, n in zip(ids, t["nav"]))
+    how = "".join(f'''
+        <div class="step reveal">
+          <span class="mono k">{i + 1:02d} · {e(w)}</span>
+          <h3>{e(h)}</h3>
+          <p>{e(p)}</p>
+        </div>''' for i, (w, h, p) in enumerate(t["how"]))
+    probe = "".join(f'<li class="reveal"><span class="dot {s}"></span><span class="mono">{e(a)}</span><span class="dim">{e(b)}</span></li>' for s, a, b in t["probe"])
+    feats = ""
+    for i, (eb, h, p, chips, img, alt) in enumerate(t["f"]):
+        chips_h = "".join(f"<li>{e(c)}</li>" for c in chips)
+        feats += f'''
+    <section class="row{' flip' if i % 2 else ''}">
+      <div class="frame split">
+        <div class="copy reveal">
+          <span class="eyebrow">{e(eb)}</span>
+          <h2>{e(h)}</h2>
+          <p>{e(p)}</p>
+          <ul class="chips">{chips_h}</ul>
         </div>
-      </article>''')
-    principles = "".join(f'''
-      <div class="bezel reveal d{i % 3}"><div class="core">
-        <span class="glyph">{ICON[ic]}</span>
-        <h3>{e(h)}</h3>
-        <p>{e(p)}</p>
-      </div></div>''' for i, (ic, h, p) in enumerate(t["principles"]))
-    pillars = "".join(f'''
-      <div class="bezel reveal d{i}"><div class="core">
-        <span class="glyph">{ICON[["bolt","globe","spark"][i]]}</span>
-        <h3>{e(h)}</h3>
-        <p>{e(p)}</p>
-      </div></div>''' for i, (h, p) in enumerate(t["pillars"]))
-    done = "".join(f"<li>{e(x)}</li>" for x in t["done"])
-    nxt = "".join(f"<li>{e(x)}</li>" for x in t["next"])
-    c = t["cli_c"]
-    foot_urls = [GH, REL, GH + "/blob/main/CHANGELOG.md", GH + "/blob/main/SECURITY.md"]
-    foot_links = "".join(f'<a href="{u}">{e(n)}</a>' for n, u in zip(t["foot_links"], foot_urls))
-    ids = ["features", "security", "cli", "roadmap"]
-    nav_links = "".join(f'<a href="#{i}">{e(n)}</a>' for i, n in zip(ids, t["nav"]))
+        <figure class="shot reveal"><img src="{shot(img)}" width="1600" height="1018" loading="lazy" decoding="async" alt="{e(alt)}"></figure>
+      </div>
+    </section>'''
+    tabs = "".join(f'<button type="button" role="tab" class="tab" aria-selected="{"true" if i == 0 else "false"}" data-tab="{s}">{s}</button>' for i, s in enumerate(t["surfaces"]))
+    panes = "".join(f'<pre class="pane" data-pane="{s}"{"" if i == 0 else " hidden"}><code>{SURFACES[s]}</code></pre>' for i, s in enumerate(t["surfaces"]))
+    approve_d = "".join(f"<li>{e(d)}</li>" for d in t["approve_d"])
+    nums = "".join(f'<div class="num reveal"><b>{n}</b><span>{e(l)}</span></div>' for n, l in t["nums"])
+    trust = "".join(f'<div class="cell reveal"><span class="mono k">{i + 1:02d}</span><h3>{e(h)}</h3><p>{e(p)}</p></div>' for i, (h, p) in enumerate(t["trust"]))
+    plans = ""
+    for name, price, per, items, cta, primary in t["plans"]:
+        li = "".join(f"<li>{CHECK}{e(x)}</li>" for x in items)
+        href = REL if primary else GH
+        plans += f'''
+        <div class="plan{' main' if primary else ''} reveal">
+          <h3>{e(name)}</h3>
+          <p class="price"><b>{e(price)}</b><span>{e(per)}</span></p>
+          <ul>{li}</ul>
+          <a class="btn{'' if primary else ' ghost'}" href="{href}">{e(cta)}</a>
+        </div>'''
+    faq = "".join(f'<details class="reveal"><summary>{e(q)}</summary><p>{e(a)}</p></details>' for q, a in t["faq"])
+    cols = "".join(
+        f'<div><h4>{e(h)}</h4>' + "".join(f'<a href="{u}">{e(n)}</a>' for n, u in links) + '</div>'
+        for h, links in t["foot_cols"])
     return f'''<!doctype html>
 <html lang="{t['lang']}">
 <head>
@@ -202,144 +271,146 @@ def page(code):
   <link rel="canonical" href="{SITE}/{t['dir']}">
 {alts}
   <link rel="alternate" hreflang="x-default" href="{SITE}/">
-  <meta name="theme-color" content="#07060b" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#fbf6ee" media="(prefers-color-scheme: light)">
   <link rel="icon" href="{up}assets/logo.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="{up}assets/logo.svg">
+  <meta name="theme-color" content="#B33A16">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Sesame">
-  <meta property="og:locale" content="{t['locale']}">
   <meta property="og:title" content="{e(t['title'])}">
   <meta property="og:description" content="{e(t['desc'])}">
   <meta property="og:url" content="{SITE}/{t['dir']}">
   <meta property="og:image" content="{SITE}/assets/og.jpg">
+  <meta property="og:locale" content="{t['locale']}">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{up}assets/site.css">
-  <link rel="preload" as="image" href="{shot('overview-dark')}" type="image/webp">
+  <script defer src="{up}assets/site.js"></script>
 </head>
 <body>
-  <div class="backdrop" aria-hidden="true"><span></span></div>
-  <div class="grain" aria-hidden="true"></div>
-
-  <header class="nav" aria-label="Sesame">
-    <a class="brand" href="{up}{t['dir']}"><img src="{up}assets/logo.svg" alt="" width="26" height="26"><span>Sesame</span></a>
-    <nav class="nav-links" aria-label="Sections">{nav_links}</nav>
-    <div class="lang" role="navigation" aria-label="Language">{langs}</div>
-    <a class="btn btn-primary btn-sm" href="{REL}">{e(t['download'])}<span class="ico">{ICON['down']}</span></a>
+  <a class="skip" href="#main">Skip</a>
+  <header class="nav">
+    <div class="frame bar">
+      <a class="brand" href="{(up + t['dir']) or './'}"><img src="{up}assets/logo.svg" width="26" height="26" alt="">Sesame</a>
+      <nav class="links" aria-label="Sections">{nav}</nav>
+      <div class="right">
+        <div class="langs" aria-label="Language">{langs}</div>
+        <a class="btn sm" href="{REL}">{DOWN}{e(t['download'])}</a>
+        <button class="burger" type="button" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="wrap hero-grid">
-        <div class="reveal">
-          <span class="eyebrow"><span class="dot"></span>{e(t['badge'])}</span>
-          <h1 id="hero-title">{t['h1']}</h1>
+  <main id="main">
+    <section class="hero">
+      <div class="frame">
+        <div class="hero-copy">
+          <span class="pill">{e(t['eyebrow'])}</span>
+          <h1>{t['h1']}</h1>
           <p class="lead">{e(t['lead'])}</p>
-          <div class="cta">
-            <a class="btn btn-primary" href="{REL}">{e(t['download'])}<span class="ico">{ICON['down']}</span></a>
-            <a class="btn btn-ghost" href="{GH}">{e(t['github'])}<span class="ico">{ICON['arrow']}</span></a>
+          <div class="ctas">
+            <a class="btn light" href="{REL}">{DOWN}{e(t['download'])}</a>
+            <a class="btn outline" href="{GH}">{e(t['github'])} →</a>
           </div>
-          <div class="meta">{"".join(f"<span>{e(m)}</span>" for m in t['meta'])}</div>
+          <p class="micro">{e(t['micro'])}</p>
         </div>
-        <div class="hero-shot reveal d2">
-          <div class="bezel"><div class="core"><img src="{shot('overview-dark')}" width="1600" height="1018" fetchpriority="high" alt="{e(t['shot_alts']['overview-dark'])}"></div></div>
-          <div class="float bezel"><div class="core"><img src="{shot('job-done-light')}" width="1600" height="1018" loading="lazy" alt=""></div></div>
+        <figure class="product"><img src="{shot('overview-dark')}" width="1600" height="1018" fetchpriority="high" alt="{e(t['hero_alt'])}"></figure>
+      </div>
+    </section>
+
+    <section id="how" class="row">
+      <div class="frame">
+        <div class="head reveal">
+          <span class="eyebrow">{e(t['how_eyebrow'])}</span>
+          <h2>{e(t['how_h'])}</h2>
+        </div>
+        <div class="steps">{how}
+        </div>
+        <div class="probe reveal" aria-hidden="true">
+          <div class="probe-top"><span class="mono">sesame discover prod</span><span class="dot ok"></span></div>
+          <ul>{probe}</ul>
         </div>
       </div>
     </section>
 
-    <section id="features" aria-labelledby="features-title">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="eyebrow"><span class="dot"></span>{e(t['feat_eyebrow'])}</span>
-          <h2 id="features-title">{e(t['feat_h'])}</h2>
-          <p>{e(t['feat_p'])}</p>
+    <div id="features"></div>{feats}
+
+    <section id="agents" class="row">
+      <div class="frame split">
+        <div class="copy reveal">
+          <span class="eyebrow">{e(t['agents_eyebrow'])}</span>
+          <h2>{e(t['agents_h'])}</h2>
+          <p>{e(t['agents_p'])}</p>
+          <div class="approve" aria-hidden="true">
+            <div class="ap-top"><span class="dot ok"></span><b>{e(t['approve_who'])}</b><span class="tagc">change</span></div>
+            <p class="ap-what">{e(t['approve_what'])}</p>
+            <ul>{approve_d}</ul>
+            <div class="ap-btns"><span class="btn ghost sm">{e(t['approve_deny'])}</span><span class="btn sm">{e(t['approve_allow'])}</span></div>
+          </div>
         </div>
-        <div class="bento">{"".join(cards_html)}
+        <div class="code reveal">
+          <div class="tabs" role="tablist">{tabs}</div>
+          {panes}
         </div>
+      </div>
+      <div class="frame nums">{nums}</div>
+    </section>
+
+    <section id="security" class="row">
+      <div class="frame">
+        <div class="head reveal">
+          <span class="eyebrow">{e(t['trust_eyebrow'])}</span>
+          <h2>{e(t['trust_h'])}</h2>
+        </div>
+        <div class="cells">{trust}</div>
       </div>
     </section>
 
-    <section id="security" aria-labelledby="security-title">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="eyebrow"><span class="dot"></span>{e(t['sec_eyebrow'])}</span>
-          <h2 id="security-title">{e(t['sec_h'])}</h2>
-          <p>{e(t['sec_p'])}</p>
+    <section id="pricing" class="row">
+      <div class="frame">
+        <div class="head reveal">
+          <span class="eyebrow">{e(t['price_eyebrow'])}</span>
+          <h2>{e(t['price_h'])}</h2>
         </div>
-        <div class="principles">{principles}
+        <div class="plans">{plans}
         </div>
-        <div class="bezel reveal" style="margin-top:18px"><div class="core"><img src="{shot('confirm-drop-dark')}" width="1600" height="1018" loading="lazy" alt="{e(t['sec_shot_alt'])}"></div></div>
+        <p class="micro center">{e(t['price_micro'])}</p>
       </div>
     </section>
 
-    <section id="cli" aria-labelledby="cli-title">
-      <div class="wrap cli-grid">
-        <div class="section-head reveal" style="margin:0">
-          <span class="eyebrow"><span class="dot"></span>{e(t['cli_eyebrow'])}</span>
-          <h2 id="cli-title">{e(t['cli_h'])}</h2>
-          <p>{e(t['cli_p'])}</p>
-        </div>
-        <div class="bezel reveal d1"><div class="core">
-          <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i></div>
-<pre class="term"><code><span class="c">{e(c[0])}</span>
-<span class="p">$</span> <b>sesame add</b> prod root@203.0.113.10
-<span class="p">$</span> <b>sesame discover</b> prod
-
-<span class="c">{e(c[1])}</span>
-<span class="p">$</span> <b>sesame do</b> prod new-site shop.example.com --db postgres --yes
-
-<span class="c">{e(c[2])}</span>
-<span class="p">$</span> <b>sesame do</b> prod install redis --yes</code></pre>
-        </div></div>
-      </div>
-      <div class="wrap principles pillars-row">{pillars}
+    <section id="faq" class="row">
+      <div class="frame narrow">
+        <h2 class="reveal">{e(t['faq_h'])}</h2>
+        <div class="faq">{faq}</div>
       </div>
     </section>
 
-    <section id="roadmap" aria-labelledby="roadmap-title">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="eyebrow"><span class="dot"></span>{e(t['road_eyebrow'])}</span>
-          <h2 id="roadmap-title">{e(t['road_h'])}</h2>
-        </div>
-        <div class="road">
-          <div class="bezel reveal"><div class="core done"><h3>{ICON['check']} {e(t['road_done'])}</h3><ul>{done}</ul></div></div>
-          <div class="bezel reveal d1"><div class="core"><h3>{ICON['spark']} {e(t['road_next'])}</h3><ul>{nxt}</ul></div></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="final" aria-labelledby="final-title">
-      <div class="wrap reveal">
-        <img src="{up}assets/logo.svg" alt="" width="72" height="72" style="margin:0 auto 26px;border-radius:18px">
-        <h2 id="final-title">{e(t['final_h'])}</h2>
+    <section class="final">
+      <div class="frame">
+        <h2>{e(t['final_h'])}</h2>
         <p>{e(t['final_p'])}</p>
-        <div class="cta">
-          <a class="btn btn-primary" href="{REL}">{e(t['download'])}<span class="ico">{ICON['down']}</span></a>
-          <a class="btn btn-ghost" href="{GH}">{e(t['github'])}<span class="ico">{ICON['arrow']}</span></a>
-        </div>
+        <a class="btn light" href="{REL}">{DOWN}{e(t['download'])}</a>
       </div>
     </section>
   </main>
 
-  <footer>
-    <div class="wrap">
-      <span>© 2026 Sesame · {e(t['foot'])}</span>
-      <nav aria-label="Footer">{foot_links}</nav>
+  <footer class="foot">
+    <div class="frame cols">
+      <div class="about">
+        <a class="brand" href="{(up + t['dir']) or './'}"><img src="{up}assets/logo.svg" width="22" height="22" alt="">Sesame</a>
+        <p>{e(t['foot_about'])}</p>
+      </div>
+      {cols}
     </div>
+    <div class="frame copy-line"><span>© 2026 Sesame · {e(t['foot_copy'])}</span><span class="langs">{langs}</span></div>
   </footer>
-  <script src="{up}assets/site.js" defer></script>
 </body>
 </html>
 '''
 
-for code in T:
-    d = os.path.join(OUT, T[code]["dir"])
+
+for code, t in T.items():
+    d = os.path.join(OUT, t["dir"])
     os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, "index.html"), "w", encoding="utf-8") as f:
         f.write(page(code))
-print("ok")
+    print("wrote", os.path.join(t["dir"], "index.html"))
