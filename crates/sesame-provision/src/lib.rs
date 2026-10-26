@@ -12,6 +12,8 @@ use sesame_core::snapshot::{DatabaseKind, Framework, ServerSnapshot, Site};
 use sesame_ops::actions::q;
 use sesame_ops::{Plan, Step, generate_password};
 
+pub mod stack;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Service {
     Redis,
@@ -110,9 +112,9 @@ pub fn detect(service: Service, s: &ServerSnapshot) -> Status {
     Status { installed: found.is_some(), version: found.filter(|v| !v.is_empty()), conflict }
 }
 
-const APT: &str = "apt-get -o DPkg::Lock::Timeout=300 -o Dpkg::Use-Pty=0 -y -q";
+pub(crate) const APT: &str = "apt-get -o DPkg::Lock::Timeout=300 -o Dpkg::Use-Pty=0 -y -q";
 
-fn preflight() -> String {
+pub(crate) fn preflight() -> String {
     r#"case "$ID" in ubuntu|debian) ;; *) echo "Sesame recipes support Ubuntu and Debian; this is $ID"; exit 1;; esac
 command -v systemctl >/dev/null || { echo "systemd is required"; exit 1; }"#
         .to_string()
@@ -307,57 +309,34 @@ pub fn install(service: Service, s: &ServerSnapshot) -> Result<Plan> {
             steps.push(Step::new(
                 format!("download Stalwart {STALWART_VERSION} and check its SHA-256"),
                 format!(
-                    "{}
-A=$(uname -m)
-case \"$A\" in {sums} *) echo \"unsupported CPU $A\"; exit 1;; esac
-                     tmp=$(mktemp -d)
-                     curl -fsSL -o \"$tmp/s.tgz\" \"https://github.com/stalwartlabs/stalwart/releases/download/{STALWART_VERSION}/stalwart-$A-unknown-linux-gnu.tar.gz\"
-                     echo \"$SUM  $tmp/s.tgz\" | sha256sum -c --quiet || {{ echo 'checksum mismatch — refusing to install'; rm -rf \"$tmp\"; exit 1; }}
-                     tar -xzf \"$tmp/s.tgz\" -C \"$tmp\"
-                     install -m 755 \"$tmp/stalwart\" /usr/local/bin/stalwart
-                     rm -rf \"$tmp\"
-echo 'Stalwart {STALWART_VERSION} verified'",
+                    "{}\nA=$(uname -m)\ncase \"$A\" in {sums} *) echo \"unsupported CPU $A\"; exit 1;; esac\n\
+                     tmp=$(mktemp -d)\n\
+                     curl -fsSL -o \"$tmp/s.tgz\" \"https://github.com/stalwartlabs/stalwart/releases/download/{STALWART_VERSION}/stalwart-$A-unknown-linux-gnu.tar.gz\"\n\
+                     echo \"$SUM  $tmp/s.tgz\" | sha256sum -c --quiet || {{ echo 'checksum mismatch — refusing to install'; rm -rf \"$tmp\"; exit 1; }}\n\
+                     tar -xzf \"$tmp/s.tgz\" -C \"$tmp\"\n\
+                     install -m 755 \"$tmp/stalwart\" /usr/local/bin/stalwart\n\
+                     rm -rf \"$tmp\"\necho 'Stalwart {STALWART_VERSION} verified'",
                     apt("curl ca-certificates")
                 ),
             ));
             steps.push(Step::new(
                 "create the service",
                 format!(
-                    "id stalwart >/dev/null 2>&1 || useradd stalwart -s /usr/sbin/nologin -M -r -U
-                     install -d -o stalwart -g stalwart -m 750 /etc/stalwart /var/lib/stalwart /var/log/stalwart
-                     if [ ! -e /etc/stalwart/stalwart.env ]; then
-                     cat > /etc/stalwart/stalwart.env <<'ENV'
-                     STALWART_RECOVERY_ADMIN=admin:{pw}
-                     ENV
-fi
-                     chown root:stalwart /etc/stalwart/stalwart.env && chmod 640 /etc/stalwart/stalwart.env
-                     cat > /etc/systemd/system/stalwart.service <<'UNIT'
-                     [Unit]
-Description=Stalwart
-Conflicts=postfix.service sendmail.service exim4.service
-After=network-online.target
-
-                     [Service]
-Type=simple
-LimitNOFILE=65536
-KillMode=process
-KillSignal=SIGINT
-Restart=on-failure
-RestartSec=5
-                     EnvironmentFile=-/etc/stalwart/stalwart.env
-ExecStart=/usr/local/bin/stalwart --config=/etc/stalwart/config.json
-                     SyslogIdentifier=stalwart
-User=stalwart
-Group=stalwart
-AmbientCapabilities=CAP_NET_BIND_SERVICE
-
-                     [Install]
-WantedBy=multi-user.target
-UNIT
-                     systemctl daemon-reload
-systemctl enable --now stalwart
-sleep 3
-systemctl is-active stalwart"
+                    "id stalwart >/dev/null 2>&1 || useradd stalwart -s /usr/sbin/nologin -M -r -U\n\
+                     install -d -o stalwart -g stalwart -m 750 /etc/stalwart /var/lib/stalwart /var/log/stalwart\n\
+                     if [ ! -e /etc/stalwart/stalwart.env ]; then\n\
+                     cat > /etc/stalwart/stalwart.env <<'ENV'\n\
+                     STALWART_RECOVERY_ADMIN=admin:{pw}\n\
+                     ENV\n\
+                     fi\n\
+                     chown root:stalwart /etc/stalwart/stalwart.env && chmod 640 /etc/stalwart/stalwart.env\n\
+                     cat > /etc/systemd/system/stalwart.service <<'UNIT'\n\
+                     [Unit]\nDescription=Stalwart\nConflicts=postfix.service sendmail.service exim4.service\nAfter=network-online.target\n\n\
+                     [Service]\nType=simple\nLimitNOFILE=65536\nKillMode=process\nKillSignal=SIGINT\nRestart=on-failure\nRestartSec=5\n\
+                     EnvironmentFile=-/etc/stalwart/stalwart.env\nExecStart=/usr/local/bin/stalwart --config=/etc/stalwart/config.json\n\
+                     SyslogIdentifier=stalwart\nUser=stalwart\nGroup=stalwart\nAmbientCapabilities=CAP_NET_BIND_SERVICE\n\n\
+                     [Install]\nWantedBy=multi-user.target\nUNIT\n\
+                     systemctl daemon-reload\nsystemctl enable --now stalwart\nsleep 3\nsystemctl is-active stalwart"
                 ),
             ));
             details.push(format!("Stalwart {STALWART_VERSION}: SMTP, IMAP and JMAP in one Rust binary, checksum-verified"));

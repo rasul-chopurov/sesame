@@ -241,8 +241,28 @@ fn overview(server: sesame_core::ServerId, s: &ServerSnapshot, cx: &mut Context<
         stack = stack.child(stack_row(Some(db_slug(d.kind)), db_name(d.kind).into(), d.version.clone().unwrap_or_default()));
     }
 
+    let missing = sesame_provision::stack::missing(s);
+    let prepare = (!missing.is_empty()).then(|| {
+        let snap = s.clone();
+        card(&tr("prepare.title"), cx)
+            .child(div().text_color(g.dim).child(trp("prepare.lead", &[("what", &missing.join(", "))])))
+            .child(
+                h_flex().child(
+                    Button::new("prepare")
+                        .primary()
+                        .icon(IconName::Rocket)
+                        .label(tr("prepare.button"))
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            let plan = sesame_provision::stack::prepare_server(&Default::default(), &snap);
+                            this.request(server, plan, None, window, cx)
+                        })),
+                ),
+            )
+    });
+
     v_flex()
         .gap_4()
+        .children(prepare)
         .child(attention)
         .child(
             div()

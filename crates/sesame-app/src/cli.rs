@@ -78,6 +78,21 @@ pub enum DoAction {
     },
     /// Run Reverb under supervisor for the site with this domain.
     Reverb { domain: String, #[arg(long, default_value_t = 8080)] port: u16 },
+    /// Prepare the server for Laravel (installs only what is missing).
+    Prepare {
+        #[arg(long, default_value = "caddy")]
+        web: String,
+        #[arg(long, default_value = "8.4")]
+        php: String,
+        #[arg(long)]
+        no_firewall: bool,
+    },
+    /// Turn a site Sesame created on or off.
+    Site { domain: String, #[arg(value_parser = ["on", "off"])] state: String },
+    /// Give a person SSH/SFTP access to a site's owner account.
+    Grant { domain: String, person: String, #[arg(long)] key: String, #[arg(long)] shell: bool },
+    /// Remove a person's access.
+    Revoke { domain: String, person: String },
 }
 
 #[derive(Subcommand)]
@@ -546,6 +561,25 @@ fn build_plan(
             let cert = std::fs::read_to_string(cert).with_context(|| format!("read {cert}"))?;
             let key = std::fs::read_to_string(key).with_context(|| format!("read {key}"))?;
             actions::cert_install(name, &cert, &key)
+        }
+        DoAction::Prepare { web, php, no_firewall } => sesame_provision::stack::prepare_server(
+            &sesame_provision::stack::StackOptions {
+                web: if web == "nginx" { sesame_provision::stack::Web::Nginx } else { sesame_provision::stack::Web::Caddy },
+                php: php.clone(),
+                firewall: !no_firewall,
+            },
+            &snap.cloned().unwrap_or_default(),
+        ),
+        DoAction::Site { domain, state } => sesame_ops::site::set_site_enabled(domain, state == "on"),
+        DoAction::Grant { domain, person, key, shell } => {
+            let app = snap.and_then(|s| s.sites.iter().find(|x| x.domains.iter().any(|d| d == domain)).and_then(|x| x.app_path.clone()))
+                .with_context(|| format!("no site {domain} in the last discovery"))?;
+            sesame_ops::site::grant_access(domain, &app, person, key, *shell)
+        }
+        DoAction::Revoke { domain, person } => {
+            let app = snap.and_then(|s| s.sites.iter().find(|x| x.domains.iter().any(|d| d == domain)).and_then(|x| x.app_path.clone()))
+                .with_context(|| format!("no site {domain} in the last discovery"))?;
+            sesame_ops::site::revoke_access(domain, &app, person)
         }
         DoAction::Reverb { domain, port } => {
             let snap = snap.context("discover the server first")?;

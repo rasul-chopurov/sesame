@@ -233,6 +233,14 @@ impl Engine {
         let snap = self.store.snapshot(server.id)?;
         let need_snap = || snap.clone().context("discover the server first (discover_server)");
         let plan = match name {
+            "prepare_server" => {
+                let o = sesame_provision::stack::StackOptions {
+                    web: if opt_str(args, "web") == Some("nginx") { sesame_provision::stack::Web::Nginx } else { sesame_provision::stack::Web::Caddy },
+                    php: opt_str(args, "php").unwrap_or("8.4").to_string(),
+                    firewall: bool_arg(args, "firewall", true),
+                };
+                sesame_provision::stack::prepare_server(&o, &snap.clone().unwrap_or_default())?
+            }
             "service_action" => {
                 let kind = match str_arg(args, "kind")? {
                     "systemd" => actions::ServiceKind::Systemd,
