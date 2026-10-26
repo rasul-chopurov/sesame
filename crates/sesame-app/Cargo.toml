@@ -1,0 +1,30 @@
+[package]
+name = "sesame-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Sesame — open your servers. A native, AI-friendly server manager for the Laravel community."
+
+[[bin]]
+name = "sesame"
+path = "src/main.rs"
+
+[dependencies]
+sesame-core = { path = "../sesame-core" }
+sesame-ssh = { path = "../sesame-ssh" }
+sesame-discovery = { path = "../sesame-discovery" }
+gpui-kit.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+clap = { version = "4", features = ["derive"] }
+time = "0.3"
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+sesame-discovery = { path = "../sesame-discovery" }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[[test]]
+name = "screenshots"
+harness = false

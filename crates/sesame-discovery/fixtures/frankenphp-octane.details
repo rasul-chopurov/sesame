@@ -1,0 +1,28 @@
+
+@@SESAME app:/var/www/shop@@
+framework=laravel
+framework=node
+laravel_version=            "version": "v12.31.1",
+env:APP_ENV=production
+env:APP_URL=https://example.com
+env:DB_CONNECTION=mysql
+env:DB_HOST=127.0.0.1
+env:DB_PORT=3306
+env:DB_DATABASE=shop
+env:DB_USERNAME=shop
+env:CACHE_STORE=redis
+env:QUEUE_CONNECTION=redis
+env:SESSION_DRIVER=redis
+env:REDIS_HOST=127.0.0.1
+env:MAIL_MAILER=smtp
+env:MAIL_HOST=smtp.resend.com
+env:BROADCAST_CONNECTION=reverb
+
+@@SESAME cert:/etc/ssl/shop/origin.pem@@
+subject=O = "CloudFlare, Inc.", OU = CloudFlare Origin CA, CN = CloudFlare Origin Certificate
+issuer=C = US, O = "CloudFlare, Inc.", OU = CloudFlare Origin SSL Certificate Authority, L = San Francisco, ST = California
+notAfter=Oct 10 09:21:00 2041 GMT
+X509v3 Subject Alternative Name: 
+    DNS:*.example.com, DNS:example.com
+
+@@SESAME end@@

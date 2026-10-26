@@ -1,0 +1,157 @@
+
+@@SESAME privileged@@
+yes
+
+@@SESAME hostname@@
+app-1
+
+@@SESAME os_release@@
+PRETTY_NAME="Ubuntu 24.04.5 LTS"
+NAME="Ubuntu"
+
+@@SESAME uname@@
+6.8.0-138-generic
+aarch64
+
+@@SESAME nproc@@
+2
+
+@@SESAME meminfo@@
+MemTotal:        3880000 kB
+MemAvailable:    1890000 kB
+
+@@SESAME df@@
+/dev/sda1      40802189312 13958643712 24692334592      37% /
+
+@@SESAME uptime@@
+183245.12 350000.00
+
+@@SESAME loadavg@@
+0.31 0.42 0.40 1/412 575100
+
+@@SESAME systemd@@
+cron.service loaded active running Regular background program processing daemon
+fail2ban.service loaded active running Fail2Ban Service
+frankenphp.service loaded active running FrankenPHP
+mysql.service loaded active running MySQL Community Server
+php8.5-fpm.service loaded active running The PHP 8.5 FastCGI Process Manager
+redis-server.service loaded active running Advanced key-value store
+supervisor.service loaded active running Supervisor process control system
+apache-htcacheclean.service not-found inactive dead apache-htcacheclean.service
+
+@@SESAME supervisor_status@@
+shop-octane                     RUNNING   pid 555630, uptime 7:47:43
+shop-queue:shop-queue_00   RUNNING   pid 575035, uptime 0:47:29
+shop-queue:shop-queue_01   RUNNING   pid 575036, uptime 0:47:29
+shop-reverb                     RUNNING   pid 445292, uptime 2 days, 1:38:09
+
+@@SESAME supervisor_conf@@
+; file: /etc/supervisor/conf.d/shop-octane.conf
+[program:shop-octane]
+command=php /var/www/shop/artisan octane:start --server=frankenphp --host=127.0.0.1 --port=8000 --admin-port=2020 --workers=4 --max-requests=500
+directory=/var/www/shop
+user=shop
+
+; file: /etc/supervisor/conf.d/shop-queue.conf
+[program:shop-queue]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/shop/artisan queue:work redis --sleep=1 --tries=3 --max-time=3600
+directory=/var/www/shop
+user=www-data
+numprocs=2
+
+; file: /etc/supervisor/conf.d/shop-reverb.conf
+[program:shop-reverb]
+command=php /var/www/shop/artisan reverb:start --host=127.0.0.1 --port=8080
+directory=/var/www/shop
+user=www-data
+
+@@SESAME ports@@
+LISTEN 0 4096 127.0.0.53%lo:53 0.0.0.0:* users:(("systemd-resolve",pid=200749,fd=15))
+LISTEN 0 151 127.0.0.1:3306 0.0.0.0:* users:(("mysqld",pid=445333,fd=36))
+LISTEN 0 4096 127.0.0.1:2019 0.0.0.0:* users:(("frankenphp",pid=40701,fd=3))
+LISTEN 0 512 127.0.0.1:8091 0.0.0.0:* users:(("php",pid=445292,fd=5))
+LISTEN 0 4096 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=445242,fd=3))
+LISTEN 0 511 127.0.0.1:6379 0.0.0.0:* users:(("redis-server",pid=200747,fd=6))
+LISTEN 0 511 [::1]:6379 [::]:* users:(("redis-server",pid=200747,fd=7))
+LISTEN 0 4096 *:8000 *:* users:(("frankenphp",pid=555638,fd=8))
+LISTEN 0 4096 *:80 *:* users:(("frankenphp",pid=40701,fd=9))
+LISTEN 0 4096 *:443 *:* users:(("frankenphp",pid=40701,fd=7))
+LISTEN 0 4096 [::]:22 [::]:* users:(("sshd",pid=445242,fd=4))
+
+@@SESAME web_bins@@
+frankenphp
+
+@@SESAME frankenphp_version@@
+FrankenPHP v1.13.1 PHP 8.5 Caddy v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4=
+
+@@SESAME caddy_version@@
+
+@@SESAME nginx_version@@
+
+@@SESAME apache_version@@
+
+@@SESAME caddy_config@@
+{"apps":{"http":{"servers":{"srv0":{"listen":[":443"],"routes":[{"match":[{"host":["new.example.com","example.com"]}],"handle":[{"handler":"subroute","routes":[{"handle":[{"handler":"vars","root":"/var/www/shop/public"}]},{"handle":[{"handler":"reverse_proxy","upstreams":[{"dial":"127.0.0.1:8091"}]}],"match":[{"path":["/app/*"]}]},{"handle":[{"handler":"file_server"}]},{"handle":[{"handler":"reverse_proxy","upstreams":[{"dial":"127.0.0.1:8000"}]}]}]}],"terminal":true}]},"srv1":{"listen":[":80"],"routes":[{"handle":[{"handler":"subroute","routes":[{"handle":[{"handler":"vars","root":"/usr/share/frankenphp/"}]},{"handle":[{"handler":"php"}]}]}]}]}}},"tls":{"certificates":{"load_files":[{"certificate":"/etc/ssl/shop/origin.pem","key":"/etc/ssl/shop/origin.key"}]}}}}
+
+@@SESAME caddy_config_path@@
+/etc/frankenphp/Caddyfile
+
+@@SESAME nginx_dump@@
+
+@@SESAME apache_conf@@
+
+@@SESAME php@@
+/usr/bin/php8.5 8.5.11
+/usr/bin/php 8.5.11
+
+@@SESAME php_fpm@@
+/etc/php/8.5/fpm/pool.d/www.conf
+
+@@SESAME mysql@@
+mysql  Ver 8.0.46-0ubuntu0.24.04.4 for Linux on aarch64 ((Ubuntu))
+
+@@SESAME mysql_dbs@@
+information_schema
+mysql
+shop
+performance_schema
+sys
+
+@@SESAME postgres@@
+
+@@SESAME postgres_dbs@@
+
+@@SESAME redis@@
+Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=d064f9f48c901a92
+
+@@SESAME redis_keyspace@@
+# Keyspace
+db0:keys=1520,expires=12,avg_ttl=0
+db1:keys=33,expires=33,avg_ttl=0
+
+@@SESAME mongo@@
+
+@@SESAME mail@@
+
+@@SESAME postfix@@
+
+@@SESAME cron_users@@
+shop	* * * * * cd /var/www/shop && php artisan schedule:run >> /dev/null 2>&1
+
+@@SESAME cron_d@@
+/etc/cron.d/e2scrub_all	30 3 * * 0 root test -e /run/systemd/system || SERVICE_MODE=1 /usr/lib/x86_64-linux-gnu/e2fsprogs/e2scrub_all_cron
+
+@@SESAME letsencrypt@@
+
+@@SESAME ufw@@
+Status: inactive
+
+@@SESAME fail2ban@@
+Status
+|- Number of jail:	1
+`- Jail list:	sshd
+
+@@SESAME docker@@
+
+@@SESAME end@@

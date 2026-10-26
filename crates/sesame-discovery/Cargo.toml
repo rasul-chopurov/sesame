@@ -1,0 +1,17 @@
+[package]
+name = "sesame-discovery"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+sesame-core = { path = "../sesame-core" }
+sesame-ssh = { path = "../sesame-ssh" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+time = { version = "0.3", features = ["formatting", "parsing", "macros"] }
+
+[dev-dependencies]
+tokio.workspace = true

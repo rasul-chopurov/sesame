@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F6B73C"/>
+      <stop offset="0.55" stop-color="#E07A2E"/>
+      <stop offset="1" stop-color="#B8322A"/>
+    </linearGradient>
+    <linearGradient id="door" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A1B3D"/>
+      <stop offset="1" stop-color="#14101F"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- carpet border -->
+  <rect x="10" y="10" width="108" height="108" rx="20" fill="none" stroke="#FFF3D6" stroke-opacity=".35" stroke-width="2" stroke-dasharray="6 5"/>
+  <!-- open arch door -->
+  <path d="M40 104V60a24 24 0 0 1 48 0v44z" fill="url(#door)"/>
+  <path d="M64 36a24 24 0 0 1 24 24v44H72V58a8 8 0 0 0-8-8z" fill="#FFF3D6" fill-opacity=".14"/>
+  <!-- light spilling out -->
+  <path d="M52 104l-14 14h52l-14-14z" fill="#FFE29A" fill-opacity=".55"/>
+  <circle cx="64" cy="70" r="6" fill="#FFE29A"/>
+  <path d="M61 74h6l2 14h-10z" fill="#FFE29A"/>
+</svg>
