@@ -37,7 +37,8 @@ jobs:
           set -o pipefail
           cargo build -p sesame-app --locked --color never 2>&1 | tee build.log || {
             # Surface compiler errors as annotations (readable without signing in).
-            { grep -E -A8 'error' build.log | head -60; tail -25 build.log; } | while IFS= read -r line; do echo "::error::$line"; done
+            msg=$({ grep -E -A12 '^(error|warning: build failed)' build.log | head -90; echo '--- tail:'; tail -20 build.log; } | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error::$msg"
             exit 1
           }
       - name: Test the engine (no GUI)
