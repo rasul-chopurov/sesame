@@ -32,6 +32,14 @@ pub enum Command {
     },
     /// List the operations Sesame exposes to agents (MCP/REST).
     Ops,
+    /// Check for a newer release; `--install` downloads, verifies and installs it.
+    Update {
+        #[arg(long)]
+        install: bool,
+        /// stable or beta (default: beta for pre-release builds)
+        #[arg(long)]
+        channel: Option<String>,
+    },
     /// Attach a snapshot JSON (output of `sesame discover`) to a saved server.
     ImportSnapshot { name: String, file: String },
 }
@@ -76,6 +84,29 @@ pub async fn run(cmd: Command) -> Result<()> {
             store.save_snapshot(s.id, &snap)?;
             println!("imported snapshot for {name}");
         }
+        Command::Update { install, channel } => {
+            let current = sesame_update::current_version();
+            let channel = channel
+                .as_deref()
+                .or(store.setting("update.channel")?.as_deref())
+                .and_then(sesame_update::Channel::parse)
+                .unwrap_or_else(|| sesame_update::Channel::default_for(&current));
+            println!("current: {current} ({} channel)", channel.as_str());
+            let Some(info) = sesame_update::check(channel).await? else {
+                println!("you are up to date");
+                return Ok(());
+            };
+            println!("available: {}\n", info.latest.version);
+            for r in &info.changelog {
+                println!("## {}\n{}\n", r.version, r.notes.trim());
+            }
+            if install {
+                let dir = tempfile_dir()?;
+                let archive = sesame_update::download(&info.latest, &dir).await?;
+                let target = sesame_update::install(&archive)?;
+                println!("installed into {} — restart Sesame", target.display());
+            }
+        }
         Command::Ops => {
             for op in sesame_core::ops::OPS {
                 println!("{:<16} {:<12} {}", op.name, format!("{:?}", op.risk), op.description);
@@ -83,6 +114,12 @@ pub async fn run(cmd: Command) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn tempfile_dir() -> Result<std::path::PathBuf> {
+    let dir = std::env::temp_dir().join("sesame-update");
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
 }
 
 fn find(store: &SqliteStore, name: &str) -> Result<Option<ServerConfig>> {

@@ -1,0 +1,28 @@
+[package]
+name = "sesame-update"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Checks GitHub Releases, verifies signatures and installs Sesame updates."
+
+[[bin]]
+name = "sesame-sign"
+path = "src/bin/sesame-sign.rs"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+semver = { version = "1", features = ["serde"] }
+reqwest = { version = "0.13", features = ["json"] }
+ed25519-dalek = "3"
+base64 = "0.23"
+getrandom = "0.3"
+tempfile = "3"
+
+[target.'cfg(windows)'.dependencies]
+self-replace = "1"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+tokio.workspace = true

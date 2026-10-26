@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  macos:
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: arm64
+          - target: x86_64-apple-darwin
+            arch: x64
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --locked -p sesame-app -p sesame-update --target ${{ matrix.target }}
+      - name: Bundle
+        run: scripts/bundle-macos.sh target/${{ matrix.target }}/release/sesame ${{ matrix.arch }} dist
+      - name: Sign archives
+        env:
+          SESAME_SIGNING_KEY: ${{ secrets.SESAME_SIGNING_KEY }}
+        run: |
+          cargo build --release --locked -p sesame-update --bin sesame-sign
+          target/release/sesame-sign sign dist/*.zip dist/*.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/*.sig
+
+  windows:
+    runs-on: windows-latest
+    continue-on-error: true # Windows builds are experimental during the alpha
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked -p sesame-app -p sesame-update
+      - name: Package and sign
+        shell: bash
+        env:
+          SESAME_SIGNING_KEY: ${{ secrets.SESAME_SIGNING_KEY }}
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          mkdir dist
+          cp target/release/sesame.exe dist/
+          (cd dist && 7z a "Sesame-$VERSION-windows-x64.zip" sesame.exe >/dev/null && rm sesame.exe)
+          target/release/sesame-sign.exe sign dist/*.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: dist/*
+
+  publish:
+    needs: [macos, windows]
+    if: ${{ !cancelled() && needs.macos.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Release notes from CHANGELOG.md
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" {on=1; next}
+            on && /^## \[/ {exit}
+            on {print}
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || echo "See CHANGELOG.md" > notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Sesame ${{ github.ref_name }}
+          body_path: notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: dist/*

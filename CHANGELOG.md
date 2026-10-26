@@ -6,6 +6,11 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- In-app updates from GitHub Releases: SemVer channels (stable / beta), changelog of every version since yours, ed25519-signed archives, atomic `.app` replacement with rollback.
+- `sesame update [--install] [--channel stable|beta]`.
+- Release pipeline: signed macOS (arm64, x64) `.dmg`/`.zip` and experimental Windows builds on every `v*` tag; app icon.
+
 ## [0.1.0-alpha.1] - 2026-10-26
 
 First public alpha.

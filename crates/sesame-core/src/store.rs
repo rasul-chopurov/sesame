@@ -15,6 +15,8 @@ pub trait Store: Send + Sync {
     fn delete_server(&self, id: ServerId) -> Result<()>;
     fn snapshot(&self, id: ServerId) -> Result<Option<ServerSnapshot>>;
     fn save_snapshot(&self, id: ServerId, snapshot: &ServerSnapshot) -> Result<()>;
+    fn setting(&self, key: &str) -> Result<Option<String>>;
+    fn set_setting(&self, key: &str, value: &str) -> Result<()>;
 }
 
 pub struct SqliteStore {
@@ -59,6 +61,10 @@ impl SqliteStore {
                 server_id TEXT PRIMARY KEY REFERENCES servers(id) ON DELETE CASCADE,
                 taken_at TEXT NOT NULL,
                 data TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
             );
             PRAGMA foreign_keys = ON;",
         )?;
@@ -114,6 +120,29 @@ impl Store for SqliteStore {
         )?;
         Ok(())
     }
+
+    fn setting(&self, key: &str) -> Result<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        Ok(conn
+            .query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| row.get(0))
+            .optional()?)
+    }
+
+    fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+}
+
+impl SqliteStore {
+    pub fn setting_or(&self, key: &str, default: &str) -> String {
+        self.setting(key).ok().flatten().unwrap_or_else(|| default.to_string())
+    }
 }
 
 #[cfg(test)]
@@ -135,6 +164,16 @@ mod tests {
 
         store.delete_server(a.id).unwrap();
         assert_eq!(store.servers().unwrap(), vec![b]);
+    }
+
+    #[test]
+    fn settings_upsert() {
+        let store = SqliteStore::in_memory().unwrap();
+        assert_eq!(store.setting("theme").unwrap(), None);
+        store.set_setting("theme", "dark").unwrap();
+        store.set_setting("theme", "light").unwrap();
+        assert_eq!(store.setting_or("theme", "system"), "light");
+        assert_eq!(store.setting_or("lang", "ru"), "ru");
     }
 
     #[test]
