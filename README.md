@@ -23,7 +23,7 @@ Give it SSH — it finds every site, database, mail setup and process on the box
   <img src="docs/screenshots/sites-light-en.png" width="49%" alt="Sites as searchable cards, light glass theme">
 </p>
 
-> **Alpha.** Sesame is at `0.1.0-alpha.1`. Discovery is solid and read-only; managing services, databases and sites is landing next — see the [roadmap](#roadmap).
+> **Alpha.** Sesame is at `0.1.0-alpha.1`. Discovery is read-only and well tested. Server changes (services, databases, installs) are previewed, confirmed and audited, but still need wider testing on real servers — try them on a disposable VPS first. See the [roadmap](#roadmap).
 
 ## Why
 
