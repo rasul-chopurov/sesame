@@ -1,0 +1,185 @@
+_version: 2
+
+app.tagline: { en: "Open your servers", ru: "Откройте свои серверы" }
+
+nav.servers: { en: "Servers", ru: "Серверы" }
+nav.overview: { en: "Overview", ru: "Обзор" }
+nav.sites: { en: "Sites", ru: "Сайты" }
+nav.processes: { en: "Processes", ru: "Процессы" }
+nav.services: { en: "Services", ru: "Сервисы" }
+nav.databases: { en: "Databases", ru: "Базы данных" }
+nav.mail_cron: { en: "Mail & Cron", ru: "Почта и Cron" }
+nav.security: { en: "Security", ru: "Безопасность" }
+nav.settings: { en: "Settings", ru: "Настройки" }
+nav.updates: { en: "What's new", ru: "Что нового" }
+nav.add_server: { en: "Add server", ru: "Добавить сервер" }
+nav.filter: { en: "Filter servers and sites…", ru: "Поиск серверов и сайтов…" }
+
+server.discover: { en: "Discover", ru: "Обнаружить" }
+server.rediscover: { en: "Rediscover", ru: "Обновить" }
+server.discovering: { en: "Discovering…", ru: "Сканирую…" }
+server.remove: { en: "Remove", ru: "Удалить" }
+server.discovered_at: { en: "discovered %{time}", ru: "обнаружено %{time}" }
+server.not_discovered: { en: "Not discovered yet — press Discover", ru: "Ещё не сканировали — нажмите «Обнаружить»" }
+server.connecting: { en: "Connecting and looking around…", ru: "Подключаюсь и осматриваюсь…" }
+server.could_not_discover: { en: "Could not discover", ru: "Не удалось просканировать" }
+server.new_host_key: { en: "New server key trusted and saved to known_hosts: %{fp}", ru: "Новый ключ сервера принят и сохранён в known_hosts: %{fp}" }
+server.empty: { en: "Add a server to begin", ru: "Добавьте сервер, чтобы начать" }
+
+add.title: { en: "Add a server", ru: "Добавить сервер" }
+add.lead: { en: "Give Sesame SSH access. It connects, looks around read-only and shows you every site, database, mail setup and process it finds.", ru: "Дайте Sesame SSH-доступ. Он подключится, осмотрится только на чтение и покажет все сайты, базы, почту и процессы." }
+add.address: { en: "SSH address", ru: "SSH-адрес" }
+add.address_hint: { en: "user@host[:port] — root or a user with passwordless sudo sees everything", ru: "user@host[:port] — root или пользователь с sudo без пароля видит всё" }
+add.name: { en: "Name", ru: "Название" }
+add.name_hint: { en: "Shown in the sidebar", ru: "Показывается в боковой панели" }
+add.key: { en: "Private key", ru: "Приватный ключ" }
+add.key_placeholder: { en: "~/.ssh/id_ed25519  (empty = ssh-agent and default keys)", ru: "~/.ssh/id_ed25519  (пусто = ssh-agent и ключи по умолчанию)" }
+add.optional: { en: "Optional", ru: "Необязательно" }
+add.password: { en: "Password", ru: "Пароль" }
+add.password_placeholder: { en: "only if the server uses password login", ru: "только если сервер пускает по паролю" }
+add.password_hint: { en: "Optional — stored in the macOS Keychain, never on disk", ru: "Необязательно — хранится в Связке ключей macOS, не на диске" }
+add.submit: { en: "Open Sesame — connect & discover", ru: "Сим-сим, откройся — подключить и просканировать" }
+add.cancel: { en: "Cancel", ru: "Отмена" }
+
+overview.attention: { en: "Needs attention", ru: "Требует внимания" }
+overview.all_good: { en: "Nothing — all good.", ru: "Ничего — всё в порядке." }
+overview.machine: { en: "Machine", ru: "Машина" }
+overview.resources: { en: "Resources", ru: "Ресурсы" }
+overview.stack: { en: "Stack", ru: "Стек" }
+overview.found: { en: "Found", ru: "Найдено" }
+overview.hostname: { en: "Hostname", ru: "Имя хоста" }
+overview.system: { en: "System", ru: "Система" }
+overview.kernel: { en: "Kernel", ru: "Ядро" }
+overview.cpus: { en: "CPUs", ru: "Ядра CPU" }
+overview.uptime: { en: "Uptime", ru: "Аптайм" }
+overview.access: { en: "Access", ru: "Доступ" }
+overview.access_root: { en: "root / sudo", ru: "root / sudo" }
+overview.access_limited: { en: "limited user", ru: "ограниченный пользователь" }
+overview.memory: { en: "Memory", ru: "Память" }
+overview.disk: { en: "Disk /", ru: "Диск /" }
+overview.load: { en: "Load", ru: "Нагрузка" }
+overview.of: { en: "%{used} of %{total} (%{pct}%)", ru: "%{used} из %{total} (%{pct}%)" }
+overview.web: { en: "Web", ru: "Веб" }
+overview.data: { en: "Data", ru: "Данные" }
+overview.cron_jobs: { en: "Cron jobs", ru: "Задачи cron" }
+overview.certificates: { en: "Certificates", ru: "Сертификаты" }
+level.critical: { en: "critical", ru: "критично" }
+level.warning: { en: "warning", ru: "внимание" }
+level.info: { en: "info", ru: "совет" }
+level.partial: { en: "partial", ru: "неполно" }
+
+insight.process_down: { en: "Process %{name} is %{state}", ru: "Процесс %{name} в состоянии %{state}" }
+insight.service_failed: { en: "Service %{name} failed", ru: "Сервис %{name} упал" }
+insight.disk_full: { en: "Disk is %{percent}% full", ru: "Диск заполнен на %{percent}%" }
+insight.memory_high: { en: "Memory is %{percent}% used", ru: "Память занята на %{percent}%" }
+insight.ufw_inactive: { en: "Firewall (ufw) is inactive — only the provider's firewall, if any, protects open ports", ru: "Файрвол (ufw) выключен — открытые порты защищает только файрвол провайдера, если он есть" }
+insight.port_public: { en: "Port %{port} (%{process}) listens on all interfaces", ru: "Порт %{port} (%{process}) слушает на всех интерфейсах" }
+insight.ssh_no_fail2ban: { en: "SSH is public and fail2ban has no jails", ru: "SSH открыт наружу, а у fail2ban нет правил" }
+insight.cert_expired: { en: "Certificate %{path} expired", ru: "Сертификат %{path} истёк" }
+insight.cert_expiring: { en: "Certificate %{path} expires in %{days} days", ru: "Сертификат %{path} истекает через %{days} дн." }
+insight.fpm_unused: { en: "PHP %{version} FPM is running but no site uses it — it can be stopped to free memory", ru: "PHP %{version} FPM запущен, но его не использует ни один сайт — можно остановить и освободить память" }
+insight.app_env_dev: { en: "%{site} runs with APP_ENV=%{env}", ru: "%{site} работает с APP_ENV=%{env}" }
+
+sites.search: { en: "Search sites by domain, path or framework…", ru: "Поиск по домену, пути или фреймворку…" }
+sites.all: { en: "All", ru: "Все" }
+sites.none: { en: "No sites found in the web server config", ru: "В конфиге веб-сервера сайтов не найдено" }
+sites.no_match: { en: "No sites match “%{q}”", ru: "Нет сайтов по запросу «%{q}»" }
+sites.any_host: { en: "Any host (default)", ru: "Любой хост (по умолчанию)" }
+sites.running: { en: "running", ru: "работает" }
+sites.back: { en: "All sites", ru: "Все сайты" }
+sites.open: { en: "Open in browser", ru: "Открыть в браузере" }
+sites.maintenance: { en: "Maintenance mode", ru: "Режим обслуживания" }
+sites.disable: { en: "Disable site", ru: "Отключить сайт" }
+sites.actions_soon: { en: "Maintenance and disable need write access — arriving with the next build.", ru: "Обслуживание и отключение меняют сервер — появятся в следующей сборке." }
+sites.framework: { en: "Framework", ru: "Фреймворк" }
+sites.directory: { en: "Directory", ru: "Папка" }
+sites.served_by: { en: "Served by", ru: "Обслуживает" }
+sites.tls: { en: "TLS", ru: "TLS" }
+sites.tls_none: { en: "none", ru: "нет" }
+sites.environment: { en: "Environment", ru: "Окружение" }
+sites.database: { en: "Database", ru: "База" }
+sites.drivers: { en: "Drivers", ru: "Драйверы" }
+sites.drivers_value: { en: "cache %{cache} · queue %{queue} · session %{session}", ru: "кэш %{cache} · очередь %{queue} · сессии %{session}" }
+sites.mail: { en: "Mail", ru: "Почта" }
+sites.processes: { en: "Processes", ru: "Процессы" }
+sites.isolation: { en: "Isolation", ru: "Изоляция" }
+
+proc.supervisor: { en: "Supervisor", ru: "Supervisor" }
+proc.none: { en: "No supervisor programs", ru: "Программ supervisor нет" }
+proc.system: { en: "System services", ru: "Системные сервисы" }
+proc.up: { en: "up %{time}", ru: "работает %{time}" }
+
+svc.title: { en: "Install services", ru: "Установка сервисов" }
+svc.lead: { en: "One click, safe defaults: bound to localhost, generated passwords kept in the Keychain, nothing exposed to the internet.", ru: "В один клик и с безопасными настройками: слушают только localhost, пароли генерируются и хранятся в Связке ключей, наружу ничего не открыто." }
+svc.installed: { en: "Installed", ru: "Установлен" }
+svc.not_installed: { en: "Not installed", ru: "Не установлен" }
+svc.install: { en: "Install", ru: "Установить" }
+svc.uninstall: { en: "Uninstall", ru: "Удалить" }
+svc.per_site: { en: "Per site", ru: "Для сайта" }
+svc.conflict: { en: "Conflicts with %{other}", ru: "Конфликтует с %{other}" }
+svc.soon: { en: "Installing arrives with the next build — this page already shows what is on the server.", ru: "Установка появится в следующей сборке — страница уже показывает, что стоит на сервере." }
+svc.redis: { en: "In-memory cache, queues and sessions", ru: "Кэш, очереди и сессии в памяти" }
+svc.postgres: { en: "Relational database", ru: "Реляционная база данных" }
+svc.mariadb: { en: "MySQL-compatible database", ru: "База, совместимая с MySQL" }
+svc.mongodb: { en: "Document database", ru: "Документная база данных" }
+svc.elasticsearch: { en: "Full-text search (needs 2 GB+ RAM)", ru: "Полнотекстовый поиск (нужно от 2 GB RAM)" }
+svc.s3: { en: "S3-compatible object storage (RustFS or MinIO)", ru: "S3-совместимое хранилище (RustFS или MinIO)" }
+svc.reverb: { en: "WebSockets for Laravel (per site)", ru: "WebSocket для Laravel (на сайт)" }
+
+db.version: { en: "Version", ru: "Версия" }
+db.listens: { en: "Listens on", ru: "Слушает" }
+db.databases: { en: "Databases", ru: "Базы" }
+db.needs_creds: { en: "needs credentials to list", ru: "нужны учётные данные" }
+db.used_by: { en: "Used by", ru: "Используют" }
+db.none: { en: "No database servers found", ru: "Серверы баз данных не найдены" }
+
+mail.title: { en: "Mail", ru: "Почта" }
+mail.server: { en: "Mail server", ru: "Почтовый сервер" }
+mail.none_local: { en: "none on this machine", ru: "на этой машине нет" }
+mail.apps_send: { en: "Apps send via", ru: "Приложения отправляют через" }
+mail.running: { en: "Running", ru: "Запущено" }
+mail.hostname: { en: "Hostname", ru: "Имя хоста" }
+mail.domains: { en: "Domains", ru: "Домены" }
+cron.title: { en: "Cron", ru: "Cron" }
+cron.none: { en: "No cron jobs", ru: "Задач cron нет" }
+
+sec.firewall: { en: "Firewall", ru: "Файрвол" }
+sec.not_installed: { en: "not installed", ru: "не установлен" }
+sec.no_jails: { en: "no jails", ru: "правил нет" }
+sec.ports: { en: "Listening ports", ru: "Открытые порты" }
+sec.public: { en: "public", ru: "наружу" }
+sec.local: { en: "local", ru: "локально" }
+sec.certs: { en: "Certificates", ru: "Сертификаты" }
+sec.no_certs: { en: "No certificate files found (Caddy may manage them automatically)", ru: "Файлов сертификатов нет (Caddy может выпускать их сам)" }
+sec.expires: { en: "expires %{date}", ru: "до %{date}" }
+
+settings.appearance: { en: "Appearance", ru: "Оформление" }
+settings.theme: { en: "Theme", ru: "Тема" }
+settings.system: { en: "System", ru: "Как в системе" }
+settings.light: { en: "Light", ru: "Светлая" }
+settings.dark: { en: "Dark", ru: "Тёмная" }
+settings.language: { en: "Language", ru: "Язык" }
+settings.updates: { en: "Updates", ru: "Обновления" }
+settings.channel: { en: "Channel", ru: "Канал" }
+settings.stable: { en: "Stable", ru: "Стабильный" }
+settings.beta: { en: "Beta (alpha & beta builds)", ru: "Бета (альфа и бета-сборки)" }
+settings.auto_update: { en: "Install updates automatically", ru: "Устанавливать обновления автоматически" }
+settings.check_now: { en: "Check now", ru: "Проверить сейчас" }
+settings.version: { en: "Version", ru: "Версия" }
+settings.about: { en: "About", ru: "О программе" }
+settings.license: { en: "Open source under Apache-2.0", ru: "Открытый код, лицензия Apache-2.0" }
+
+update.available: { en: "Update %{version}", ru: "Обновление %{version}" }
+update.up_to_date: { en: "You are up to date (%{version})", ru: "У вас последняя версия (%{version})" }
+update.checking: { en: "Checking…", ru: "Проверяю…" }
+update.failed: { en: "Update check failed: %{error}", ru: "Не удалось проверить обновления: %{error}" }
+update.install: { en: "Download & install", ru: "Скачать и установить" }
+update.downloading: { en: "Downloading…", ru: "Скачиваю…" }
+update.restart: { en: "Restart to update", ru: "Перезапустить" }
+update.skip: { en: "Skip this version", ru: "Пропустить версию" }
+update.dev_build: { en: "This is a development build — updates install into the packaged app only.", ru: "Это сборка для разработки — обновления ставятся только в упакованное приложение." }
+update.none_yet: { en: "No releases published yet.", ru: "Релизов пока нет." }
+
+status.sites: { en: "%{n} sites", ru: "сайтов: %{n}" }
+status.processes: { en: "%{n} processes", ru: "процессов: %{n}" }
+status.not_connected: { en: "not discovered", ru: "не просканирован" }

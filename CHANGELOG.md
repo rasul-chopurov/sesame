@@ -7,6 +7,11 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Sesame Glass design: translucent light and dark themes over a blurred window, breadcrumbs in the titlebar, sidebar tree with server/site search, status bar, brand icons for detected software.
+- Russian translation; language and theme follow the system or are chosen in Settings.
+- Sites as searchable, filterable cards with a detail page (framework, database, drivers, processes, run-as users).
+- Services page showing which of Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 (RustFS/MinIO) and Reverb are installed, with conflicts.
+- Settings: theme, language, update channel, automatic updates; "What's new" page with release notes.
 - In-app updates from GitHub Releases: SemVer channels (stable / beta), changelog of every version since yours, ed25519-signed archives, atomic `.app` replacement with rollback.
 - `sesame update [--install] [--channel stable|beta]`.
 - Release pipeline: signed macOS (arm64, x64) `.dmg`/`.zip` and experimental Windows builds on every `v*` tag; app icon.

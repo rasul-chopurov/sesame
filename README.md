@@ -19,8 +19,8 @@ Give it SSH — it finds every site, database, mail setup and process on the box
 </div>
 
 <p align="center">
-  <img src="docs/screenshots/overview-dark.png" width="49%" alt="Sesame overview in dark theme">
-  <img src="docs/screenshots/sites-light.png" width="49%" alt="Sesame sites in light theme">
+  <img src="docs/screenshots/overview-dark-en.png" width="49%" alt="Overview, dark glass theme">
+  <img src="docs/screenshots/sites-light-en.png" width="49%" alt="Sites as searchable cards, light glass theme">
 </p>
 
 > **Alpha.** Sesame is at `0.1.0-alpha.1`. Discovery is solid and read-only; managing services, databases and sites is landing next — see the [roadmap](#roadmap).
@@ -39,11 +39,13 @@ It is built for how Laravel actually runs in production today: FrankenPHP and Oc
 | 🔍 **Discover** | One read-only probe, two SSH round trips: OS and resources · systemd and supervisor (Octane, queue, Horizon, Reverb recognised) · listening ports · sites from **FrankenPHP/Caddy, Nginx, Apache** · Laravel and WordPress with non-secret `.env` details · MySQL, MariaDB, PostgreSQL, Redis, MongoDB · mail · PHP and FPM pools · cron · certificates and expiry · ufw and fail2ban · Docker. |
 | 🚨 **Needs attention** | Failed processes, ports open to the world, inactive firewall, expiring certificates, PHP-FPM running for nobody, full disks. |
 | 🤖 **AI-friendly** | Every action is a typed operation. `sesame discover root@host` prints JSON today; MCP and REST servers for agents are on the roadmap. |
+| 🎨 **Glass UI, EN / RU** | Translucent light and dark themes over a blurred window, breadcrumbs in the titlebar, a sidebar tree with search, sites as searchable cards. English and Russian. |
+| ⬆️ **Updates** | Checks GitHub Releases, shows the changelog of every version since yours, installs signed builds automatically if you want. |
 | 🔒 **Safe by default** | Discovery never changes anything and never reads passwords or keys from `.env`. |
 
 <p align="center">
-  <img src="docs/screenshots/security-dark.png" width="49%" alt="Security view">
-  <img src="docs/screenshots/add-server-light.png" width="49%" alt="Add server">
+  <img src="docs/screenshots/site-dark-ru.png" width="49%" alt="Site page in Russian">
+  <img src="docs/screenshots/services-light-ru.png" width="49%" alt="Services catalog in Russian">
 </p>
 
 ## Install
@@ -81,8 +83,9 @@ State lives in `~/Library/Application Support/dev.sesame.Sesame/state.db` (overr
 ## Roadmap
 
 - [x] SSH, read-only discovery, insights, light and dark themes, CLI
-- [ ] Glass design, Russian translation, command palette, in-app updates with changelog
-- [ ] Sites as searchable cards · maintenance mode · disable/enable · per-site isolation (own Linux user, PHP-FPM pool or Octane, DB user, Redis ACL)
+- [x] Glass design, Russian translation, sites as searchable cards, in-app updates with changelog
+- [ ] Command palette ⌘K
+- [ ] Maintenance mode · disable/enable · per-site isolation (own Linux user, PHP-FPM pool or Octane, DB user, Redis ACL)
 - [ ] Start/stop/restart services, clean up unused ones
 - [ ] Databases: create/drop databases and users for MySQL, MariaDB, PostgreSQL, MongoDB
 - [ ] One-click services: Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 (RustFS / MinIO), Reverb
@@ -96,6 +99,7 @@ State lives in `~/Library/Application Support/dev.sesame.Sesame/state.db` (overr
 
 ```text
 crates/
+  sesame-update      GitHub Releases updates, ed25519 signatures, install
   sesame-core        data model, SQLite store, keychain secrets, operation registry
   sesame-ssh         SSH transport (russh): auth, known_hosts, exec
   sesame-discovery   read-only probe + parsers + insights
@@ -118,7 +122,7 @@ Issues and pull requests are welcome — read [CONTRIBUTING.md](CONTRIBUTING.md)
 
 **Sesame — «Сим-сим, откройся» для ваших серверов.** Нативное приложение на Rust + GPUI для Laravel-сообщества: даёте SSH-доступ, Sesame сам находит сайты, базы, почту, процессы и показывает, что требует внимания. Без агента на сервере, без Electron.
 
-- **Сейчас:** подключение по SSH, обнаружение только на чтение, наблюдения, светлая и тёмная темы, CLI.
-- **Дальше:** стеклянный дизайн и русский интерфейс, сайты-карточки с изоляцией, установка сервисов (Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3, Reverb), базы данных, Cloudflare, MCP для ИИ-агентов, автообновление.
+- **Сейчас:** подключение по SSH, обнаружение только на чтение, наблюдения, стеклянные светлая и тёмная темы, русский интерфейс, сайты-карточки с поиском, автообновление с changelog, CLI.
+- **Дальше:** изоляция сайтов, установка сервисов (Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3, Reverb), базы данных, Cloudflare, MCP для ИИ-агентов, автообновление.
 
 Сборка: `cargo run -p sesame-app --release`. Лицензия Apache-2.0.
