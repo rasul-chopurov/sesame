@@ -185,7 +185,7 @@ impl SesameApp {
                     Err(e) => (false, e.to_string(), JobState::Failed(e.to_string()), vec![]),
                 };
                 for (name, value) in reveal.iter().filter(|(k, _)| k != "DEPLOY_PUBLIC_KEY") {
-                    let _ = secrets::set_named(server_id, name, value);
+                    let _ = secrets::set_named(server_id, &plan.secret_name(name), value);
                 }
                 let deploy_key = reveal.iter().find(|(k, _)| k == "DEPLOY_PUBLIC_KEY").map(|(_, v)| v.clone());
                 let _ = this.store.log_audit(&AuditEntry {

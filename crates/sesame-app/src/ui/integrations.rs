@@ -218,7 +218,7 @@ impl SesameApp {
 
     pub(crate) fn request_api(&mut self, title: String, details: Vec<String>, risk: Risk, confirm: Option<String>, action: ApiAction, window: &mut Window, cx: &mut Context<Self>) {
         let server = self.servers.first().map(|s| s.id).unwrap_or_default();
-        let plan = Plan { op: "cloudflare", title, risk, details, confirm_word: confirm, steps: vec![], reveal: vec![] };
+        let plan = Plan { op: "cloudflare", title, risk, details, confirm_word: confirm, steps: vec![], reveal: vec![], secret_scope: None };
         self.request(server, Ok(plan), None, window, cx);
         if let Some(p) = self.pending.as_mut() {
             p.api = Some(action);

@@ -60,6 +60,16 @@ pub enum DoAction {
         #[arg(long)]
         no_scheduler: bool,
     },
+    /// Give a site its own Redis ACL user limited to its key prefix.
+    SiteRedis { domain: String },
+    /// Run a queue worker for a site under supervisor.
+    SiteQueue {
+        domain: String,
+        #[arg(long, default_value = "redis")]
+        connection: String,
+        #[arg(long, default_value_t = 1)]
+        processes: u8,
+    },
     /// Delete a site created by Sesame (backs up its database first).
     RemoveSite {
         domain: String,
@@ -232,7 +242,8 @@ pub async fn run(cmd: Command) -> Result<()> {
         Command::Do { server, action, yes, confirm } => {
             let config = find(&store, &server)?.with_context(|| format!("no saved server named {server}"))?;
             let snap = store.snapshot(config.id)?;
-            let plan = build_plan(&action, snap.as_ref(), mongo_admin(config.id))?;
+            let redis_admin = sesame_core::secrets::get_named(config.id, "REDIS_PASSWORD").ok().flatten();
+            let plan = build_plan(&action, snap.as_ref(), mongo_admin(config.id), redis_admin)?;
             run_plan(&store, &config, plan, yes, confirm.as_deref()).await?;
         }
         Command::SecretSet { server, name } => {
@@ -332,10 +343,19 @@ pub fn mongo_admin(server: sesame_core::ServerId) -> Option<sesame_ops::actions:
     Some(sesame_ops::actions::Admin { user: get("MONGO_ADMIN_USER")?, password: get("MONGO_ADMIN_PASSWORD")? })
 }
 
+fn site_app(snap: &sesame_core::ServerSnapshot, domain: &str) -> Result<String> {
+    snap.sites
+        .iter()
+        .find(|s| s.domains.iter().any(|d| d == domain))
+        .and_then(|s| s.app_path.clone())
+        .with_context(|| format!("no site {domain} in the last discovery"))
+}
+
 fn build_plan(
     action: &DoAction,
     snap: Option<&sesame_core::ServerSnapshot>,
     admin: Option<sesame_ops::actions::Admin>,
+    redis_admin: Option<String>,
 ) -> Result<sesame_ops::Plan> {
     use sesame_ops::actions::{self, ServiceAction, ServiceKind};
     match action {
@@ -363,6 +383,17 @@ fn build_plan(
             actions::service(kind, name, action)
         }
         DoAction::Maintenance { path, state } => actions::maintenance(path, state == "on"),
+        DoAction::SiteRedis { domain } => {
+            let snap = snap.context("discover the server first")?;
+            let app = site_app(snap, domain)?;
+            let admin = redis_admin.as_deref();
+            sesame_ops::site::redis_for_site(domain, &app, admin)
+        }
+        DoAction::SiteQueue { domain, connection, processes } => {
+            let snap = snap.context("discover the server first")?;
+            let app = site_app(snap, domain)?;
+            sesame_ops::site::queue_for_site(domain, &app, connection, *processes)
+        }
         DoAction::RemoveSite { domain, db } => {
             let snap = snap.context("discover the server first")?;
             sesame_ops::site::remove_site(domain, db.as_deref().map(engine).transpose()?, snap)
@@ -453,7 +484,7 @@ async fn run_plan(
     })?;
     let out = result?;
     for (k, v) in &out.reveal {
-        let _ = sesame_core::secrets::set_named(server.id, k, v);
+        let _ = sesame_core::secrets::set_named(server.id, &plan.secret_name(k), v);
         println!("{k}={v}");
     }
     Ok(())

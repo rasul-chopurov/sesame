@@ -375,6 +375,7 @@ pub fn new_site(site: &NewSite, snap: &ServerSnapshot) -> Result<Plan> {
     Ok(Plan {
         op: "site_create",
         title: format!("create site {domain}"),
+        secret_scope: Some(domain.clone()),
         risk: Risk::Change,
         details,
         confirm_word: None,
@@ -535,5 +536,150 @@ pub fn remove_site(domain: &str, database: Option<DatabaseKind>, snap: &ServerSn
         confirm_word: Some(domain.clone()),
         steps,
         reveal: vec![],
+        secret_scope: None,
     })
+}
+
+/// The isolated Linux user and app directory of a wizard-made site.
+pub fn site_paths(domain: &str) -> (String, String) {
+    let slug = slug(domain);
+    let user = format!("s_{slug}");
+    let app = format!("/home/{user}/{domain}");
+    (user, app)
+}
+
+/// Writes `KEY=value` pairs into the app's `.env` as its owner. Values come
+/// through the heredoc, never through argv.
+fn set_env_script(app: &str, pairs: &[(&str, String)]) -> String {
+    let mut body = String::from(
+        "set_env() { if grep -q \"^$1=\" .env || grep -q \"^# $1=\" .env; then sed -i -E \"s|^#? ?$1=.*|$1=$2|\" .env; else echo \"$1=$2\" >> .env; fi; }\n",
+    );
+    for (k, v) in pairs {
+        body.push_str(&format!("set_env {k} {v}\n"));
+    }
+    body.push_str("php artisan config:clear >/dev/null 2>&1 || true\necho '.env updated'");
+    format!(
+        "cd {app_q}\nowner=$(stat -c %U .)\nrunuser -u \"$owner\" -- sh -eu <<'AS_OWNER'\ncd {app_q}\n{body}\nAS_OWNER",
+        app_q = q(app)
+    )
+}
+
+/// A Redis ACL user for one site that can only touch keys under `<slug>:`,
+/// written to the site's `.env` (REDIS_USERNAME/REDIS_PASSWORD/REDIS_PREFIX).
+/// `admin_password` is the server's `requirepass`, when Redis has one.
+pub fn redis_for_site(domain: &str, app_path: &str, admin_password: Option<&str>) -> Result<Plan> {
+    if !valid_domain(domain) || !app_path.starts_with('/') || app_path.contains("..") || app_path.contains('\'') {
+        bail!("invalid site");
+    }
+    let slug = slug(domain);
+    let pw = generate_password();
+    let auth = admin_password.map(|p| format!("export REDISCLI_AUTH='{p}'\n")).unwrap_or_default();
+    let acl = format!(
+        "{auth}( redis-cli --no-auth-warning <<'REDIS'\n\
+         ACL SETUSER {slug} reset on >{pw} ~{slug}:* &{slug}:* +@all -@admin -@dangerous\n\
+         CONFIG REWRITE\n\
+         REDIS\n\
+         ) > /tmp/sesame-redis.out 2>&1\n\
+         # redis-cli exits 0 on command errors; check the replies.\n\
+         if grep -qE 'ERR|NOAUTH|WRONGPASS|NOPERM' /tmp/sesame-redis.out; then cat /tmp/sesame-redis.out; rm -f /tmp/sesame-redis.out; exit 1; fi\n\
+         rm -f /tmp/sesame-redis.out\n\
+         redis-cli --no-auth-warning ACL LIST | grep -q '^user {slug} ' || {{ echo 'the ACL user was not created'; exit 1; }}\n\
+         echo 'acl user {slug} ready'"
+    );
+    let env = set_env_script(
+        app_path,
+        &[("REDIS_USERNAME", slug.clone()), ("REDIS_PASSWORD", pw.clone()), ("REDIS_PREFIX", format!("{slug}:"))],
+    );
+    Ok(Plan {
+        op: "site_redis",
+        title: format!("Redis for {domain}"),
+        secret_scope: Some(domain.to_string()),
+        risk: Risk::Change,
+        details: vec![
+            format!("Redis user {slug} that can only read and write keys starting with {slug}:"),
+            "no admin or dangerous commands (FLUSHALL, CONFIG, KEYS…)".into(),
+            "REDIS_USERNAME, REDIS_PASSWORD and REDIS_PREFIX are set in the site's .env".into(),
+        ],
+        confirm_word: None,
+        steps: vec![
+            Step::new(
+                "PHP redis extension",
+                "v=$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;')\n\
+                 if php -m | grep -qi '^redis$'; then echo \"php$v-redis already installed\"; else\n\
+                 \x20 apt-get -o DPkg::Lock::Timeout=300 -o Dpkg::Use-Pty=0 -y -q install php$v-redis >/dev/null\n\
+                 \x20 systemctl reload php$v-fpm 2>/dev/null || true\n\
+                 \x20 echo \"installed php$v-redis\"\nfi",
+            ),
+            Step::new("create the ACL user", acl),
+            Step::new("update .env", env),
+        ],
+        reveal: vec![("REDIS_USERNAME".into(), slug.clone()), ("REDIS_PASSWORD".into(), pw), ("REDIS_PREFIX".into(), format!("{slug}:"))],
+    })
+}
+
+/// A queue worker for one site under supervisor, as the site's owner.
+pub fn queue_for_site(domain: &str, app_path: &str, connection: &str, processes: u8) -> Result<Plan> {
+    if !valid_domain(domain) || !app_path.starts_with('/') || app_path.contains("..") || app_path.contains('\'') {
+        bail!("invalid site");
+    }
+    if !connection.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') || !(1..=8).contains(&processes) {
+        bail!("invalid queue settings");
+    }
+    let slug = slug(domain);
+    let program = format!("sesame-{slug}-queue");
+    let script = format!(
+        "cd {app_q}\nowner=$(stat -c %U .)\nhome=$(getent passwd \"$owner\" | cut -d: -f6)\n\
+         cat > /etc/supervisor/conf.d/{program}.conf <<CONF\n\
+         [program:{program}]\nprocess_name=%(program_name)s_%(process_num)02d\n\
+         command=php {app_path}/artisan queue:work {connection} --sleep=3 --tries=3 --max-time=3600\n\
+         directory={app_path}\nuser=$owner\nenvironment=HOME=\"$home\"\nnumprocs={processes}\n\
+         autostart=true\nautorestart=true\nstopasgroup=true\nkillasgroup=true\nstopwaitsecs=3600\n\
+         redirect_stderr=true\nstdout_logfile={app_path}/storage/logs/queue.log\n\
+         CONF\nsupervisorctl reread >/dev/null\nsupervisorctl update\nsupervisorctl status '{program}:*'",
+        app_q = q(app_path)
+    );
+    Ok(Plan {
+        op: "site_queue",
+        title: format!("queue worker for {domain}"),
+        risk: Risk::Change,
+        details: vec![format!("{processes} × php artisan queue:work {connection}, as the site's user, restarted automatically")],
+        confirm_word: None,
+        steps: vec![Step::new("add the supervisor program", script)],
+        reveal: vec![],
+        secret_scope: None,
+    })
+}
+
+#[cfg(test)]
+mod site_service_tests {
+    use super::*;
+
+    fn sh_ok(script: &str) -> bool {
+        std::process::Command::new("sh").args(["-n", "-c", script]).status().unwrap().success()
+    }
+
+    #[test]
+    fn redis_acl_scopes_keys_and_keeps_password_off_argv() {
+        let p = redis_for_site("lara.response.az", "/home/s_lara_response_az/lara.response.az", Some("adminpw")).unwrap();
+        for s in &p.steps {
+            assert!(sh_ok(&s.script), "{}", s.title);
+        }
+        let acl = &p.steps[1].script;
+        assert!(acl.contains("~lara_response_az:*"));
+        assert!(acl.contains("-@dangerous"));
+        let pw = &p.reveal.iter().find(|(k, _)| k == "REDIS_PASSWORD").unwrap().1;
+        // The site password appears only inside heredocs (ACL command, .env writer).
+        for line in p.steps.iter().flat_map(|s| s.script.lines()).filter(|l| l.contains(pw.as_str())) {
+            assert!(line.starts_with("ACL SETUSER") || line.starts_with("set_env"), "{line}");
+        }
+    }
+
+    #[test]
+    fn queue_worker_runs_as_owner() {
+        let p = queue_for_site("lara.response.az", "/home/s_lara_response_az/lara.response.az", "redis", 2).unwrap();
+        assert!(sh_ok(&p.steps[0].script));
+        assert!(p.steps[0].script.contains("user=$owner"));
+        assert!(p.steps[0].script.contains("numprocs=2"));
+        assert!(queue_for_site("lara.response.az", "/x", "redis; rm", 1).is_err());
+    }
 }

@@ -83,6 +83,7 @@ pub fn service(kind: ServiceKind, name: &str, action: ServiceAction) -> Result<P
         confirm_word: None,
         steps: vec![Step::new(format!("{verb} {name}"), format!("{script}\necho done"))],
         reveal: vec![],
+        secret_scope: None,
     })
 }
 
@@ -128,6 +129,7 @@ pub fn db_create(engine: DatabaseKind, db: &str, user: &str, admin: Option<&Admi
         confirm_word: None,
         steps: vec![Step::new(format!("create {db} and {user}"), script)],
         reveal: vec![("DB_DATABASE".into(), db.into()), ("DB_USERNAME".into(), user.into()), ("DB_PASSWORD".into(), pw)],
+        secret_scope: None,
     })
 }
 
@@ -211,6 +213,7 @@ pub fn db_drop(engine: DatabaseKind, db: &str, user: Option<&str>, admin: Option
             Step::new(format!("drop {db}"), drop),
         ],
         reveal: vec![],
+        secret_scope: None,
     })
 }
 
@@ -233,6 +236,7 @@ pub fn maintenance(app_path: &str, down: bool) -> Result<Plan> {
         confirm_word: None,
         steps: vec![Step::new(what, script)],
         reveal: vec![],
+        secret_scope: None,
     })
 }
 
@@ -374,6 +378,7 @@ pub fn git_connect(app_path: &str) -> Result<Plan> {
         confirm_word: None,
         steps: vec![Step::new("create the deploy key", as_owner(app_path, &body)).capture("DEPLOY_PUBLIC_KEY")],
         reveal: vec![],
+        secret_scope: None,
     })
 }
 
@@ -452,6 +457,7 @@ pub fn deploy(app_path: &str, repo: &str, branch: &str, opts: &DeployOptions) ->
         confirm_word: None,
         steps,
         reveal: vec![],
+        secret_scope: None,
     })
 }
 
@@ -528,6 +534,7 @@ pub fn cert_install(name: &str, cert_pem: &str, key_pem: &str) -> Result<Plan> {
         confirm_word: None,
         steps: vec![Step::new(format!("install {name}"), script)],
         reveal: vec![],
+        secret_scope: None,
     })
 }
 

@@ -291,6 +291,7 @@ pub fn install(service: Service, s: &ServerSnapshot) -> Result<Plan> {
         confirm_word: None,
         steps,
         reveal,
+        secret_scope: None,
     })
 }
 
@@ -339,6 +340,7 @@ pub fn uninstall(service: Service, keep_data: bool) -> Result<Plan> {
         confirm_word: Some(service.slug().to_string()),
         steps,
         reveal: vec![],
+        secret_scope: None,
     })
 }
 
@@ -383,6 +385,7 @@ pub fn reverb_for_site(site: &Site, port: u16) -> Result<Plan> {
         confirm_word: None,
         steps: vec![Step::new("add the supervisor program", script)],
         reveal: vec![],
+        secret_scope: None,
     })
 }
 

@@ -55,6 +55,20 @@ pub struct Plan {
     pub steps: Vec<Step>,
     /// Secrets the user must see once after success (e.g. a new DB password).
     pub reveal: Vec<(String, String)>,
+    /// Where revealed secrets are stored: `None` for server-wide ones
+    /// (`REDIS_PASSWORD` of the server's Redis), a site domain for site ones,
+    /// so a site's credentials never overwrite the server's.
+    pub secret_scope: Option<String>,
+}
+
+impl Plan {
+    /// Vault name for a revealed secret of this plan.
+    pub fn secret_name(&self, key: &str) -> String {
+        match &self.secret_scope {
+            Some(scope) => format!("{scope}/{key}"),
+            None => key.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -178,6 +192,7 @@ mod tests {
             confirm_word: None,
             steps: (0..steps).map(|i| Step::new(format!("s{i}"), format!("echo {i}"))).collect(),
             reveal: vec![],
+            secret_scope: None,
         }
     }
 
