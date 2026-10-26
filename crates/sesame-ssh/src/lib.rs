@@ -250,17 +250,40 @@ async fn authenticate(handle: &mut Handle<Verifier>, server: &ServerConfig) -> R
     Ok(())
 }
 
+/// Offers every identity the agent holds; true when one is accepted.
+async fn try_agent<S>(handle: &mut Handle<Verifier>, user: &str, hash: Option<keys::HashAlg>, mut agent: AgentClient<S>) -> bool
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin + 'static,
+{
+    for identity in agent.request_identities().await.unwrap_or_default() {
+        let key = identity.public_key().into_owned();
+        if let Ok(AuthResult::Success) = handle.authenticate_publickey_with(user, key, hash, &mut agent).await {
+            return true;
+        }
+    }
+    false
+}
+
 /// Tries each agent identity, then falls back to the usual key files in
 /// `~/.ssh` without a passphrase (what `ssh` itself does).
 async fn agent_auth(handle: &mut Handle<Verifier>, user: &str) -> Result<bool> {
     let hash = handle.best_supported_rsa_hash().await?.flatten();
-    if let Ok(mut agent) = AgentClient::connect_env().await {
-        for identity in agent.request_identities().await.unwrap_or_default() {
-            let key = identity.public_key().into_owned();
-            if let Ok(AuthResult::Success) = handle
-                .authenticate_publickey_with(user, key, hash, &mut agent)
-                .await
-            {
+    #[cfg(unix)]
+    if let Ok(agent) = AgentClient::connect_env().await {
+        if try_agent(handle, user, hash, agent).await {
+            return Ok(true);
+        }
+    }
+    // Windows: the OpenSSH agent's named pipe, then Pageant.
+    #[cfg(windows)]
+    {
+        if let Ok(agent) = AgentClient::connect_named_pipe(r"\\.\pipe\openssh-ssh-agent").await {
+            if try_agent(handle, user, hash, agent).await {
+                return Ok(true);
+            }
+        }
+        if let Ok(agent) = AgentClient::connect_pageant().await {
+            if try_agent(handle, user, hash, agent).await {
                 return Ok(true);
             }
         }
