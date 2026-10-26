@@ -116,6 +116,13 @@ h1 em { font-style: normal; font-weight: 300; border-bottom: 3px solid rgb(255 2
 .chips li { font: 400 12px var(--mono); border: 1px solid var(--line); padding: 4px 10px; background: var(--panel); }
 .shot { margin: 0; border: 1px solid var(--line); padding: 8px; background: var(--panel); box-shadow: 4px 4px 0 var(--shadow); }
 
+/* Feature rows: text on top, a large readable screenshot below. */
+.feature .copy { display: grid; grid-template-columns: 5fr 7fr; column-gap: 56px; align-items: end; margin-bottom: 40px; }
+.feature .copy .eyebrow, .feature .copy h2 { grid-column: 1; }
+.feature .copy p { grid-column: 2; grid-row: 1 / span 2; margin: 0; align-self: end; }
+.feature .copy .chips { grid-column: 2; margin-top: 18px; }
+.feature .shot { max-width: 1040px; margin: 0 auto; }
+
 /* Agents */
 .approve { margin-top: 28px; border: 1px solid var(--accent); background: var(--panel); padding: 16px; box-shadow: 4px 4px 0 var(--shadow); max-width: 420px; }
 .ap-top { display: flex; gap: 10px; align-items: center; font-size: 15px; }
@@ -194,6 +201,8 @@ h1 em { font-style: normal; font-weight: 300; border-bottom: 3px solid rgb(255 2
   .burger { display: block; }
   .nav.open .links { display: flex; flex-direction: column; position: absolute; top: 60px; left: 0; right: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 16px; gap: 14px; }
   .split, .flip .split { grid-template-columns: 1fr; gap: 36px; }
+  .feature .copy { display: block; }
+  .feature .copy p { margin-top: 16px; }
   .flip .split .copy { order: 0; }
   .cells { grid-template-columns: 1fr 1fr; }
   .cell { border-bottom: 1px solid var(--line); }

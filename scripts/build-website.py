@@ -13,6 +13,15 @@ VERSION = "v0.1.0-alpha.1"
 
 e = html.escape
 
+import hashlib
+def _ver(name):
+    path = os.path.join(OUT, "assets", name)
+    try:
+        return hashlib.sha256(open(path, "rb").read()).hexdigest()[:10]
+    except OSError:
+        return "0"
+CSS_V, JS_V = _ver("site.css"), _ver("site.js")
+
 T = {
 "en": {
  "dir": "", "lang": "en", "locale": "en_US",
@@ -42,7 +51,7 @@ T = {
  "agents_p": "Sesame speaks MCP and REST. Agents read everything at once; every change pops up in the app, and nothing runs until you press Allow. Every step lands in the audit log with the agent's name.",
  "surfaces": ["MCP", "REST", "CLI"],
  "approve_who": "Claude Code wants to:", "approve_what": "install Redis on prod", "approve_d": ["listens on 127.0.0.1:6379", "password generated, stored in the vault"], "approve_deny": "Deny", "approve_allow": "Allow",
- "nums": [("28", "agent tools"), ("7", "one-click services"), ("3", "languages"), ("0", "agents on your server")],
+ "nums": [("30", "agent tools"), ("8", "one-click services"), ("3", "languages"), ("0", "agents on your server")],
  "trust_eyebrow": "Local by design", "trust_h": "Your servers, your Mac, your keys.",
  "trust": [
   ("Read-only first", "Discovery never writes, and never reads passwords or keys from .env."),
@@ -98,7 +107,7 @@ T = {
  "agents_p": "Sesame говорит на MCP и REST. Агенты читают всё сразу, а каждое изменение всплывает в приложении и не выполняется, пока вы не нажмёте «Разрешить». Каждый шаг пишется в журнал с именем агента.",
  "surfaces": ["MCP", "REST", "CLI"],
  "approve_who": "Claude Code хочет:", "approve_what": "установить Redis на prod", "approve_d": ["слушает 127.0.0.1:6379", "пароль сгенерирован и сохранён в хранилище"], "approve_deny": "Отклонить", "approve_allow": "Разрешить",
- "nums": [("28", "инструментов для агентов"), ("7", "сервисов в один клик"), ("3", "языка"), ("0", "агентов на сервере")],
+ "nums": [("30", "инструментов для агентов"), ("8", "сервисов в один клик"), ("3", "языка"), ("0", "агентов на сервере")],
  "trust_eyebrow": "Локально по устройству", "trust_h": "Ваши серверы, ваш Mac, ваши ключи.",
  "trust": [
   ("Сначала только чтение", "Обнаружение ничего не пишет и не читает пароли и ключи из .env."),
@@ -154,7 +163,7 @@ T = {
  "agents_p": "Sesame MCP və REST dilində danışır. Agentlər hər şeyi dərhal oxuyur, hər dəyişiklik isə tətbiqdə görünür və siz «İcazə ver» basmayınca icra olunmur. Hər addım agentin adı ilə jurnala yazılır.",
  "surfaces": ["MCP", "REST", "CLI"],
  "approve_who": "Claude Code istəyir:", "approve_what": "prod-a Redis quraşdırmaq", "approve_d": ["127.0.0.1:6379-da dinləyir", "parol yaradılıb və anbarda saxlanılıb"], "approve_deny": "Rədd et", "approve_allow": "İcazə ver",
- "nums": [("28", "agent aləti"), ("7", "bir kliklə xidmət"), ("3", "dil"), ("0", "serverdə agent")],
+ "nums": [("30", "agent aləti"), ("8", "bir kliklə xidmət"), ("3", "dil"), ("0", "serverdə agent")],
  "trust_eyebrow": "Lokal quruluş", "trust_h": "Sizin serverlər, sizin Mac, sizin açarlar.",
  "trust": [
   ("Əvvəlcə yalnız oxuma", "Kəşf heç nə yazmır və .env-dən parol və açar oxumur."),
@@ -231,7 +240,7 @@ def page(code):
         chips_h = "".join(f"<li>{e(c)}</li>" for c in chips)
         feats += f'''
     <section class="row{' flip' if i % 2 else ''}">
-      <div class="frame split">
+      <div class="frame feature">
         <div class="copy reveal">
           <span class="eyebrow">{e(eb)}</span>
           <h2>{e(h)}</h2>
@@ -283,8 +292,8 @@ def page(code):
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{up}assets/site.css">
-  <script defer src="{up}assets/site.js"></script>
+  <link rel="stylesheet" href="{up}assets/site.css?v={CSS_V}">
+  <script defer src="{up}assets/site.js?v={JS_V}"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip</a>
