@@ -23,3 +23,14 @@ jobs:
         with:
           name: screenshots
           path: target/screenshots/*.png
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the app
+        run: cargo build -p sesame-app --locked
+      - name: Test the engine (no GUI)
+        run: cargo test --locked -p sesame-core -p sesame-cloudflare -p sesame-mail -p sesame-update -p sesame-engine
