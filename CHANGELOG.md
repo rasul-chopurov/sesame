@@ -14,6 +14,9 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Backups are written with `umask 077`.
 - PostgreSQL version shown as `18.6` instead of the package string.
 
+### Changed
+- Secrets moved from the macOS Keychain to an encrypted vault in Sesame's own database: the key is derived from a master password with Argon2id (64 MiB, 3 passes) and every secret is sealed with XChaCha20-Poly1305 bound to its slot. Optional key-file mode without a password. Works the same on macOS and Windows and survives app updates.
+
 ### Added
 - Sesame Glass design: translucent light and dark themes over a blurred window, breadcrumbs in the titlebar, sidebar tree with server/site search, status bar, brand icons for detected software.
 - Russian and Azerbaijani translations; language and theme follow the system or are chosen in Settings.
@@ -23,7 +26,7 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - install and uninstall Redis, PostgreSQL (PGDG), MariaDB, MongoDB 8.0, Elasticsearch 9 and RustFS (S3) with localhost-only defaults; uninstall keeps data unless asked;
   - Laravel maintenance mode on/off and Reverb under supervisor per site.
 - `sesame do <server> …` runs the same plans from the terminal (install, uninstall, db-create, db-drop, service, maintenance, reverb); `sesame audit` shows the log; `sesame secret-set` stores a known credential.
-- Generated credentials are shown once, copyable as `.env`, and stored in the macOS Keychain.
+- Generated credentials are shown once, copyable as `.env`, and stored in the encrypted vault.
 - Sites as searchable, filterable cards with a detail page (framework, database, drivers, processes, run-as users).
 - Services page showing which of Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 (RustFS/MinIO) and Reverb are installed, with conflicts.
 - Settings: theme, language, update channel, automatic updates; "What's new" page with release notes.

@@ -7,6 +7,7 @@ pub mod ops;
 pub mod secrets;
 pub mod snapshot;
 pub mod store;
+pub mod vault;
 
 pub use model::{AuthMethod, ServerConfig, ServerId};
 pub use snapshot::ServerSnapshot;

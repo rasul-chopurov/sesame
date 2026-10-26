@@ -115,6 +115,8 @@ pub enum Page {
     AddServer,
     Settings,
     Updates,
+    /// Create or unlock the encrypted vault; shown before anything else.
+    Vault,
 }
 
 #[derive(Default)]
@@ -155,6 +157,10 @@ pub struct SesameApp {
     pub(crate) pending: Option<jobs::Pending>,
     pub(crate) job: Option<jobs::Job>,
     pub(crate) db_name: Entity<InputState>,
+    pub(crate) vault_pw: Entity<InputState>,
+    pub(crate) vault_pw2: Entity<InputState>,
+    pub(crate) vault_busy: bool,
+    pub(crate) vault_error: Option<String>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -181,12 +187,19 @@ impl SesameApp {
         let filter = input(tr("nav.filter"), window, cx);
         let site_search = input(tr("sites.search"), window, cx);
         let db_name = input(tr("db.name_placeholder"), window, cx);
+        let vault_pw = cx.new(|cx| InputState::new(window, cx).masked(true));
+        let vault_pw2 = cx.new(|cx| InputState::new(window, cx).masked(true));
 
         let mut subs = vec![
             cx.subscribe(&filter, |_, _, _: &InputEvent, cx| cx.notify()),
             cx.subscribe(&site_search, |_, _, _: &InputEvent, cx| cx.notify()),
         ];
         subs.push(cx.subscribe(&db_name, |_, _, _: &InputEvent, cx| cx.notify()));
+        subs.push(cx.subscribe(&vault_pw, |this, _, e: &InputEvent, cx| {
+            if matches!(e, InputEvent::PressEnter { .. }) {
+                this.submit_vault(false, cx);
+            }
+        }));
         subs.push(cx.observe_window_appearance(window, |this, window, cx| {
             if this.theme_pref == ThemePref::System {
                 theme::apply(theme::is_dark(ThemePref::System, Some(window)), this.translucent, cx);
@@ -194,9 +207,23 @@ impl SesameApp {
             }
         }));
 
-        let page = match servers.first() {
-            Some(s) => Page::Server(s.id, Section::Overview),
-            None => Page::AddServer,
+        // Key-file vaults open by themselves; password vaults wait for the user.
+        if !secrets::is_unlocked() {
+            if let Ok(sesame_core::vault::VaultMode::KeyFile) = sesame_core::vault::Vault::mode(&store) {
+                if let Ok(path) = sesame_core::vault::Vault::key_file_path() {
+                    if let Ok(v) = sesame_core::vault::Vault::unlock_with_key_file(store.clone(), &path) {
+                        secrets::install(v);
+                    }
+                }
+            }
+        }
+        let page = if !secrets::is_unlocked() {
+            Page::Vault
+        } else {
+            match servers.first() {
+                Some(s) => Page::Server(s.id, Section::Overview),
+                None => Page::AddServer,
+            }
         };
         let mut this = Self {
             store,
@@ -217,9 +244,13 @@ impl SesameApp {
             pending: None,
             job: None,
             db_name,
+            vault_pw,
+            vault_pw2,
+            vault_busy: false,
+            vault_error: None,
             _subscriptions: subs,
         };
-        if translucent && this.update_due() {
+        if translucent && this.page != Page::Vault && this.update_due() {
             this.check_updates(cx);
         }
         this
@@ -366,6 +397,60 @@ impl SesameApp {
         cx.notify();
     }
 
+    // ---- vault ------------------------------------------------------------
+
+    /// Creates or unlocks the vault. `no_password` picks the key-file mode on first run.
+    pub(crate) fn submit_vault(&mut self, no_password: bool, cx: &mut Context<Self>) {
+        use sesame_core::vault::{Vault, VaultMode};
+        if self.vault_busy {
+            return;
+        }
+        let mode = Vault::mode(&self.store).unwrap_or(VaultMode::New);
+        let pw = self.vault_pw.read(cx).value().to_string();
+        let pw2 = self.vault_pw2.read(cx).value().to_string();
+        if mode == VaultMode::New && !no_password && pw != pw2 {
+            self.vault_error = Some(tr("vault.mismatch"));
+            cx.notify();
+            return;
+        }
+        self.vault_busy = true;
+        self.vault_error = None;
+        cx.notify();
+        let store = self.store.clone();
+        // Argon2id takes a moment; keep the window responsive.
+        let job = runtime::get().spawn_blocking(move || -> anyhow::Result<Vault> {
+            match (mode, no_password) {
+                (VaultMode::New, true) => Vault::create_with_key_file(store, &Vault::key_file_path()?),
+                (VaultMode::New, false) => Vault::create_with_password(store, &pw),
+                (VaultMode::Password, _) => Vault::unlock_with_password(store, &pw),
+                (VaultMode::KeyFile, _) => Vault::unlock_with_key_file(store, &Vault::key_file_path()?),
+            }
+        });
+        cx.spawn(async move |this, cx| {
+            let result = job.await;
+            this.update(cx, |this, cx| {
+                this.vault_busy = false;
+                match result {
+                    Ok(Ok(vault)) => {
+                        secrets::install(vault);
+                        this.page = match this.servers.first() {
+                            Some(s) => Page::Server(s.id, Section::Overview),
+                            None => Page::AddServer,
+                        };
+                        if this.translucent && this.update_due() {
+                            this.check_updates(cx);
+                        }
+                    }
+                    Ok(Err(e)) => this.vault_error = Some(e.to_string()),
+                    Err(e) => this.vault_error = Some(e.to_string()),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     // ---- servers ---------------------------------------------------------
 
     pub(crate) fn submit_add(&mut self, cx: &mut Context<Self>) {
@@ -382,7 +467,7 @@ impl SesameApp {
         if !password.is_empty() {
             server.auth = AuthMethod::Password;
             if let Err(e) = secrets::set(server.id, SecretKind::Password, &password) {
-                return self.form_error(format!("Keychain: {e}"), cx);
+                return self.form_error(format!("Vault: {e}"), cx);
             }
         }
         if let Err(e) = self.store.save_server(&server) {
@@ -436,7 +521,7 @@ impl SesameApp {
 
     pub(crate) fn remove_server(&mut self, id: ServerId, cx: &mut Context<Self>) {
         let _ = self.store.delete_server(id);
-        let _ = secrets::delete(id, SecretKind::Password);
+        let _ = secrets::delete_server(id);
         self.servers.retain(|s| s.id != id);
         self.snapshots.remove(&id);
         self.page = match self.servers.first() {
@@ -466,7 +551,25 @@ fn now_secs() -> i64 {
 impl Render for SesameApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let g = Glass::get(cx).clone();
+        if self.page == Page::Vault {
+            return v_flex()
+                .size_full()
+                .bg(g.window)
+                .text_color(g.text)
+                .text_sm()
+                .child(
+                    div().absolute().size_full().bg(linear_gradient(
+                        135.,
+                        linear_color_stop(g.glow_a, 0.0),
+                        linear_color_stop(g.glow_b, 1.0),
+                    )),
+                )
+                .child(TitleBar::new().h(px(40.)).child(div()))
+                .child(views::vault(self, cx))
+                .into_any_element();
+        }
         let content = match self.page {
+            Page::Vault => div().into_any_element(),
             Page::AddServer => views::add_server(self, cx).into_any_element(),
             Page::Settings => views::settings(self, window, cx).into_any_element(),
             Page::Updates => views::updates(self, cx).into_any_element(),
@@ -518,6 +621,7 @@ impl Render for SesameApp {
             )
             .child(self.render_statusbar(cx))
             .children(self.render_confirm(cx))
+            .into_any_element()
     }
 }
 
@@ -543,6 +647,7 @@ impl SesameApp {
             Page::AddServer => crumbs = crumbs.child(sep()).child(tr("nav.add_server")),
             Page::Settings => crumbs = crumbs.child(sep()).child(tr("nav.settings")),
             Page::Updates => crumbs = crumbs.child(sep()).child(tr("nav.updates")),
+            Page::Vault => {}
         }
 
         let theme_icon = match self.theme_pref {

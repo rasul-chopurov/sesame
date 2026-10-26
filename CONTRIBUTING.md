@@ -11,7 +11,7 @@ Thanks for helping open servers for the Laravel community.
 ## Ground rules
 
 - **Discovery is read-only.** Anything that changes a server is an operation with a `Risk` level and goes through confirmation.
-- **No secrets in argv, logs or SQLite.** Pass them over stdin; store them in the OS keychain.
+- **No secrets in argv, logs or SQLite.** Pass them over stdin; store them in the encrypted vault.
 - **Logic stays out of the UI crate.** `sesame-app` is the only crate that depends on GPUI, so mobile, MCP/REST and the cloud reuse everything else.
 - New probe output → add a fixture under `crates/sesame-discovery/fixtures/` and a test.
 - Every user-facing string goes through `t!()` with English and Russian translations.

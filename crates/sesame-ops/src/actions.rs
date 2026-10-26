@@ -123,7 +123,7 @@ pub fn db_create(engine: DatabaseKind, db: &str, user: &str, admin: Option<&Admi
         details: vec![
             format!("database {db}"),
             format!("user {user} with access to {db} only, from localhost"),
-            "a 32-character password, shown once and kept in the Keychain".into(),
+            "a 32-character password, shown once and kept in the encrypted vault".into(),
         ],
         confirm_word: None,
         steps: vec![Step::new(format!("create {db} and {user}"), script)],
@@ -312,5 +312,167 @@ mod tests {
         assert!(p.steps[0].script.contains("runuser -u \"$owner\" -- php artisan down"));
         assert!(sh_ok(&p.steps[0].script));
         assert!(maintenance("relative/path", true).is_err());
+    }
+}
+
+/// GitHub's published SSH host key (ed25519). Pinned so a deploy never
+/// trusts an impostor `github.com`.
+pub const GITHUB_HOST_KEY: &str =
+    "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
+
+fn slug_of(app_path: &str) -> String {
+    app_path
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()
+        .unwrap_or("site")
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '-' })
+        .collect()
+}
+
+fn check_path(app_path: &str) -> Result<()> {
+    if !app_path.starts_with('/') || app_path.contains("..") || app_path.contains('\'') || app_path.len() < 2 {
+        bail!("invalid app path “{app_path}”");
+    }
+    Ok(())
+}
+
+/// Runs `body` as the owner of `app_path` (or `fallback_owner` when the
+/// directory does not exist yet), via a heredoc so nothing needs quoting.
+fn as_owner(app_path: &str, body: &str) -> String {
+    format!(
+        "owner=$(stat -c %U {p} 2>/dev/null || stat -c %U \"$(dirname {p})\")\n\
+         home=$(getent passwd \"$owner\" | cut -d: -f6)\n\
+         runuser -u \"$owner\" -- env HOME=\"$home\" sh -eu <<'AS_OWNER'\n{body}\nAS_OWNER",
+        p = q(app_path)
+    )
+}
+
+/// Creates a deploy key for the site (owned by the app's user, never leaving
+/// the server) and prints its public half for GitHub.
+pub fn git_connect(app_path: &str) -> Result<Plan> {
+    check_path(app_path)?;
+    let slug = slug_of(app_path);
+    let key = format!("$HOME/.ssh/sesame_{slug}");
+    let body = format!(
+        "mkdir -p \"$HOME/.ssh\" && chmod 700 \"$HOME/.ssh\"\n\
+         [ -f \"{key}\" ] || ssh-keygen -q -t ed25519 -N '' -C 'sesame@{slug}' -f \"{key}\"\n\
+         touch \"$HOME/.ssh/known_hosts\"\n\
+         grep -q '^github.com ssh-ed25519 ' \"$HOME/.ssh/known_hosts\" || echo '{GITHUB_HOST_KEY}' >> \"$HOME/.ssh/known_hosts\"\n\
+         cat \"{key}.pub\""
+    );
+    Ok(Plan {
+        op: "git_connect",
+        title: format!("create a deploy key for {app_path}"),
+        risk: Risk::Change,
+        details: vec![
+            format!("an ed25519 key in the app owner's ~/.ssh/sesame_{slug}; the private key never leaves the server"),
+            "GitHub's host key is pinned in known_hosts".into(),
+            "the public key is added to the repository as a read-only deploy key".into(),
+        ],
+        confirm_word: None,
+        steps: vec![Step::new("create the deploy key", as_owner(app_path, &body)).capture("DEPLOY_PUBLIC_KEY")],
+        reveal: vec![],
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeployOptions {
+    pub laravel: bool,
+    pub migrate: bool,
+    /// Supervisor programs to restart after the code changes (Octane, Horizon…).
+    pub restart: Vec<String>,
+}
+
+/// Fetches `branch` and checks it out in `app_path`, then runs the Laravel
+/// steps. Untracked files (`.env`, `storage/`) are kept.
+pub fn deploy(app_path: &str, repo: &str, branch: &str, opts: &DeployOptions) -> Result<Plan> {
+    check_path(app_path)?;
+    let repo_ok = repo.split('/').count() == 2
+        && repo.chars().all(|c| c.is_ascii_alphanumeric() || "-_./".contains(c));
+    let branch_ok = !branch.is_empty()
+        && !branch.starts_with('-')
+        && !branch.contains("..")
+        && branch.chars().all(|c| c.is_ascii_alphanumeric() || "-_./".contains(c));
+    if !repo_ok || !branch_ok {
+        bail!("invalid repository or branch");
+    }
+    for p in &opts.restart {
+        check_name("program", p, "-.:")?;
+    }
+    let slug = slug_of(app_path);
+    let ssh = format!("ssh -i $HOME/.ssh/sesame_{slug} -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes");
+    let url = format!("git@github.com:{repo}.git");
+    let fetch = format!(
+        "export GIT_SSH_COMMAND='{ssh}'\n\
+         cd {p}\n\
+         if [ ! -d .git ]; then\n\
+         \x20 git init -q\n\
+         \x20 git remote add origin '{url}'\n\
+         fi\n\
+         git remote set-url origin '{url}'\n\
+         git fetch --quiet origin '{branch}'\n\
+         git checkout -q -B '{branch}' 'origin/{branch}'\n\
+         git reset -q --hard 'origin/{branch}'\n\
+         git log -1 --format='%h %s'",
+        p = q(app_path)
+    );
+    let mut steps = vec![Step::new(format!("fetch {repo}@{branch}"), as_owner(app_path, &fetch))];
+    if opts.laravel {
+        let mut body = format!(
+            "cd {p}\n\
+             if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction --no-progress 2>&1 | tail -3; fi\n",
+            p = q(app_path)
+        );
+        if opts.migrate {
+            body.push_str("php artisan migrate --force\n");
+        }
+        body.push_str("php artisan optimize\nphp artisan queue:restart || true");
+        steps.push(Step::new("composer, migrations, caches", as_owner(app_path, &body)));
+    }
+    if !opts.restart.is_empty() {
+        let names: Vec<String> = opts.restart.iter().map(|p| q(p)).collect();
+        steps.push(Step::new("restart workers", format!("supervisorctl restart {}", names.join(" "))));
+    }
+    Ok(Plan {
+        op: "deploy",
+        title: format!("deploy {repo}@{branch} to {app_path}"),
+        risk: Risk::Change,
+        details: vec![
+            format!("{app_path} is reset to the latest commit of {branch}; .env and other untracked files stay"),
+            if opts.laravel { "composer install, migrations, optimize, queue restart".into() } else { "no build steps".into() },
+        ],
+        confirm_word: None,
+        steps,
+        reveal: vec![],
+    })
+}
+
+#[cfg(test)]
+mod deploy_tests {
+    use super::*;
+
+    fn sh_ok(script: &str) -> bool {
+        std::process::Command::new("sh").args(["-n", "-c", script]).status().unwrap().success()
+    }
+
+    #[test]
+    fn connect_and_deploy_scripts() {
+        let c = git_connect("/var/www/shop").unwrap();
+        assert_eq!(c.steps[0].capture_as.as_deref(), Some("DEPLOY_PUBLIC_KEY"));
+        assert!(sh_ok(&c.steps[0].script));
+        assert!(c.steps[0].script.contains("runuser -u \"$owner\""));
+
+        let opts = DeployOptions { laravel: true, migrate: true, restart: vec!["shop-octane".into()] };
+        let d = deploy("/var/www/shop", "rasul-chopurov/shop", "main", &opts).unwrap();
+        for s in &d.steps {
+            assert!(sh_ok(&s.script), "{}", s.title);
+        }
+        assert!(d.steps[0].script.contains("StrictHostKeyChecking=yes"));
+        assert!(d.steps[1].script.contains("migrate --force"));
+        assert!(d.steps[2].script.contains("supervisorctl restart 'shop-octane'"));
+        assert!(deploy("/var/www/shop", "a/b", "--upload-pack=x", &opts).is_err());
+        assert!(deploy("/var/www/shop", "a;b/c", "main", &opts).is_err());
     }
 }

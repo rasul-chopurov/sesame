@@ -1,0 +1,12 @@
+[package]
+name = "sesame-github"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "GitHub API: repositories, branches, commits and deploy keys for site deploys."
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest = { version = "0.13", features = ["json"] }

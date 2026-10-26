@@ -35,7 +35,7 @@ It is built for how Laravel actually runs in production today: FrankenPHP and Oc
 
 | | |
 |---|---|
-| 🔑 **Connect** | ssh-agent, key file or password (kept in the macOS Keychain). Host keys verified against `~/.ssh/known_hosts`; a changed key refuses to connect. |
+| 🔑 **Connect** | ssh-agent, key file or password (encrypted in a local vault). Host keys verified against `~/.ssh/known_hosts`; a changed key refuses to connect. |
 | 🔍 **Discover** | One read-only probe, two SSH round trips: OS and resources · systemd and supervisor (Octane, queue, Horizon, Reverb recognised) · listening ports · sites from **FrankenPHP/Caddy, Nginx, Apache** · Laravel and WordPress with non-secret `.env` details · MySQL, MariaDB, PostgreSQL, Redis, MongoDB · mail · PHP and FPM pools · cron · certificates and expiry · ufw and fail2ban · Docker. |
 | 🚨 **Needs attention** | Failed processes, ports open to the world, inactive firewall, expiring certificates, PHP-FPM running for nobody, full disks. |
 | 🤖 **AI-friendly** | Every action is a typed operation. `sesame discover root@host` prints JSON today; MCP and REST servers for agents are on the roadmap. |

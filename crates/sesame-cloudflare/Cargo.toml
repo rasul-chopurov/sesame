@@ -1,0 +1,15 @@
+[package]
+name = "sesame-cloudflare"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Cloudflare API v4: zones, DNS records, cache purge, and matching sites to DNS."
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest = { version = "0.13", features = ["json"] }
+
+[dev-dependencies]
+tokio.workspace = true

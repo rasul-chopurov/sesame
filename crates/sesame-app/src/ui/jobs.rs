@@ -1,5 +1,5 @@
 //! Running plans: the confirmation dialog, the live job drawer, the audit
-//! log entry and saving revealed credentials to the Keychain.
+//! log entry and saving revealed credentials to the encrypted vault.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants as _};

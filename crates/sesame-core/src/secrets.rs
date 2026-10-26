@@ -1,11 +1,42 @@
-//! Secrets live in the OS keychain (macOS Keychain, Windows Credential
-//! Manager), keyed by server id and purpose. Nothing secret goes to SQLite.
+//! Secrets API used across Sesame, backed by the encrypted [`Vault`] in the
+//! local database. The vault must be unlocked once per process (the app asks
+//! for the master password; the CLI reads `SESAME_MASTER_PASSWORD` or prompts).
 
-use anyhow::Result;
+use std::sync::RwLock;
+
+use anyhow::{Result, anyhow};
 
 use crate::ServerId;
+use crate::vault::Vault;
 
-const SERVICE: &str = "dev.sesame.app";
+static VAULT: RwLock<Option<Vault>> = RwLock::new(None);
+
+/// Makes `vault` the process-wide unlocked vault.
+pub fn install(vault: Vault) {
+    *VAULT.write().unwrap() = Some(vault);
+}
+
+/// Forgets the key (locks the vault).
+pub fn lock() {
+    *VAULT.write().unwrap() = None;
+}
+
+pub fn is_unlocked() -> bool {
+    VAULT.read().unwrap().is_some()
+}
+
+fn with<T>(f: impl FnOnce(&Vault) -> Result<T>) -> Result<T> {
+    let guard = VAULT.read().unwrap();
+    let v = guard.as_ref().ok_or_else(|| anyhow!("the Sesame vault is locked"))?;
+    f(v)
+}
+
+/// Changes or sets the master password of the unlocked vault.
+pub fn set_master_password(password: &str) -> Result<()> {
+    let mut guard = VAULT.write().unwrap();
+    let v = guard.as_mut().ok_or_else(|| anyhow!("the Sesame vault is locked"))?;
+    v.set_password(password)
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum SecretKind {
@@ -14,69 +45,49 @@ pub enum SecretKind {
 }
 
 impl SecretKind {
-    fn suffix(self) -> &'static str {
+    fn name(self) -> &'static str {
         match self {
-            SecretKind::Password => "password",
-            SecretKind::KeyPassphrase => "key-passphrase",
+            SecretKind::Password => "ssh-password",
+            SecretKind::KeyPassphrase => "ssh-key-passphrase",
         }
     }
 }
 
-fn entry(server: ServerId, kind: SecretKind) -> Result<keyring::Entry> {
-    Ok(keyring::Entry::new(SERVICE, &format!("{server}:{}", kind.suffix()))?)
-}
-
 pub fn set(server: ServerId, kind: SecretKind, value: &str) -> Result<()> {
-    entry(server, kind)?.set_password(value)?;
-    Ok(())
+    with(|v| v.put(&server.to_string(), kind.name(), value))
 }
 
 pub fn get(server: ServerId, kind: SecretKind) -> Result<Option<String>> {
-    match entry(server, kind)?.get_password() {
-        Ok(v) => Ok(Some(v)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(e.into()),
-    }
+    with(|v| Ok(v.get(&server.to_string(), kind.name())?.map(|s| s.to_string())))
 }
 
 pub fn delete(server: ServerId, kind: SecretKind) -> Result<()> {
-    match entry(server, kind)?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(e.into()),
-    }
+    with(|v| v.delete(&server.to_string(), Some(kind.name())))
 }
 
-fn named_entry(server: ServerId, name: &str) -> Result<keyring::Entry> {
-    Ok(keyring::Entry::new(SERVICE, &format!("{server}:value:{name}"))?)
-}
-
-/// Stores a generated credential (a database password, an S3 key, …).
+/// A generated credential for a server (database password, S3 key, …).
 pub fn set_named(server: ServerId, name: &str, value: &str) -> Result<()> {
-    named_entry(server, name)?.set_password(value)?;
-    Ok(())
+    with(|v| v.put(&server.to_string(), name, value))
 }
 
 pub fn get_named(server: ServerId, name: &str) -> Result<Option<String>> {
-    match named_entry(server, name)?.get_password() {
-        Ok(v) => Ok(Some(v)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(e.into()),
-    }
+    with(|v| Ok(v.get(&server.to_string(), name)?.map(|s| s.to_string())))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Touches the real OS keychain; run with `cargo test -p sesame-core -- --ignored keychain`.
-    #[test]
-    #[ignore]
-    fn keychain_round_trip() {
-        let id = uuid::Uuid::new_v4();
-        set_named(id, "PROBE", "value-1").unwrap();
-        assert_eq!(get_named(id, "PROBE").unwrap().as_deref(), Some("value-1"));
-        named_entry(id, "PROBE").unwrap().delete_credential().unwrap();
-        assert_eq!(get_named(id, "PROBE").unwrap(), None);
-    }
+/// Everything stored for a server (when it is removed).
+pub fn delete_server(server: ServerId) -> Result<()> {
+    with(|v| v.delete(&server.to_string(), None))
 }
 
+/// Account-wide credentials: GitHub and Cloudflare tokens.
+pub fn set_global(name: &str, value: &str) -> Result<()> {
+    with(|v| v.put("global", name, value))
+}
+
+pub fn get_global(name: &str) -> Result<Option<String>> {
+    with(|v| Ok(v.get("global", name)?.map(|s| s.to_string())))
+}
+
+pub fn delete_global(name: &str) -> Result<()> {
+    with(|v| v.delete("global", Some(name)))
+}

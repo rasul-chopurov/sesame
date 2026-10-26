@@ -1,7 +1,7 @@
 //! Service recipes for Ubuntu 22.04/24.04 and Debian 12 (amd64 and arm64).
 //!
 //! Every recipe binds to localhost, generates its own password (shown once,
-//! kept in the Keychain by the app) and never opens a port to the internet.
+//! kept in the encrypted vault by the app) and never opens a port to the internet.
 //! Uninstalling keeps data unless the user explicitly asks to delete it.
 //!
 //! Scripts run as root through `sesame_ops::execute` with `set -eu`.

@@ -66,7 +66,7 @@ pub enum Command {
         #[arg(long, global = true)]
         confirm: Option<String>,
     },
-    /// Save a credential for a server in the Keychain; the value is read from stdin.
+    /// Save a credential for a server in the encrypted vault; the value is read from stdin.
     SecretSet { server: String, name: String },
     /// Show the audit log.
     Audit {
@@ -86,8 +86,49 @@ pub enum Command {
     ImportSnapshot { name: String, file: String },
 }
 
+/// Unlocks the encrypted vault for this process: `SESAME_MASTER_PASSWORD`,
+/// the key file, or a prompt on the terminal. Creates the vault on first use.
+pub fn unlock_vault(store: &std::sync::Arc<SqliteStore>) -> Result<()> {
+    use sesame_core::vault::{Vault, VaultMode};
+    if sesame_core::secrets::is_unlocked() {
+        return Ok(());
+    }
+    let from_env = std::env::var("SESAME_MASTER_PASSWORD").ok();
+    let vault = match Vault::mode(store)? {
+        VaultMode::KeyFile => Vault::unlock_with_key_file(store.clone(), &Vault::key_file_path()?)?,
+        VaultMode::Password => {
+            let pw = match from_env {
+                Some(p) => p,
+                None => rpassword::prompt_password("Sesame master password: ")?,
+            };
+            Vault::unlock_with_password(store.clone(), &pw)?
+        }
+        VaultMode::New => {
+            let pw = match from_env {
+                Some(p) => p,
+                None => {
+                    eprintln!("Create a master password for Sesame's encrypted vault (10+ characters).");
+                    let a = rpassword::prompt_password("New master password: ")?;
+                    let b = rpassword::prompt_password("Repeat: ")?;
+                    if a != b {
+                        bail!("passwords do not match");
+                    }
+                    a
+                }
+            };
+            Vault::create_with_password(store.clone(), &pw)?
+        }
+    };
+    sesame_core::secrets::install(vault);
+    Ok(())
+}
+
 pub async fn run(cmd: Command) -> Result<()> {
-    let store = SqliteStore::open_default()?;
+    let store = std::sync::Arc::new(SqliteStore::open_default()?);
+    let needs_vault = !matches!(cmd, Command::Servers | Command::Ops | Command::Audit { .. } | Command::Update { .. } | Command::Remove { .. });
+    if needs_vault {
+        unlock_vault(&store)?;
+    }
     match cmd {
         Command::Servers => {
             for s in store.servers()? {

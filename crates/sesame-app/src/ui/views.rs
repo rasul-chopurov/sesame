@@ -1194,3 +1194,71 @@ pub fn updates(app: &SesameApp, cx: &mut Context<SesameApp>) -> impl IntoElement
         .child(div().px_5().py_3().border_b_1().border_color(g.line).child(div().text_lg().font_weight(FontWeight::BOLD).child(tr("nav.updates"))))
         .child(scroll("updates", body))
 }
+
+// ---- vault -----------------------------------------------------------------------------
+
+pub fn vault(app: &SesameApp, cx: &mut Context<SesameApp>) -> impl IntoElement {
+    use sesame_core::vault::{Vault, VaultMode};
+    let g = Glass::get(cx).clone();
+    let new = Vault::mode(&app.store).map(|m| m == VaultMode::New).unwrap_or(true);
+    let field = |label: String, input: &Entity<gpui_kit::component::input::InputState>| {
+        v_flex().gap_1().child(div().font_weight(FontWeight::MEDIUM).child(label)).child(Input::new(input))
+    };
+    let mut form = panel(cx)
+        .p_5()
+        .gap_4()
+        .child(field(tr("vault.password"), &app.vault_pw));
+    if new {
+        form = form.child(field(tr("vault.repeat"), &app.vault_pw2));
+    }
+    form = form
+        .when_some(app.vault_error.clone(), |d, e| d.child(div().text_color(g.bad).child(e)))
+        .child(
+            Button::new("vault-submit")
+                .primary()
+                .loading(app.vault_busy)
+                .icon(IconName::Lock)
+                .label(if app.vault_busy {
+                    tr("vault.working")
+                } else if new {
+                    tr("vault.create")
+                } else {
+                    tr("vault.unlock")
+                })
+                .on_click(cx.listener(|this, _, _, cx| this.submit_vault(false, cx))),
+        )
+        .when(new, |d| {
+            d.child(
+                div()
+                    .id("vault-no-password")
+                    .cursor_pointer()
+                    .text_xs()
+                    .text_color(g.dim)
+                    .hover(|d| d.text_color(g.text))
+                    .child(tr("vault.no_password"))
+                    .on_click(cx.listener(|this, _, _, cx| this.submit_vault(true, cx))),
+            )
+        });
+    div().flex_1().flex().justify_center().pt(px(90.)).child(
+        v_flex()
+            .w(px(520.))
+            .gap_5()
+            .child(
+                v_flex()
+                    .items_center()
+                    .gap_2()
+                    .child(img(ImageSource::Resource(Resource::Embedded("logo.svg".into()))).size(px(64.)))
+                    .child(div().text_xl().font_weight(FontWeight::BOLD).child(if new {
+                        tr("vault.create_title")
+                    } else {
+                        tr("vault.unlock_title")
+                    }))
+                    .child(div().text_center().text_color(g.dim).child(if new {
+                        tr("vault.create_lead")
+                    } else {
+                        tr("vault.unlock_lead")
+                    })),
+            )
+            .child(form),
+    )
+}

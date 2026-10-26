@@ -44,13 +44,7 @@ impl SqliteStore {
     /// Opens `state.db` in `$SESAME_DATA_DIR`, else the platform data
     /// directory (`~/Library/Application Support/dev.sesame.Sesame` on macOS).
     pub fn open_default() -> Result<Self> {
-        let dir = match std::env::var_os("SESAME_DATA_DIR") {
-            Some(d) => std::path::PathBuf::from(d),
-            None => directories::ProjectDirs::from("dev", "sesame", "Sesame")
-                .context("no home directory")?
-                .data_dir()
-                .to_path_buf(),
-        };
+        let dir = Self::data_dir()?;
         std::fs::create_dir_all(&dir)?;
         Self::open(&dir.join("state.db"))
     }
@@ -58,6 +52,11 @@ impl SqliteStore {
     pub fn open(path: &Path) -> Result<Self> {
         let conn = Connection::open(path)?;
         Self::migrate(&conn)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+        }
         Ok(Self { conn: Mutex::new(conn) })
     }
 
@@ -88,6 +87,17 @@ impl SqliteStore {
                 actor TEXT NOT NULL,
                 ok INTEGER NOT NULL,
                 log TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS vault_meta (
+                key TEXT PRIMARY KEY,
+                value BLOB NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS vault (
+                scope TEXT NOT NULL,
+                name TEXT NOT NULL,
+                nonce BLOB NOT NULL,
+                ciphertext BLOB NOT NULL,
+                PRIMARY KEY (scope, name)
             );
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -192,6 +202,74 @@ impl Store for SqliteStore {
             params![key, value],
         )?;
         Ok(())
+    }
+}
+
+/// Raw access for the vault: it stores only ciphertext here.
+impl SqliteStore {
+    pub(crate) fn vault_meta(&self, key: &str) -> Result<Option<Vec<u8>>> {
+        let conn = self.conn.lock().unwrap();
+        Ok(conn
+            .query_row("SELECT value FROM vault_meta WHERE key = ?1", [key], |r| r.get(0))
+            .optional()?)
+    }
+
+    pub(crate) fn set_vault_meta(&self, key: &str, value: &[u8]) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO vault_meta (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
+    pub(crate) fn vault_put(&self, scope: &str, name: &str, nonce: &[u8], ct: &[u8]) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO vault (scope, name, nonce, ciphertext) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(scope, name) DO UPDATE SET nonce = excluded.nonce, ciphertext = excluded.ciphertext",
+            params![scope, name, nonce, ct],
+        )?;
+        Ok(())
+    }
+
+    pub(crate) fn vault_get(&self, scope: &str, name: &str) -> Result<Option<(Vec<u8>, Vec<u8>)>> {
+        let conn = self.conn.lock().unwrap();
+        Ok(conn
+            .query_row(
+                "SELECT nonce, ciphertext FROM vault WHERE scope = ?1 AND name = ?2",
+                params![scope, name],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?)
+    }
+
+    pub(crate) fn vault_delete(&self, scope: &str, name: Option<&str>) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        match name {
+            Some(n) => conn.execute("DELETE FROM vault WHERE scope = ?1 AND name = ?2", params![scope, n])?,
+            None => conn.execute("DELETE FROM vault WHERE scope = ?1", params![scope])?,
+        };
+        Ok(())
+    }
+
+    pub(crate) fn vault_all(&self) -> Result<Vec<(String, String, Vec<u8>, Vec<u8>)>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT scope, name, nonce, ciphertext FROM vault")?;
+        let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Where the database lives (for the key file next to it).
+    pub fn data_dir() -> Result<std::path::PathBuf> {
+        Ok(match std::env::var_os("SESAME_DATA_DIR") {
+            Some(d) => std::path::PathBuf::from(d),
+            None => directories::ProjectDirs::from("dev", "sesame", "Sesame")
+                .context("no home directory")?
+                .data_dir()
+                .to_path_buf(),
+        })
     }
 }
 

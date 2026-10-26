@@ -69,6 +69,7 @@ fn main() {
             ("add-server", Page::AddServer),
             ("settings", Page::Settings),
             ("updates", Page::Updates),
+            ("vault", Page::Vault),
         ];
         if let Some(only) = &only {
             pages.retain(|(name, _)| only.split(',').any(|o| o == *name));

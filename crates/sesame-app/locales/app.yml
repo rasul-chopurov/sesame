@@ -37,7 +37,7 @@ add.key_placeholder: { en: "~/.ssh/id_ed25519  (empty = ssh-agent and default ke
 add.optional: { en: "Optional", ru: "Необязательно", az: "İstəyə bağlı" }
 add.password: { en: "Password", ru: "Пароль", az: "Parol" }
 add.password_placeholder: { en: "only if the server uses password login", ru: "только если сервер пускает по паролю", az: "yalnız server parolla giriş istəyirsə" }
-add.password_hint: { en: "Optional — stored in the macOS Keychain, never on disk", ru: "Необязательно — хранится в Связке ключей macOS, не на диске", az: "İstəyə bağlı — diskdə deyil, macOS Keychain-də saxlanılır" }
+add.password_hint: { en: "Optional — encrypted in Sesame's vault with your master password", ru: "Необязательно — шифруется в хранилище Sesame вашим мастер-паролем", az: "İstəyə bağlı — Sesame anbarında master parolunuzla şifrələnir" }
 add.submit: { en: "Open Sesame — connect & discover", ru: "Сим-сим, откройся — подключить и просканировать", az: "Açıl, Susam — qoşul və skan et" }
 add.cancel: { en: "Cancel", ru: "Отмена", az: "Ləğv et" }
 
@@ -110,7 +110,7 @@ proc.system: { en: "System services", ru: "Системные сервисы", a
 proc.up: { en: "up %{time}", ru: "работает %{time}", az: "%{time} işləyir" }
 
 svc.title: { en: "Install services", ru: "Установка сервисов", az: "Xidmətlərin quraşdırılması" }
-svc.lead: { en: "One click, safe defaults: bound to localhost, generated passwords kept in the Keychain, nothing exposed to the internet.", ru: "В один клик и с безопасными настройками: слушают только localhost, пароли генерируются и хранятся в Связке ключей, наружу ничего не открыто.", az: "Bir kliklə, təhlükəsiz ayarlarla: yalnız localhost-u dinləyir, parollar yaradılır və Keychain-də saxlanılır, internetə heç nə açılmır." }
+svc.lead: { en: "One click, safe defaults: bound to localhost, generated passwords kept in the encrypted vault, nothing exposed to the internet.", ru: "В один клик и с безопасными настройками: слушают только localhost, пароли генерируются и хранятся в зашифрованном хранилище, наружу ничего не открыто.", az: "Bir kliklə, təhlükəsiz ayarlarla: yalnız localhost-u dinləyir, parollar yaradılır və şifrəli anbarda saxlanılır, internetə heç nə açılmır." }
 svc.installed: { en: "Installed", ru: "Установлен", az: "Quraşdırılıb" }
 svc.not_installed: { en: "Not installed", ru: "Не установлен", az: "Quraşdırılmayıb" }
 svc.install: { en: "Install", ru: "Установить", az: "Quraşdır" }
@@ -193,7 +193,7 @@ job.running: { en: "Running…", ru: "Выполняется…", az: "İcra olu
 job.done: { en: "Done", ru: "Готово", az: "Hazırdır" }
 job.failed: { en: "Failed", ru: "Ошибка", az: "Xəta" }
 job.close: { en: "Close", ru: "Закрыть", az: "Bağla" }
-job.reveal: { en: "Save these now — shown only once, also kept in the Keychain", ru: "Сохраните сейчас — показываются один раз, копия в Связке ключей", az: "İndi saxlayın — yalnız bir dəfə göstərilir, surəti Keychain-dədir" }
+job.reveal: { en: "Save these now — shown only once, also kept in the encrypted vault", ru: "Сохраните сейчас — показываются один раз, копия в зашифрованном хранилище", az: "İndi saxlayın — yalnız bir dəfə göstərilir, surəti şifrəli anbardadır" }
 job.copy: { en: "Copy", ru: "Копировать", az: "Kopyala" }
 job.copy_env: { en: "Copy as .env", ru: "Копировать как .env", az: ".env kimi kopyala" }
 job.delete_data: { en: "Also delete the data", ru: "Удалить и данные", az: "Məlumatları da sil" }
@@ -211,3 +211,15 @@ sites.maintenance_on: { en: "Maintenance on", ru: "Включить обслуж
 sites.maintenance_off: { en: "Maintenance off", ru: "Выключить обслуживание", az: "Texniki xidməti bağla" }
 sites.enable_reverb: { en: "Run Reverb", ru: "Запустить Reverb", az: "Reverb-i başlat" }
 overview.fix_fpm: { en: "Stop & disable", ru: "Остановить и отключить", az: "Dayandır və söndür" }
+
+vault.create_title: { en: "Protect your secrets", ru: "Защитите секреты", az: "Sirlərinizi qoruyun" }
+vault.create_lead: { en: "SSH passwords, database credentials and API tokens are encrypted in Sesame's local database with a key derived from your master password (Argon2id + XChaCha20-Poly1305). The password itself is never stored — if you forget it, the secrets cannot be recovered.", ru: "SSH-пароли, данные баз и API-токены шифруются в локальной базе Sesame ключом из вашего мастер-пароля (Argon2id + XChaCha20-Poly1305). Сам пароль нигде не хранится — если его забыть, секреты не восстановить.", az: "SSH parolları, baza məlumatları və API tokenləri Sesame-in lokal bazasında master parolunuzdan alınan açarla şifrələnir (Argon2id + XChaCha20-Poly1305). Parolun özü heç yerdə saxlanılmır — unutsanız, sirləri bərpa etmək olmaz." }
+vault.password: { en: "Master password", ru: "Мастер-пароль", az: "Master parol" }
+vault.repeat: { en: "Repeat the password", ru: "Повторите пароль", az: "Parolu təkrarlayın" }
+vault.create: { en: "Create the vault", ru: "Создать хранилище", az: "Anbarı yarat" }
+vault.no_password: { en: "Continue without a master password (key stored in a local file — weaker)", ru: "Продолжить без мастер-пароля (ключ в локальном файле — слабее)", az: "Master parolsuz davam et (açar lokal faylda — daha zəif)" }
+vault.unlock_title: { en: "Unlock Sesame", ru: "Разблокируйте Sesame", az: "Sesame-i kilidini açın" }
+vault.unlock_lead: { en: "Enter your master password to decrypt server and token secrets.", ru: "Введите мастер-пароль, чтобы расшифровать секреты серверов и токены.", az: "Server sirlərini və tokenləri açmaq üçün master parolu daxil edin." }
+vault.unlock: { en: "Unlock", ru: "Разблокировать", az: "Kilidi aç" }
+vault.working: { en: "Deriving the key…", ru: "Вычисляю ключ…", az: "Açar hesablanır…" }
+vault.mismatch: { en: "The passwords do not match", ru: "Пароли не совпадают", az: "Parollar uyğun gəlmir" }
