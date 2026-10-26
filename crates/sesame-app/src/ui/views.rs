@@ -811,7 +811,8 @@ fn databases(
                                 .hover(|d| d.text_color(g.bad))
                                 .child("×")
                                 .on_click(cx.listener(move |this, _, window, cx| {
-                                    this.request(server, actions::db_drop(kind, &db, None), None, window, cx);
+                                    let admin = crate::cli::mongo_admin(server);
+                                    this.request(server, actions::db_drop(kind, &db, None, admin.as_ref()), None, window, cx);
                                 })),
                         )
                     }),
@@ -844,7 +845,8 @@ fn databases(
                                     .label(tr("db.create"))
                                     .on_click(cx.listener(move |this, _, window, cx| {
                                         let name = this.db_name.read(cx).value().trim().to_string();
-                                        let plan = actions::db_create(kind, &name, &name);
+                                        let admin = crate::cli::mongo_admin(server);
+                                        let plan = actions::db_create(kind, &name, &name, admin.as_ref());
                                         this.request(server, plan, None, window, cx);
                                     })),
                             ),

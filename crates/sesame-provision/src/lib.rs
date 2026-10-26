@@ -90,11 +90,10 @@ pub fn detect(service: Service, s: &ServerSnapshot) -> Status {
     Status { installed: found.is_some(), version: found.filter(|v| !v.is_empty()), conflict }
 }
 
-const APT: &str = "apt-get -o DPkg::Lock::Timeout=300 -y -q";
+const APT: &str = "apt-get -o DPkg::Lock::Timeout=300 -o Dpkg::Use-Pty=0 -y -q";
 
 fn preflight() -> String {
-    r#". /etc/os-release
-case "$ID" in ubuntu|debian) ;; *) echo "Sesame recipes support Ubuntu and Debian; this is $ID"; exit 1;; esac
+    r#"case "$ID" in ubuntu|debian) ;; *) echo "Sesame recipes support Ubuntu and Debian; this is $ID"; exit 1;; esac
 command -v systemctl >/dev/null || { echo "systemd is required"; exit 1; }"#
         .to_string()
 }
@@ -178,17 +177,28 @@ pub fn install(service: Service, s: &ServerSnapshot) -> Result<Plan> {
                     apt("mongodb-org")
                 ),
             ));
+            // On data kept from an earlier install, auth is already on and the old
+            // admin stays; only a fresh install creates one and reveals its password.
+            steps.push(
+                Step::new(
+                    "create the admin user",
+                    format!(
+                        "if grep -q '^security:' /etc/mongod.conf; then exit 0; fi\n{} >/dev/null\nprintf '%s' '{pw}'",
+                        sesame_ops::actions::mongo_js(
+                            None,
+                            &format!("db.getSiblingDB('admin').createUser({{user: 'sesame_admin', pwd: '{pw}', roles: ['root']}});")
+                        )
+                    ),
+                )
+                .capture("MONGO_ADMIN_PASSWORD"),
+            );
             steps.push(Step::new(
-                "create the admin user and turn on authentication",
-                format!(
-                    "mongosh --quiet admin <<'JS'\ndb.createUser({{user: 'sesame_admin', pwd: '{pw}', roles: ['root']}})\nJS\n\
-                     grep -q '^security:' /etc/mongod.conf || printf '\\nsecurity:\\n  authorization: enabled\\n' >> /etc/mongod.conf\n\
-                     systemctl restart mongod\nsystemctl is-active mongod"
-                ),
+                "turn on authentication",
+                "grep -q '^security:' /etc/mongod.conf || printf '\\nsecurity:\\n  authorization: enabled\\n' >> /etc/mongod.conf\n\
+                 systemctl restart mongod\nsystemctl is-active mongod",
             ));
-            details.push("authentication on; admin user sesame_admin".into());
+            details.push("authentication on; admin user sesame_admin (kept if data from an earlier install exists)".into());
             reveal.push(("MONGO_ADMIN_USER".into(), "sesame_admin".into()));
-            reveal.push(("MONGO_ADMIN_PASSWORD".into(), pw));
         }
         Service::Elasticsearch => {
             steps.push(Step::new(
@@ -213,7 +223,10 @@ pub fn install(service: Service, s: &ServerSnapshot) -> Result<Plan> {
                      total=$(awk '/MemTotal/ {{print int($2/1024)}}' /proc/meminfo); heap=$((total / 4))\n\
                      mkdir -p /etc/elasticsearch/jvm.options.d\n\
                      printf -- '-Xms%sm\\n-Xmx%sm\\n' \"$heap\" \"$heap\" > /etc/elasticsearch/jvm.options.d/sesame.options\n\
-                     grep -q '^network.host' /etc/elasticsearch/elasticsearch.yml || echo 'network.host: 127.0.0.1' >> /etc/elasticsearch/elasticsearch.yml\n\
+                     y=/etc/elasticsearch/elasticsearch.yml\n\
+                     # The package's security auto-config writes http.host: 0.0.0.0; pin everything to localhost.\n\
+                     sed -i -E '/^(network|http|transport)\\.host:/d' \"$y\"\n\
+                     printf 'network.host: 127.0.0.1\\nhttp.host: 127.0.0.1\\ntransport.host: 127.0.0.1\\n' >> \"$y\"\n\
                      systemctl daemon-reload\nsystemctl enable --now elasticsearch\necho \"heap ${{heap}} MB\""
                 ),
             ));
@@ -436,6 +449,8 @@ mod tests {
         let reset = plan.steps.iter().find(|s| s.script.contains("reset-password")).unwrap();
         assert_eq!(reset.capture_as.as_deref(), Some("ELASTIC_PASSWORD"));
         assert!(plan.steps.iter().any(|s| s.script.contains("install elasticsearch >/dev/null")));
+        // ES 9 auto-config sets http.host: 0.0.0.0 — the recipe must override it.
+        assert!(plan.steps.iter().any(|s| s.script.contains("http.host: 127.0.0.1")));
     }
 
     #[test]

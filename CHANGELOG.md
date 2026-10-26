@@ -6,6 +6,14 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed (found on a real Ubuntu 24.04 arm64 server)
+- Elasticsearch 9 listened on all interfaces because its security auto-config writes `http.host: 0.0.0.0`; the recipe now pins network, http and transport hosts to 127.0.0.1.
+- MongoDB scripts reported success on errors (`mongosh` with a heredoc exits 0); scripts now run through `mongosh --file` and authenticate as the Sesame admin.
+- Reinstalling MongoDB over kept data no longer tries to create a second admin or reveals a password that was never set.
+- Every plan step now sees `/etc/os-release` (each step runs in a fresh shell).
+- Backups are written with `umask 077`.
+- PostgreSQL version shown as `18.6` instead of the package string.
+
 ### Added
 - Sesame Glass design: translucent light and dark themes over a blurred window, breadcrumbs in the titlebar, sidebar tree with server/site search, status bar, brand icons for detected software.
 - Russian and Azerbaijani translations; language and theme follow the system or are chosen in Settings.
@@ -14,6 +22,7 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - create databases with a dedicated user and generated password (MySQL, MariaDB, PostgreSQL, MongoDB); drop databases after an automatic backup to `/var/backups/sesame`;
   - install and uninstall Redis, PostgreSQL (PGDG), MariaDB, MongoDB 8.0, Elasticsearch 9 and RustFS (S3) with localhost-only defaults; uninstall keeps data unless asked;
   - Laravel maintenance mode on/off and Reverb under supervisor per site.
+- `sesame do <server> …` runs the same plans from the terminal (install, uninstall, db-create, db-drop, service, maintenance, reverb); `sesame audit` shows the log; `sesame secret-set` stores a known credential.
 - Generated credentials are shown once, copyable as `.env`, and stored in the macOS Keychain.
 - Sites as searchable, filterable cards with a detail page (framework, database, drivers, processes, run-as users).
 - Services page showing which of Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 (RustFS/MinIO) and Reverb are installed, with conflicts.

@@ -63,3 +63,20 @@ pub fn get_named(server: ServerId, name: &str) -> Result<Option<String>> {
         Err(e) => Err(e.into()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Touches the real OS keychain; run with `cargo test -p sesame-core -- --ignored keychain`.
+    #[test]
+    #[ignore]
+    fn keychain_round_trip() {
+        let id = uuid::Uuid::new_v4();
+        set_named(id, "PROBE", "value-1").unwrap();
+        assert_eq!(get_named(id, "PROBE").unwrap().as_deref(), Some("value-1"));
+        named_entry(id, "PROBE").unwrap().delete_credential().unwrap();
+        assert_eq!(get_named(id, "PROBE").unwrap(), None);
+    }
+}
+

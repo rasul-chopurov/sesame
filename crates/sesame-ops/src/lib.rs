@@ -63,6 +63,9 @@ pub enum Event {
     Done { ok: bool, error: Option<String> },
 }
 
+/// Prepended to every step: each step runs in a fresh shell.
+pub const PREAMBLE: &str = "set -eu\nexport DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a\n[ -r /etc/os-release ] && . /etc/os-release\n";
+
 /// Runs the plan's steps in order, stopping at the first failure.
 pub async fn execute<R: Run>(runner: &R, plan: &Plan, events: Option<UnboundedSender<Event>>) -> Result<Outcome> {
     let send = |e: Event| {
@@ -75,10 +78,14 @@ pub async fn execute<R: Run>(runner: &R, plan: &Plan, events: Option<UnboundedSe
     for (index, step) in plan.steps.iter().enumerate() {
         send(Event::Step { index, title: step.title.clone() });
         if let Some(name) = &step.capture_as {
-            let script = format!("set -eu\n{}\n", step.script);
+            let script = format!("{PREAMBLE}{}\n", step.script);
             match runner.run_script(&script, None).await {
                 Ok(o) if o.success() => {
-                    reveal.push((name.clone(), o.stdout.trim().to_string()));
+                    // Empty output means "nothing new to reveal" (e.g. existing data kept its users).
+                    let value = o.stdout.trim();
+                    if !value.is_empty() {
+                        reveal.push((name.clone(), value.to_string()));
+                    }
                     continue;
                 }
                 Ok(o) => {
@@ -94,7 +101,7 @@ pub async fn execute<R: Run>(runner: &R, plan: &Plan, events: Option<UnboundedSe
             }
         }
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<String>();
-        let script = format!("set -eu\nexport DEBIAN_FRONTEND=noninteractive\n{}\n", step.script);
+        let script = format!("{PREAMBLE}{}\n", step.script);
         let run = runner.run_script(&script, Some(tx));
         tokio::pin!(run);
         let out = loop {
@@ -181,6 +188,7 @@ mod tests {
         assert_eq!(out.tail, "output of step 0\noutput of step 1");
         let scripts = fake.scripts.lock().unwrap();
         assert!(scripts[0].starts_with("set -eu\n"));
+        assert!(scripts[1].contains(". /etc/os-release"), "every step sees the OS variables");
         let mut events = vec![];
         while let Ok(e) = rx.try_recv() {
             events.push(e);

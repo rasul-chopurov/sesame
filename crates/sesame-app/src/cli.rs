@@ -10,6 +10,28 @@ pub struct Args {
 }
 
 #[derive(Subcommand)]
+pub enum DoAction {
+    /// Install a service: redis, postgresql, mariadb, mongodb, elasticsearch, rustfs.
+    Install { service: String },
+    /// Uninstall a service (keeps data unless --delete-data).
+    Uninstall {
+        service: String,
+        #[arg(long)]
+        delete_data: bool,
+    },
+    /// Create a database and its own user: engine is mysql, mariadb, postgres or mongodb.
+    DbCreate { engine: String, name: String, user: Option<String> },
+    /// Back up and drop a database.
+    DbDrop { engine: String, name: String, user: Option<String> },
+    /// systemd or supervisor; action start|stop|restart|enable|disable.
+    Service { kind: String, name: String, action: String },
+    /// Laravel maintenance mode for an app directory: on|off.
+    Maintenance { path: String, state: String },
+    /// Run Reverb under supervisor for the site with this domain.
+    Reverb { domain: String, #[arg(long, default_value_t = 8080)] port: u16 },
+}
+
+#[derive(Subcommand)]
 pub enum Command {
     /// List saved servers.
     Servers,
@@ -32,6 +54,26 @@ pub enum Command {
     },
     /// List the operations Sesame exposes to agents (MCP/REST).
     Ops,
+    /// Change a saved server: prints the plan, runs it with a live log, records it in the audit log.
+    Do {
+        server: String,
+        #[command(subcommand)]
+        action: DoAction,
+        /// Run without asking. Destructive actions also need --confirm <name>.
+        #[arg(long, global = true)]
+        yes: bool,
+        /// The name a destructive action asks for (database, service).
+        #[arg(long, global = true)]
+        confirm: Option<String>,
+    },
+    /// Save a credential for a server in the Keychain; the value is read from stdin.
+    SecretSet { server: String, name: String },
+    /// Show the audit log.
+    Audit {
+        server: Option<String>,
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
     /// Check for a newer release; `--install` downloads, verifies and installs it.
     Update {
         #[arg(long)]
@@ -107,6 +149,28 @@ pub async fn run(cmd: Command) -> Result<()> {
                 println!("installed into {} — restart Sesame", target.display());
             }
         }
+        Command::Do { server, action, yes, confirm } => {
+            let config = find(&store, &server)?.with_context(|| format!("no saved server named {server}"))?;
+            let snap = store.snapshot(config.id)?;
+            let plan = build_plan(&action, snap.as_ref(), mongo_admin(config.id))?;
+            run_plan(&store, &config, plan, yes, confirm.as_deref()).await?;
+        }
+        Command::SecretSet { server, name } => {
+            let config = find(&store, &server)?.with_context(|| format!("no server named {server}"))?;
+            let mut value = String::new();
+            std::io::stdin().read_line(&mut value)?;
+            sesame_core::secrets::set_named(config.id, &name, value.trim())?;
+            println!("saved {name} for {server}");
+        }
+        Command::Audit { server, limit } => {
+            let id = match server {
+                Some(name) => Some(find(&store, &name)?.with_context(|| format!("no server named {name}"))?.id),
+                None => None,
+            };
+            for e in store.audit(id, limit)? {
+                println!("{}  {:<4} {:<6} {:<18} {}", e.at, if e.ok { "ok" } else { "FAIL" }, e.actor, e.op, e.title);
+            }
+        }
         Command::Ops => {
             for op in sesame_core::ops::OPS {
                 println!("{:<16} {:<12} {}", op.name, format!("{:?}", op.risk), op.description);
@@ -156,4 +220,132 @@ mod tests {
         assert_eq!(s.auth, AuthMethod::KeyFile { path: "~/.ssh/id".into() });
         assert!(parse_target("p", "@host", None).is_err());
     }
+}
+
+fn engine(s: &str) -> Result<sesame_core::snapshot::DatabaseKind> {
+    use sesame_core::snapshot::DatabaseKind::*;
+    Ok(match s {
+        "mysql" => MySql,
+        "mariadb" => MariaDb,
+        "postgres" | "postgresql" | "pgsql" => Postgres,
+        "mongodb" | "mongo" => MongoDb,
+        _ => bail!("unknown engine {s}"),
+    })
+}
+
+fn service(s: &str) -> Result<sesame_provision::Service> {
+    sesame_provision::Service::ALL
+        .into_iter()
+        .find(|svc| svc.slug() == s || (s == "s3" && *svc == sesame_provision::Service::RustFs) || (s == "postgres" && *svc == sesame_provision::Service::Postgres))
+        .with_context(|| format!("unknown service {s}"))
+}
+
+/// The MongoDB admin Sesame created when it installed MongoDB, if any.
+pub fn mongo_admin(server: sesame_core::ServerId) -> Option<sesame_ops::actions::Admin> {
+    let get = |k: &str| match sesame_core::secrets::get_named(server, k) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("keychain: cannot read {k}: {e:#}");
+            None
+        }
+    };
+    Some(sesame_ops::actions::Admin { user: get("MONGO_ADMIN_USER")?, password: get("MONGO_ADMIN_PASSWORD")? })
+}
+
+fn build_plan(
+    action: &DoAction,
+    snap: Option<&sesame_core::ServerSnapshot>,
+    admin: Option<sesame_ops::actions::Admin>,
+) -> Result<sesame_ops::Plan> {
+    use sesame_ops::actions::{self, ServiceAction, ServiceKind};
+    match action {
+        DoAction::Install { service: s } => {
+            let snap = snap.context("discover the server first: sesame discover <name>")?;
+            sesame_provision::install(service(s)?, snap)
+        }
+        DoAction::Uninstall { service: s, delete_data } => sesame_provision::uninstall(service(s)?, !delete_data),
+        DoAction::DbCreate { engine: e, name, user } => actions::db_create(engine(e)?, name, user.as_deref().unwrap_or(name), admin.as_ref()),
+        DoAction::DbDrop { engine: e, name, user } => actions::db_drop(engine(e)?, name, user.as_deref(), admin.as_ref()),
+        DoAction::Service { kind, name, action } => {
+            let kind = match kind.as_str() {
+                "systemd" => ServiceKind::Systemd,
+                "supervisor" => ServiceKind::Supervisor,
+                k => bail!("kind must be systemd or supervisor, not {k}"),
+            };
+            let action = match action.as_str() {
+                "start" => ServiceAction::Start,
+                "stop" => ServiceAction::Stop,
+                "restart" => ServiceAction::Restart,
+                "enable" => ServiceAction::Enable,
+                "disable" => ServiceAction::Disable,
+                a => bail!("unknown action {a}"),
+            };
+            actions::service(kind, name, action)
+        }
+        DoAction::Maintenance { path, state } => actions::maintenance(path, state == "on"),
+        DoAction::Reverb { domain, port } => {
+            let snap = snap.context("discover the server first")?;
+            let site = snap
+                .sites
+                .iter()
+                .find(|s| s.domains.iter().any(|d| d == domain))
+                .with_context(|| format!("no site {domain} in the last discovery"))?;
+            sesame_provision::reverb_for_site(site, *port)
+        }
+    }
+}
+
+async fn run_plan(
+    store: &SqliteStore,
+    server: &ServerConfig,
+    plan: sesame_ops::Plan,
+    yes: bool,
+    confirm: Option<&str>,
+) -> Result<()> {
+    use sesame_core::ops::Risk;
+    eprintln!("{} on {} ({:?})", plan.title, server.address(), plan.risk);
+    for d in &plan.details {
+        eprintln!("  • {d}");
+    }
+    if !yes {
+        bail!("re-run with --yes to apply");
+    }
+    if plan.risk == Risk::Destructive && confirm != plan.confirm_word.as_deref() {
+        bail!("destructive: add --confirm {}", plan.confirm_word.clone().unwrap_or_default());
+    }
+    let session = sesame_ssh::Session::connect(server).await?;
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let printer = tokio::spawn(async move {
+        while let Some(ev) = rx.recv().await {
+            match ev {
+                sesame_ops::Event::Step { index, title } => eprintln!("\n▶ {}. {title}", index + 1),
+                sesame_ops::Event::Line(l) => eprintln!("  {l}"),
+                sesame_ops::Event::Done { ok, error } => {
+                    eprintln!("\n{}", if ok { "✓ done".to_string() } else { format!("✗ {}", error.unwrap_or_default()) })
+                }
+            }
+        }
+    });
+    let result = sesame_ops::execute(&session, &plan, Some(tx)).await;
+    let _ = printer.await;
+    let _ = session.close().await;
+    let (ok, log) = match &result {
+        Ok(out) => (true, out.tail.clone()),
+        Err(e) => (false, format!("{e:#}")),
+    };
+    store.log_audit(&sesame_core::AuditEntry {
+        at: sesame_discovery::parse::app::now_rfc3339(),
+        server_id: server.id,
+        op: plan.op.to_string(),
+        title: plan.title.clone(),
+        actor: "cli".into(),
+        ok,
+        log,
+    })?;
+    let out = result?;
+    for (k, v) in &out.reveal {
+        let _ = sesame_core::secrets::set_named(server.id, k, v);
+        println!("{k}={v}");
+    }
+    Ok(())
 }

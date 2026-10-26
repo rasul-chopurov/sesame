@@ -246,7 +246,8 @@ pub fn databases<'a>(
     if !pg.is_empty() || pg_listen.is_some() {
         out.push(DatabaseEngine {
             kind: DatabaseKind::Postgres,
-            version: pg.split_whitespace().last().map(String::from),
+            // `psql (PostgreSQL) 18.6 (Ubuntu 18.6-1.pgdg24.04+2)` → `18.6`
+            version: version_after(pg, "(PostgreSQL) "),
             listen: pg_listen,
             databases: get("postgres_dbs")
                 .lines()
@@ -470,6 +471,20 @@ mod tests {
         assert_eq!(p[0].version, "8.5.11");
         assert!(p[0].cli && p[0].fpm_running);
         assert_eq!(p[0].fpm_pools, vec!["www"]);
+    }
+
+    #[test]
+    fn postgres_version_from_psql() {
+        let get = |name: &str| -> &'static str {
+            match name {
+                "postgres" => "psql (PostgreSQL) 18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+                "postgres_dbs" => "postgres\nshop\n",
+                _ => "",
+            }
+        };
+        let dbs = databases(&get, &[]);
+        assert_eq!(dbs[0].version.as_deref(), Some("18.6"));
+        assert_eq!(dbs[0].databases, vec!["shop"]);
     }
 
     #[test]

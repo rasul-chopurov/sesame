@@ -22,6 +22,24 @@ fn check_name(kind: &str, s: &str, allowed_extra: &str) -> Result<()> {
     Ok(())
 }
 
+/// Credentials of a database administrator (MongoDB with auth on).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Admin {
+    pub user: String,
+    pub password: String,
+}
+
+/// Runs JavaScript through `mongosh --file`, which (unlike a heredoc on
+/// stdin) exits non-zero on an uncaught error. The file is private and removed.
+pub fn mongo_js(admin: Option<&Admin>, body: &str) -> String {
+    let auth = admin
+        .map(|a| format!("db.getSiblingDB('admin').auth('{}', '{}');\n", a.user, a.password))
+        .unwrap_or_default();
+    format!(
+        "umask 077\njs=$(mktemp --suffix=.js)\ntrap 'rm -f \"$js\"' EXIT\ncat > \"$js\" <<'JS'\n{auth}{body}\nJS\nmongosh --quiet --file \"$js\""
+    )
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ServiceKind {
     Systemd,
@@ -69,7 +87,7 @@ pub fn service(kind: ServiceKind, name: &str, action: ServiceAction) -> Result<P
 }
 
 /// Creates a database and a user that can only use that database.
-pub fn db_create(engine: DatabaseKind, db: &str, user: &str) -> Result<Plan> {
+pub fn db_create(engine: DatabaseKind, db: &str, user: &str, admin: Option<&Admin>) -> Result<Plan> {
     check_name("database", db, "")?;
     check_name("user", user, "")?;
     let pw = generate_password();
@@ -90,9 +108,11 @@ pub fn db_create(engine: DatabaseKind, db: &str, user: &str) -> Result<Plan> {
              SQL\necho created"
         ),
         DatabaseKind::MongoDb => format!(
-            "mongosh --quiet <<'JS'\n\
-             db.getSiblingDB('{db}').createUser({{user: '{user}', pwd: '{pw}', roles: [{{role: 'readWrite', db: '{db}'}}]}});\n\
-             JS\necho created"
+            "{}\necho created",
+            mongo_js(
+                admin,
+                &format!("db.getSiblingDB('{db}').createUser({{user: '{user}', pwd: '{pw}', roles: [{{role: 'readWrite', db: '{db}'}}]}});")
+            )
         ),
         DatabaseKind::Redis => bail!("Redis databases are numbered, not created; use a Redis ACL user instead"),
     };
@@ -112,7 +132,7 @@ pub fn db_create(engine: DatabaseKind, db: &str, user: &str) -> Result<Plan> {
 }
 
 /// Backs the database up to `/var/backups/sesame`, then drops it and its user.
-pub fn db_drop(engine: DatabaseKind, db: &str, user: Option<&str>) -> Result<Plan> {
+pub fn db_drop(engine: DatabaseKind, db: &str, user: Option<&str>, admin: Option<&Admin>) -> Result<Plan> {
     check_name("database", db, "")?;
     if let Some(u) = user {
         check_name("user", u, "")?;
@@ -121,7 +141,7 @@ pub fn db_drop(engine: DatabaseKind, db: &str, user: Option<&str>) -> Result<Pla
     let (backup, drop) = match engine {
         DatabaseKind::MySql | DatabaseKind::MariaDb => (
             format!(
-                "mkdir -p {backup_dir} && chmod 700 {backup_dir}\n\
+                "umask 077\nmkdir -p {backup_dir} && chmod 700 {backup_dir}\n\
                  f={backup_dir}/{db}-$(date +%Y%m%d-%H%M%S).sql.gz\n\
                  mysqldump --single-transaction --routines --triggers '{db}' | gzip > \"$f\"\necho \"backup: $f\""
             ),
@@ -132,7 +152,7 @@ pub fn db_drop(engine: DatabaseKind, db: &str, user: Option<&str>) -> Result<Pla
         ),
         DatabaseKind::Postgres => (
             format!(
-                "mkdir -p {backup_dir} && chmod 700 {backup_dir}\ncd /tmp\n\
+                "umask 077\nmkdir -p {backup_dir} && chmod 700 {backup_dir}\ncd /tmp\n\
                  f={backup_dir}/{db}-$(date +%Y%m%d-%H%M%S).sql.gz\n\
                  runuser -u postgres -- pg_dump '{db}' | gzip > \"$f\"\necho \"backup: $f\""
             ),
@@ -142,14 +162,34 @@ pub fn db_drop(engine: DatabaseKind, db: &str, user: Option<&str>) -> Result<Pla
             ),
         ),
         DatabaseKind::MongoDb => (
+            {
+                // The password goes in a private config file, not on the command line.
+                let auth = admin
+                    .map(|a| {
+                        format!(
+                            "cfg=$(mktemp)\ntrap 'rm -f \"$cfg\"' EXIT\nprintf 'password: %s\\n' '{}' > \"$cfg\"\n",
+                            a.password
+                        )
+                    })
+                    .unwrap_or_default();
+                let flags = admin
+                    .map(|a| format!(" --username='{}' --authenticationDatabase=admin --config=\"$cfg\"", a.user))
+                    .unwrap_or_default();
+                format!(
+                    "umask 077\nmkdir -p {backup_dir} && chmod 700 {backup_dir}\n{auth}\
+                     f={backup_dir}/{db}-$(date +%Y%m%d-%H%M%S).archive.gz\n\
+                     mongodump --quiet --db='{db}' --archive=\"$f\" --gzip{flags}\necho \"backup: $f\""
+                )
+            },
             format!(
-                "mkdir -p {backup_dir} && chmod 700 {backup_dir}\n\
-                 f={backup_dir}/{db}-$(date +%Y%m%d-%H%M%S).archive.gz\n\
-                 mongodump --quiet --db='{db}' --archive=\"$f\" --gzip\necho \"backup: $f\""
-            ),
-            format!(
-                "mongosh --quiet <<'JS'\nconst d = db.getSiblingDB('{db}');\n{}d.dropDatabase();\nJS\necho dropped",
-                user.map(|u| format!("try {{ d.dropUser('{u}'); }} catch (e) {{}}\n")).unwrap_or_default()
+                "{}\necho dropped",
+                mongo_js(
+                    admin,
+                    &format!(
+                        "const d = db.getSiblingDB('{db}');\n{}d.dropDatabase();",
+                        user.map(|u| format!("try {{ d.dropUser('{u}'); }} catch (e) {{}}\n")).unwrap_or_default()
+                    )
+                )
             ),
         ),
         DatabaseKind::Redis => bail!("Redis databases are numbered and cannot be dropped"),
@@ -217,7 +257,7 @@ mod tests {
     #[test]
     fn db_create_keeps_password_out_of_argv() {
         for engine in [DatabaseKind::MySql, DatabaseKind::Postgres, DatabaseKind::MongoDb] {
-            let p = db_create(engine, "shop", "shop").unwrap();
+            let p = db_create(engine, "shop", "shop", None).unwrap();
             let pw = &p.reveal.iter().find(|(k, _)| k == "DB_PASSWORD").unwrap().1;
             let script = &p.steps[0].script;
             assert!(sh_ok(script), "{script}");
@@ -233,13 +273,13 @@ mod tests {
             assert!(heredoc_body.contains(pw.as_str()));
             assert_eq!(script.matches(pw.as_str()).count(), 1);
         }
-        assert!(db_create(DatabaseKind::MySql, "shop`; DROP", "x").is_err());
-        assert!(db_create(DatabaseKind::Redis, "a", "b").is_err());
+        assert!(db_create(DatabaseKind::MySql, "shop`; DROP", "x", None).is_err());
+        assert!(db_create(DatabaseKind::Redis, "a", "b", None).is_err());
     }
 
     #[test]
     fn db_drop_backs_up_first_and_needs_the_name() {
-        let p = db_drop(DatabaseKind::MySql, "shop", Some("shop")).unwrap();
+        let p = db_drop(DatabaseKind::MySql, "shop", Some("shop"), None).unwrap();
         assert_eq!(p.risk, Risk::Destructive);
         assert_eq!(p.confirm_word.as_deref(), Some("shop"));
         assert!(p.steps[0].script.contains("mysqldump"));
@@ -247,6 +287,23 @@ mod tests {
         for s in &p.steps {
             assert!(sh_ok(&s.script));
         }
+    }
+
+    #[test]
+    fn mongo_runs_from_a_file_and_authenticates() {
+        let admin = Admin { user: "sesame_admin".into(), password: "P4ssw0rdP4ssw0rdP4ssw0rdP4ssw0rd".into() };
+        let create = db_create(DatabaseKind::MongoDb, "shop", "shop", Some(&admin)).unwrap();
+        let script = &create.steps[0].script;
+        assert!(script.contains("mongosh --quiet --file"));
+        assert!(script.contains("auth('sesame_admin'"));
+        assert!(sh_ok(script));
+        let drop = db_drop(DatabaseKind::MongoDb, "shop", Some("shop"), Some(&admin)).unwrap();
+        let backup = &drop.steps[0].script;
+        assert!(sh_ok(backup));
+        assert!(backup.contains("--config=\"$cfg\""));
+        // The password never appears on the mongodump command line.
+        let dump_line = backup.lines().find(|l| l.starts_with("mongodump")).unwrap();
+        assert!(!dump_line.contains(&admin.password));
     }
 
     #[test]

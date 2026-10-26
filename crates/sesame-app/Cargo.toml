@@ -27,6 +27,7 @@ semver = "1"
 time = "0.3"
 
 [dev-dependencies]
+serde_json.workspace = true
 sesame-ops = { path = "../sesame-ops" }
 sesame-provision = { path = "../sesame-provision" }
 gpui-kit = { workspace = true, features = ["test-support"] }

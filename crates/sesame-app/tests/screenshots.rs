@@ -18,6 +18,10 @@ fn main() {
     let mut snap = sesame_discovery::from_probe(include_str!("../../sesame-discovery/fixtures/frankenphp-octane.probe"));
     sesame_discovery::apply_details(&mut snap, include_str!("../../sesame-discovery/fixtures/frankenphp-octane.details"));
     sesame_discovery::link(&mut snap);
+    // Optionally render a real server's snapshot (`sesame discover <server> > snap.json`).
+    if let Ok(path) = std::env::var("SESAME_SHOTS_SNAPSHOT") {
+        snap = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    }
 
     for (theme, lang) in [("light", "en"), ("dark", "en"), ("light", "ru"), ("dark", "ru"), ("light", "az"), ("dark", "az")] {
         let store = Arc::new(SqliteStore::in_memory().unwrap());
@@ -91,7 +95,7 @@ fn main() {
                 "confirm-drop",
                 Box::new(|v, w, cx| {
                     v.navigate(Page::Server(id, Section::Databases), cx);
-                    let plan = sesame_ops::actions::db_drop(sesame_core::snapshot::DatabaseKind::MySql, "shop", None).unwrap();
+                    let plan = sesame_ops::actions::db_drop(sesame_core::snapshot::DatabaseKind::MySql, "shop", None, None).unwrap();
                     v.demo_confirm(plan, w, cx);
                 }),
             ),
