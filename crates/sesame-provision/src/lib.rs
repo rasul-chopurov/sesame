@@ -470,3 +470,265 @@ mod tests {
         assert!(reverb_for_site(&Site { framework: Framework::WordPress, ..site }, 8080).is_err());
     }
 }
+
+/// Database admin panels. They listen only on the server's loopback; the app
+/// reaches them through an SSH tunnel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Panel {
+    PhpMyAdmin,
+    PgAdmin,
+}
+
+impl Panel {
+    pub const ALL: [Panel; 2] = [Panel::PhpMyAdmin, Panel::PgAdmin];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Panel::PhpMyAdmin => "phpMyAdmin",
+            Panel::PgAdmin => "pgAdmin 4",
+        }
+    }
+
+    /// Directory under /opt/sesame, also how discovery recognises it.
+    pub fn dir(self) -> &'static str {
+        match self {
+            Panel::PhpMyAdmin => "phpmyadmin",
+            Panel::PgAdmin => "pgadmin",
+        }
+    }
+
+    pub fn port(self) -> u16 {
+        match self {
+            Panel::PhpMyAdmin => 8090,
+            Panel::PgAdmin => 5050,
+        }
+    }
+
+    pub fn needs(self) -> &'static [DatabaseKind] {
+        match self {
+            Panel::PhpMyAdmin => &[DatabaseKind::MySql, DatabaseKind::MariaDb],
+            Panel::PgAdmin => &[DatabaseKind::Postgres],
+        }
+    }
+}
+
+pub fn panel_installed(panel: Panel, s: &ServerSnapshot) -> bool {
+    s.tools.iter().any(|t| t == panel.dir())
+}
+
+fn web_site_step(name: &str, port: u16, root: &str, sock: &str, s: &ServerSnapshot) -> Step {
+    use sesame_core::snapshot::WebServerKind;
+    let web = s.web_servers.iter().map(|w| w.kind).find(|k| matches!(k, WebServerKind::Caddy | WebServerKind::FrankenPhp | WebServerKind::Nginx));
+    let script = match web {
+        Some(WebServerKind::Nginx) => format!(
+            "cat > /etc/nginx/sites-available/sesame-{name}.conf <<'SITE'\nserver {{\n    listen 127.0.0.1:{port};\n    root {root};\n    index index.php;\n    location ~ \\.php$ {{\n        include snippets/fastcgi-php.conf;\n        fastcgi_pass unix:{sock};\n    }}\n}}\nSITE\n\
+             ln -sf /etc/nginx/sites-available/sesame-{name}.conf /etc/nginx/sites-enabled/sesame-{name}.conf\n\
+             if ! nginx -t >/tmp/sesame-web.log 2>&1; then tail -5 /tmp/sesame-web.log; rm -f /etc/nginx/sites-enabled/sesame-{name}.conf; exit 1; fi\nsystemctl reload nginx\necho 'listening on 127.0.0.1:{port}'"
+        ),
+        other => {
+            let (dir, main, svc, ext) = if other == Some(WebServerKind::FrankenPhp) {
+                ("/etc/frankenphp/Caddyfile.d", "/etc/frankenphp/Caddyfile", "frankenphp", "caddyfile")
+            } else {
+                ("/etc/caddy/sites", "/etc/caddy/Caddyfile", "caddy", "caddy")
+            };
+            let install = if other.is_none() { format!("{}\n", apt("caddy")) } else { String::new() };
+            format!(
+                "{install}install -d {dir}\n\
+                 grep -q '^import {dir}/' {main} || printf '\\nimport {dir}/*.{ext}\\n' >> {main}\n\
+                 cat > {dir}/sesame-{name}.{ext} <<'SITE'\nhttp://127.0.0.1:{port} {{\n\tbind 127.0.0.1\n\troot * {root}\n\tphp_fastcgi unix/{sock}\n\tfile_server\n}}\nSITE\n\
+                 if ! {svc} validate --config {main} --adapter caddyfile >/tmp/sesame-web.log 2>&1; then tail -5 /tmp/sesame-web.log; rm -f {dir}/sesame-{name}.{ext}; exit 1; fi\n\
+                 systemctl reload {svc}\necho 'listening on 127.0.0.1:{port}'"
+            )
+        }
+    };
+    Step::new("serve on 127.0.0.1 only", script)
+}
+
+pub fn install_panel(panel: Panel, s: &ServerSnapshot) -> Result<Plan> {
+    if panel_installed(panel, s) {
+        bail!("{} is already installed", panel.name());
+    }
+    if !panel.needs().iter().any(|k| s.databases.iter().any(|d| d.kind == *k)) {
+        bail!("{} needs {} on this server first", panel.name(), if panel == Panel::PhpMyAdmin { "MySQL or MariaDB" } else { "PostgreSQL" });
+    }
+    let mut steps = vec![Step::new("check the system", preflight())];
+    let mut reveal = Vec::new();
+    let mut details = vec![format!("listens on the server's 127.0.0.1:{} only; Sesame opens it through an SSH tunnel", panel.port())];
+    match panel {
+        Panel::PhpMyAdmin => {
+            let secret = generate_password();
+            let pw = generate_password();
+            let sock = "/run/php/sesame-pma.sock";
+            steps.push(Step::new(
+                "PHP and extensions",
+                format!(
+                    "v=$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;' 2>/dev/null || true)\n\
+                     if [ -z \"$v\" ]; then {apt_default}; v=$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;'); fi\n\
+                     {APT} install php$v-fpm php$v-mysql php$v-mbstring php$v-xml php$v-zip php$v-gd php$v-curl >/dev/null\n\
+                     echo \"PHP $v\"",
+                    apt_default = apt("php-fpm php-cli")
+                ),
+            ));
+            steps.push(Step::new(
+                "download phpMyAdmin (checksum verified)",
+                format!(
+                    "{}\n\
+                     V=$(curl -fsSL https://www.phpmyadmin.net/home_page/version.txt | head -1)\n\
+                     [ -n \"$V\" ] || {{ echo 'cannot find the phpMyAdmin version'; exit 1; }}\n\
+                     tmp=$(mktemp -d); cd \"$tmp\"\n\
+                     f=phpMyAdmin-$V-all-languages.tar.gz\n\
+                     curl -fsSLO \"https://files.phpmyadmin.net/phpMyAdmin/$V/$f\"\n\
+                     want=$(curl -fsSL \"https://files.phpmyadmin.net/phpMyAdmin/$V/$f.sha256\" | awk '{{print $1}}')\n\
+                     got=$(sha256sum \"$f\" | awk '{{print $1}}')\n\
+                     [ \"$want\" = \"$got\" ] || {{ echo 'checksum mismatch'; exit 1; }}\n\
+                     tar xzf \"$f\"\n\
+                     rm -rf /opt/sesame/phpmyadmin && install -d /opt/sesame\n\
+                     mv \"phpMyAdmin-$V-all-languages\" /opt/sesame/phpmyadmin\n\
+                     cd / && rm -rf \"$tmp\"\necho \"phpMyAdmin $V\"",
+                    apt("curl ca-certificates")
+                ),
+            ));
+            steps.push(Step::new(
+                "user, config and PHP pool",
+                format!(
+                    "id sesame-pma >/dev/null 2>&1 || useradd --system --home /opt/sesame/phpmyadmin --shell /usr/sbin/nologin sesame-pma\n\
+                     chown -R root:root /opt/sesame/phpmyadmin\n\
+                     install -d -o sesame-pma -g sesame-pma -m 700 /opt/sesame/phpmyadmin/tmp\n\
+                     umask 027\n\
+                     cat > /opt/sesame/phpmyadmin/config.inc.php <<'PHP'\n<?php\n$cfg['blowfish_secret'] = '{secret}';\n$i = 1;\n$cfg['Servers'][$i]['auth_type'] = 'cookie';\n$cfg['Servers'][$i]['host'] = 'localhost';\n$cfg['Servers'][$i]['AllowNoPassword'] = false;\n$cfg['TempDir'] = '/opt/sesame/phpmyadmin/tmp';\nPHP\n\
+                     chown root:sesame-pma /opt/sesame/phpmyadmin/config.inc.php && chmod 640 /opt/sesame/phpmyadmin/config.inc.php\n\
+                     v=$(php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;')\n\
+                     wg=www-data; getent group caddy >/dev/null && wg=caddy\n\
+                     cat > /etc/php/$v/fpm/pool.d/sesame-pma.conf <<POOL\n[sesame-pma]\nuser = sesame-pma\ngroup = sesame-pma\nlisten = {sock}\nlisten.owner = sesame-pma\nlisten.group = $wg\nlisten.mode = 0660\npm = ondemand\npm.max_children = 4\nphp_admin_value[open_basedir] = /opt/sesame/phpmyadmin:/tmp\nPOOL\n\
+                     systemctl reload php$v-fpm\necho 'pool ready'"
+                ),
+            ));
+            steps.push(web_site_step("phpmyadmin", 8090, "/opt/sesame/phpmyadmin", sock, s));
+            steps.push(Step::new(
+                "MySQL admin login for phpMyAdmin",
+                format!(
+                    "mysql <<'SQL'\nCREATE USER IF NOT EXISTS 'sesame_pma'@'localhost' IDENTIFIED BY '{pw}';\nALTER USER 'sesame_pma'@'localhost' IDENTIFIED BY '{pw}';\nGRANT ALL PRIVILEGES ON *.* TO 'sesame_pma'@'localhost' WITH GRANT OPTION;\nFLUSH PRIVILEGES;\nSQL\necho 'login sesame_pma ready'"
+                ),
+            ));
+            details.push("phpMyAdmin checked against its published SHA-256, its own system user and PHP pool".into());
+            reveal.push(("PHPMYADMIN_USER".into(), "sesame_pma".into()));
+            reveal.push(("PHPMYADMIN_PASSWORD".into(), pw));
+        }
+        Panel::PgAdmin => {
+            let pw = generate_password();
+            let db_pw = generate_password();
+            steps.push(Step::new(
+                "install pgAdmin 4 (Python)",
+                format!(
+                    "{}\n\
+                     install -d /opt/sesame/pgadmin\n\
+                     [ -x /opt/sesame/pgadmin/venv/bin/python ] || python3 -m venv /opt/sesame/pgadmin/venv\n\
+                     /opt/sesame/pgadmin/venv/bin/pip install --quiet --upgrade pip\n\
+                     /opt/sesame/pgadmin/venv/bin/pip install --quiet pgadmin4 gunicorn\n\
+                     /opt/sesame/pgadmin/venv/bin/pip show pgadmin4 | grep '^Version'",
+                    apt("python3-venv python3-pip libpq5 curl")
+                ),
+            ));
+            steps.push(Step::new(
+                "configure pgAdmin",
+                format!(
+                    "id sesame-pgadmin >/dev/null 2>&1 || useradd --system --home /var/lib/sesame-pgadmin --shell /usr/sbin/nologin sesame-pgadmin\n\
+                     install -d -o sesame-pgadmin -g sesame-pgadmin -m 700 /var/lib/sesame-pgadmin /var/log/sesame-pgadmin\n\
+                     PGA=$(/opt/sesame/pgadmin/venv/bin/python -c 'import pgadmin4; print(list(pgadmin4.__path__)[0])')\n\
+                     cat > \"$PGA/config_local.py\" <<'PY'\nSERVER_MODE = True\nDATA_DIR = '/var/lib/sesame-pgadmin'\nLOG_FILE = '/var/log/sesame-pgadmin/pgadmin4.log'\nSQLITE_PATH = '/var/lib/sesame-pgadmin/pgadmin4.db'\nSESSION_DB_PATH = '/var/lib/sesame-pgadmin/sessions'\nSTORAGE_DIR = '/var/lib/sesame-pgadmin/storage'\nAZURE_CREDENTIAL_CACHE_DIR = '/var/lib/sesame-pgadmin/azure'\nKERBEROS_CCACHE_DIR = '/var/lib/sesame-pgadmin/kerberos'\nALLOW_SPECIAL_EMAIL_DOMAINS = ['local']\nPY\n\
+                     cat > /var/lib/sesame-pgadmin/servers.json <<'JSON'\n{{\"Servers\": {{\"1\": {{\"Name\": \"This server\", \"Group\": \"Servers\", \"Host\": \"127.0.0.1\", \"Port\": 5432, \"MaintenanceDB\": \"postgres\", \"Username\": \"sesame_pgadmin\", \"SSLMode\": \"prefer\"}}}}}}\nJSON\n\
+                     chown sesame-pgadmin /var/lib/sesame-pgadmin/servers.json\n\
+                     runuser -u sesame-pgadmin -- sh -eu <<AS\nexport PGADMIN_SETUP_EMAIL='admin@sesame.local'\nexport PGADMIN_SETUP_PASSWORD='{pw}'\ncd \"$PGA\"\n/opt/sesame/pgadmin/venv/bin/python setup.py setup-db >/dev/null\n/opt/sesame/pgadmin/venv/bin/python setup.py load-servers /var/lib/sesame-pgadmin/servers.json --user admin@sesame.local >/dev/null\nAS\n\
+                     cat > /etc/systemd/system/sesame-pgadmin.service <<UNIT\n[Unit]\nDescription=pgAdmin 4 (Sesame)\nAfter=network.target\n\n[Service]\nUser=sesame-pgadmin\nGroup=sesame-pgadmin\nWorkingDirectory=$PGA\nExecStart=/opt/sesame/pgadmin/venv/bin/gunicorn --bind 127.0.0.1:5050 --workers 1 --threads 25 pgAdmin4:app\nRestart=always\n\n[Install]\nWantedBy=multi-user.target\nUNIT\n\
+                     systemctl daemon-reload\nsystemctl enable --now sesame-pgadmin\nsleep 3\nsystemctl is-active sesame-pgadmin"
+                ),
+            ));
+            steps.push(Step::new(
+                "PostgreSQL login for pgAdmin",
+                format!(
+                    "cd /tmp\nrunuser -u postgres -- psql -v ON_ERROR_STOP=1 -q <<'SQL'\nDO $$ BEGIN\n  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'sesame_pgadmin') THEN\n    CREATE ROLE sesame_pgadmin LOGIN SUPERUSER;\n  END IF;\nEND $$;\nALTER ROLE sesame_pgadmin PASSWORD '{db_pw}';\nSQL\necho 'login sesame_pgadmin ready'"
+                ),
+            ));
+            details.push("pgAdmin 4 in its own Python environment under a system user, with this server's PostgreSQL pre-registered".into());
+            reveal.push(("PGADMIN_EMAIL".into(), "admin@sesame.local".into()));
+            reveal.push(("PGADMIN_PASSWORD".into(), pw));
+            reveal.push(("PGADMIN_DB_USER".into(), "sesame_pgadmin".into()));
+            reveal.push(("PGADMIN_DB_PASSWORD".into(), db_pw));
+        }
+    }
+    Ok(Plan {
+        op: "panel_install",
+        title: format!("install {}", panel.name()),
+        risk: Risk::Change,
+        details,
+        confirm_word: None,
+        steps,
+        reveal,
+        secret_scope: None,
+    })
+}
+
+pub fn uninstall_panel(panel: Panel) -> Result<Plan> {
+    let script = match panel {
+        Panel::PhpMyAdmin => "rm -f /etc/caddy/sites/sesame-phpmyadmin.caddy /etc/frankenphp/Caddyfile.d/sesame-phpmyadmin.caddyfile /etc/nginx/sites-enabled/sesame-phpmyadmin.conf /etc/nginx/sites-available/sesame-phpmyadmin.conf\n\
+             for s in caddy frankenphp nginx; do systemctl is-active --quiet $s && systemctl reload $s || true; done\n\
+             for f in /etc/php/*/fpm/pool.d/sesame-pma.conf; do [ -f \"$f\" ] && rm -f \"$f\" && systemctl reload php$(echo \"$f\" | cut -d/ -f4)-fpm; done\n\
+             rm -rf /opt/sesame/phpmyadmin\nuserdel sesame-pma 2>/dev/null || true\n\
+             mysql -e \"DROP USER IF EXISTS 'sesame_pma'@'localhost'\" 2>/dev/null || true\necho removed"
+            .to_string(),
+        Panel::PgAdmin => "systemctl disable --now sesame-pgadmin 2>/dev/null || true\nrm -f /etc/systemd/system/sesame-pgadmin.service\nsystemctl daemon-reload\n\
+             rm -rf /opt/sesame/pgadmin /var/lib/sesame-pgadmin /var/log/sesame-pgadmin\nuserdel sesame-pgadmin 2>/dev/null || true\n\
+             cd /tmp && runuser -u postgres -- psql -q -c 'DROP ROLE IF EXISTS sesame_pgadmin' 2>/dev/null || true\necho removed"
+            .to_string(),
+    };
+    Ok(Plan {
+        op: "panel_uninstall",
+        title: format!("uninstall {}", panel.name()),
+        risk: Risk::Destructive,
+        details: vec![format!("{} and its admin login are removed; your databases are not touched", panel.name())],
+        confirm_word: Some(panel.dir().to_string()),
+        steps: vec![Step::new(format!("remove {}", panel.name()), script)],
+        reveal: vec![],
+        secret_scope: None,
+    })
+}
+
+#[cfg(test)]
+mod panel_tests {
+    use sesame_core::snapshot::*;
+
+    use super::*;
+
+    fn sh_ok(script: &str) -> bool {
+        std::process::Command::new("sh").args(["-n", "-c", script]).status().unwrap().success()
+    }
+
+    #[test]
+    fn panels_are_valid_and_local_only() {
+        let mut s = ServerSnapshot {
+            web_servers: vec![WebServer { kind: WebServerKind::Caddy, version: None, config_path: None }],
+            ..Default::default()
+        };
+        assert!(install_panel(Panel::PhpMyAdmin, &s).is_err(), "needs MySQL");
+        s.databases = vec![
+            DatabaseEngine { kind: DatabaseKind::MariaDb, version: None, listen: None, databases: vec![], sizes: vec![] },
+            DatabaseEngine { kind: DatabaseKind::Postgres, version: None, listen: None, databases: vec![], sizes: vec![] },
+        ];
+        for p in Panel::ALL {
+            let plan = install_panel(p, &s).unwrap();
+            for st in &plan.steps {
+                assert!(sh_ok(&st.script), "{p:?}: {}", st.title);
+            }
+            let all: String = plan.steps.iter().map(|x| x.script.as_str()).collect();
+            assert!(all.contains("127.0.0.1"));
+            assert!(!all.contains("0.0.0.0"));
+            for st in &uninstall_panel(p).unwrap().steps {
+                assert!(sh_ok(&st.script));
+            }
+        }
+        let pma = install_panel(Panel::PhpMyAdmin, &s).unwrap();
+        assert!(pma.steps.iter().any(|x| x.script.contains("checksum mismatch")));
+        s.tools.push("phpmyadmin".into());
+        assert!(panel_installed(Panel::PhpMyAdmin, &s));
+    }
+}

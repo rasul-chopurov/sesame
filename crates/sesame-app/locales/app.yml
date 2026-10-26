@@ -323,3 +323,9 @@ db.name: { en: "Name", ru: "Имя", az: "Ad" }
 db.user_placeholder: { en: "user (default: same as name)", ru: "пользователь (по умолчанию как имя)", az: "istifadəçi (standart: adla eyni)" }
 db.no_match: { en: "No databases match", ru: "Нет подходящих баз", az: "Uyğun baza yoxdur" }
 db.redis_note: { en: "Redis has numbered databases; sites get their own ACL user instead (Sites → site → Site services).", ru: "В Redis базы нумерованные; сайты получают своего ACL-пользователя (Сайты → сайт → Сервисы сайта).", az: "Redis-də bazalar nömrələnir; saytlar öz ACL istifadəçisini alır (Saytlar → sayt → Sayt xidmətləri)." }
+svc.phpmyadmin: { en: "MySQL / MariaDB in the browser — private, through an SSH tunnel", ru: "MySQL / MariaDB в браузере — приватно, через SSH-туннель", az: "Brauzerdə MySQL / MariaDB — gizli, SSH tuneli ilə" }
+svc.pgadmin: { en: "PostgreSQL in the browser — private, through an SSH tunnel", ru: "PostgreSQL в браузере — приватно, через SSH-туннель", az: "Brauzerdə PostgreSQL — gizli, SSH tuneli ilə" }
+svc.open: { en: "Open", ru: "Открыть", az: "Aç" }
+svc.panels: { en: "Database panels", ru: "Панели баз данных", az: "Baza panelləri" }
+svc.tunnel_error: { en: "Could not open the tunnel: %{error}", ru: "Не удалось открыть туннель: %{error}", az: "Tuneli açmaq alınmadı: %{error}" }
+svc.needs: { en: "Needs %{what}", ru: "Нужен %{what}", az: "%{what} lazımdır" }

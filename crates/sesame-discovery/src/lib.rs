@@ -62,6 +62,7 @@ pub fn from_probe(output: &str) -> ServerSnapshot {
         cron: system::cron(get("cron_users"), get("cron_d")),
         firewall: system::firewall(get("ufw"), get("fail2ban")),
         containers: system::containers(get("docker")),
+        tools: get("sesame_tools").lines().map(str::trim).filter(|l| !l.is_empty()).map(String::from).collect(),
         services,
         ports,
         ..Default::default()

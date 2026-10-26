@@ -762,6 +762,67 @@ fn services(server: sesame_core::ServerId, s: &ServerSnapshot, cx: &mut Context<
         .on_click(cx.listener(move |this, _, _, cx| this.navigate(Page::Server(server, Section::Sites), cx)));
     grid = grid.child(service_card(99, "laravel", "Reverb".into(), tr("svc.reverb"), reverb_status, Some(reverb_action), cx));
 
+    // Admin panels for the databases.
+    let mut panels = div().grid().grid_cols(2).gap_3();
+    for (i, p) in sesame_provision::Panel::ALL.into_iter().enumerate() {
+        let installed = sesame_provision::panel_installed(p, s);
+        let has_db = p.needs().iter().any(|k| s.databases.iter().any(|d| d.kind == *k));
+        let status = if installed {
+            pill(format!("{} · 127.0.0.1:{}", tr("svc.installed"), p.port()), g.ok)
+        } else if !has_db {
+            pill(trp("svc.needs", &[("what", if p == sesame_provision::Panel::PhpMyAdmin { "MySQL / MariaDB" } else { "PostgreSQL" })]), g.faint)
+        } else {
+            pill(tr("svc.not_installed"), g.faint)
+        };
+        let port = p.port();
+        let actions = if installed {
+            h_flex()
+                .gap_1()
+                .child(
+                    Button::new(SharedString::from(format!("panel-open-{i}")))
+                        .primary()
+                        .icon(IconName::ExternalLink)
+                        .label(tr("svc.open"))
+                        .on_click(cx.listener(move |this, _, _, cx| this.open_panel(server, port, cx))),
+                )
+                .child(
+                    Button::new(SharedString::from(format!("panel-rm-{i}")))
+                        .ghost()
+                        .label(tr("svc.uninstall"))
+                        .on_click(cx.listener(move |this, _, window, cx| this.request(server, sesame_provision::uninstall_panel(p), None, window, cx))),
+                )
+        } else {
+            h_flex().child(
+                Button::new(SharedString::from(format!("panel-add-{i}")))
+                    .primary()
+                    .icon(IconName::Download)
+                    .label(tr("svc.install"))
+                    .disabled(!has_db)
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        let plan = match this.snapshots.get(&server) {
+                            Some(snap) => sesame_provision::install_panel(p, snap),
+                            None => Err(anyhow::anyhow!("discover the server first")),
+                        };
+                        this.request(server, plan, None, window, cx);
+                    })),
+            )
+        };
+        let logo = if p == sesame_provision::Panel::PhpMyAdmin { "mysql" } else { "postgresql" };
+        let desc = if p == sesame_provision::Panel::PhpMyAdmin { tr("svc.phpmyadmin") } else { tr("svc.pgadmin") };
+        panels = panels.child(
+            panel(cx)
+                .p_4()
+                .gap_3()
+                .child(
+                    h_flex()
+                        .gap_3()
+                        .child(div().size(px(36.)).rounded_lg().bg(g.panel_hover).flex().items_center().justify_center().children(brand(logo, px(20.))))
+                        .child(v_flex().flex_1().child(div().font_weight(FontWeight::SEMIBOLD).child(p.name())).child(div().text_xs().text_color(g.dim).child(desc))),
+                )
+                .child(h_flex().justify_between().child(status).child(actions)),
+        );
+    }
+
     v_flex()
         .gap_4()
         .child(
@@ -771,6 +832,8 @@ fn services(server: sesame_core::ServerId, s: &ServerSnapshot, cx: &mut Context<
                 .child(div().text_color(g.dim).child(tr("svc.lead"))),
         )
         .child(grid)
+        .child(heading(&tr("svc.panels"), cx))
+        .child(panels)
         .child(div().text_xs().text_color(g.faint).child(tr("svc.note")))
 }
 

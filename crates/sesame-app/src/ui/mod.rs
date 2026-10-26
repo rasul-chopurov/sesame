@@ -174,6 +174,8 @@ pub struct SesameApp {
     pub(crate) cf: integrations::CfState,
     pub(crate) int: integrations::Inputs,
     pub(crate) ns: newsite::Form,
+    /// Open SSH tunnels to admin panels, by server and remote port.
+    pub(crate) tunnels: HashMap<(ServerId, u16), sesame_ssh::Tunnel>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -279,6 +281,7 @@ impl SesameApp {
             cf: integrations::CfState::fresh(),
             int,
             ns,
+            tunnels: HashMap::new(),
             _subscriptions: subs,
         };
         if this.page != Page::Vault && translucent {
@@ -446,6 +449,38 @@ impl SesameApp {
             let _ = self.store.set_setting("update.skip", &info.latest.version.to_string());
         }
         cx.notify();
+    }
+
+    // ---- admin panels -----------------------------------------------------
+
+    /// Opens (or reuses) an SSH tunnel to a panel and shows it in the browser.
+    pub(crate) fn open_panel(&mut self, server: ServerId, port: u16, cx: &mut Context<Self>) {
+        if let Some(t) = self.tunnels.get(&(server, port)) {
+            cx.open_url(&t.url("/"));
+            return;
+        }
+        let Some(config) = self.servers.iter().find(|s| s.id == server).cloned() else { return };
+        let job = runtime::get().spawn(async move { sesame_ssh::Tunnel::open(&config, port).await });
+        cx.spawn(async move |this, cx| {
+            let result = job.await;
+            this.update(cx, |this, cx| {
+                match result {
+                    Ok(Ok(t)) => {
+                        cx.open_url(&t.url("/"));
+                        this.tunnels.insert((server, port), t);
+                    }
+                    Ok(Err(e)) => {
+                        this.errors.insert(server, trp("svc.tunnel_error", &[("error", &format!("{e:#}"))]));
+                    }
+                    Err(e) => {
+                        this.errors.insert(server, e.to_string());
+                    }
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 
     // ---- vault ------------------------------------------------------------

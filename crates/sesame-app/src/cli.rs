@@ -11,7 +11,7 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum DoAction {
-    /// Install a service: redis, postgresql, mariadb, mongodb, elasticsearch, rustfs.
+    /// Install a service: redis, postgresql, mariadb, mongodb, elasticsearch, rustfs, phpmyadmin, pgadmin.
     Install { service: String },
     /// Uninstall a service (keeps data unless --delete-data).
     Uninstall {
@@ -117,6 +117,17 @@ pub enum Command {
     },
     /// Save a credential for a server in the encrypted vault; the value is read from stdin.
     SecretSet { server: String, name: String },
+    /// Open a database admin panel (phpmyadmin, pgadmin) through an SSH tunnel.
+    Panel {
+        server: String,
+        panel: String,
+        /// Only print the URL, do not open a browser.
+        #[arg(long)]
+        no_browser: bool,
+        /// Close the tunnel after this many seconds (default: until Ctrl+C).
+        #[arg(long)]
+        seconds: Option<u64>,
+    },
     /// Show the audit log.
     Audit {
         server: Option<String>,
@@ -174,7 +185,7 @@ pub fn unlock_vault(store: &std::sync::Arc<SqliteStore>) -> Result<()> {
 
 pub async fn run(cmd: Command) -> Result<()> {
     let store = std::sync::Arc::new(SqliteStore::open_default()?);
-    let needs_vault = !matches!(cmd, Command::Servers | Command::Ops | Command::Audit { .. } | Command::Update { .. } | Command::Remove { .. });
+    let needs_vault = !matches!(cmd, Command::Servers | Command::Ops | Command::Audit { .. } | Command::Update { .. } | Command::Remove { .. } | Command::Panel { .. });
     if needs_vault {
         unlock_vault(&store)?;
     }
@@ -253,6 +264,23 @@ pub async fn run(cmd: Command) -> Result<()> {
             sesame_core::secrets::set_named(config.id, &name, value.trim())?;
             println!("saved {name} for {server}");
         }
+        Command::Panel { server, panel: name, no_browser, seconds } => {
+            let config = find(&store, &server)?.with_context(|| format!("no saved server named {server}"))?;
+            let p = panel(&name).with_context(|| format!("unknown panel {name}"))?;
+            let tunnel = sesame_ssh::Tunnel::open(&config, p.port()).await?;
+            let url = tunnel.url("/");
+            println!("{} → {url}  (tunnel open; Ctrl+C to close)", p.name());
+            if !no_browser {
+                let _ = std::process::Command::new("open").arg(&url).status();
+            }
+            match seconds {
+                Some(s) => tokio::time::sleep(std::time::Duration::from_secs(s)).await,
+                None => {
+                    let _ = tokio::signal::ctrl_c().await;
+                }
+            }
+            drop(tunnel);
+        }
         Command::Audit { server, limit } => {
             let id = match server {
                 Some(name) => Some(find(&store, &name)?.with_context(|| format!("no server named {name}"))?.id),
@@ -324,6 +352,10 @@ fn engine(s: &str) -> Result<sesame_core::snapshot::DatabaseKind> {
     })
 }
 
+fn panel(s: &str) -> Option<sesame_provision::Panel> {
+    sesame_provision::Panel::ALL.into_iter().find(|p| p.dir() == s)
+}
+
 fn service(s: &str) -> Result<sesame_provision::Service> {
     sesame_provision::Service::ALL
         .into_iter()
@@ -361,9 +393,15 @@ fn build_plan(
     match action {
         DoAction::Install { service: s } => {
             let snap = snap.context("discover the server first: sesame discover <name>")?;
-            sesame_provision::install(service(s)?, snap)
+            match panel(s) {
+                Some(p) => sesame_provision::install_panel(p, snap),
+                None => sesame_provision::install(service(s)?, snap),
+            }
         }
-        DoAction::Uninstall { service: s, delete_data } => sesame_provision::uninstall(service(s)?, !delete_data),
+        DoAction::Uninstall { service: s, delete_data } => match panel(s) {
+            Some(p) => sesame_provision::uninstall_panel(p),
+            None => sesame_provision::uninstall(service(s)?, !delete_data),
+        },
         DoAction::DbCreate { engine: e, name, user } => actions::db_create(engine(e)?, name, user.as_deref().unwrap_or(name), admin.as_ref()),
         DoAction::DbDrop { engine: e, name, user } => actions::db_drop(engine(e)?, name, user.as_deref(), admin.as_ref()),
         DoAction::Service { kind, name, action } => {

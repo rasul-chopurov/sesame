@@ -85,6 +85,7 @@ sec letsencrypt; $S ls -1 /etc/letsencrypt/live 2>/dev/null
 sec ufw; has ufw && $S ufw status 2>/dev/null
 sec fail2ban; has fail2ban-client && $S fail2ban-client status 2>/dev/null
 sec docker; has docker && $S docker ps -a --format '{{.Names}}	{{.Image}}	{{.Status}}	{{.Ports}}' 2>/dev/null
+sec sesame_tools; ls -1 /opt/sesame 2>/dev/null
 sec end
 "#;
 

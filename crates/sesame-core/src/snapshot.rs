@@ -21,6 +21,9 @@ pub struct ServerSnapshot {
     pub certificates: Vec<Certificate>,
     pub firewall: FirewallInfo,
     pub containers: Vec<Container>,
+    /// Tools Sesame installed under /opt/sesame (phpmyadmin, pgadmin).
+    #[serde(default)]
+    pub tools: Vec<String>,
     /// Detectors that could not run (missing tool, no permission). Shown so
     /// the user knows the picture is partial.
     pub warnings: Vec<String>,

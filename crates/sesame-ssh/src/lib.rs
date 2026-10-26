@@ -283,3 +283,51 @@ fn expand_home(path: &str) -> String {
         _ => path.to_string(),
     }
 }
+
+/// A local port forwarded to a port on the server's loopback. Admin panels
+/// (phpMyAdmin, pgAdmin) listen only on the server's 127.0.0.1 and are
+/// reached through this, never through the internet.
+pub struct Tunnel {
+    pub local_port: u16,
+    pub remote_port: u16,
+    task: tokio::task::JoinHandle<()>,
+}
+
+impl Tunnel {
+    pub async fn open(server: &ServerConfig, remote_port: u16) -> Result<Self> {
+        let session = Arc::new(Session::connect(server).await?);
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
+        let local_port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            while let Ok((mut tcp, peer)) = listener.accept().await {
+                let session = session.clone();
+                tokio::spawn(async move {
+                    let channel = match session
+                        .handle
+                        .channel_open_direct_tcpip("127.0.0.1", remote_port as u32, "127.0.0.1", peer.port() as u32)
+                        .await
+                    {
+                        Ok(c) => c,
+                        Err(e) => {
+                            tracing::warn!("tunnel channel failed: {e}");
+                            return;
+                        }
+                    };
+                    let mut stream = channel.into_stream();
+                    let _ = tokio::io::copy_bidirectional(&mut tcp, &mut stream).await;
+                });
+            }
+        });
+        Ok(Self { local_port, remote_port, task })
+    }
+
+    pub fn url(&self, path: &str) -> String {
+        format!("http://127.0.0.1:{}{path}", self.local_port)
+    }
+}
+
+impl Drop for Tunnel {
+    fn drop(&mut self) {
+        self.task.abort();
+    }
+}
