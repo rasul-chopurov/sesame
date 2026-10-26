@@ -1,4 +1,4 @@
-//! English and Russian UI text. Strings live in `locales/app.yml`.
+//! English, Russian and Azerbaijani UI text. Strings live in `locales/app.yml`.
 
 use std::borrow::Cow;
 
@@ -7,6 +7,7 @@ pub enum LangPref {
     System,
     En,
     Ru,
+    Az,
 }
 
 impl LangPref {
@@ -14,6 +15,7 @@ impl LangPref {
         match s {
             "en" => LangPref::En,
             "ru" => LangPref::Ru,
+            "az" => LangPref::Az,
             _ => LangPref::System,
         }
     }
@@ -23,6 +25,7 @@ impl LangPref {
             LangPref::System => "system",
             LangPref::En => "en",
             LangPref::Ru => "ru",
+            LangPref::Az => "az",
         }
     }
 
@@ -31,10 +34,13 @@ impl LangPref {
         match self {
             LangPref::En => "en",
             LangPref::Ru => "ru",
+            LangPref::Az => "az",
             LangPref::System => {
                 let sys = sys_locale::get_locale().unwrap_or_default().to_lowercase();
-                // Russian also for the CIS locales people commonly run in Russian.
-                if ["ru", "be", "kk", "ky", "uz", "az", "tg", "hy"].iter().any(|l| sys.starts_with(l)) {
+                if sys.starts_with("az") {
+                    "az"
+                } else if ["ru", "be", "kk", "ky", "uz", "tg", "hy"].iter().any(|l| sys.starts_with(l)) {
+                    // CIS locales people commonly run in Russian.
                     "ru"
                 } else {
                     "en"
@@ -70,6 +76,8 @@ mod tests {
     fn russian_and_english_with_params() {
         rust_i18n::set_locale("ru");
         assert_eq!(trp("insight.disk_full", &[("percent", "91")]), "Диск заполнен на 91%");
+        rust_i18n::set_locale("az");
+        assert_eq!(trp("insight.disk_full", &[("percent", "91")]), "Disk 91% doludur");
         rust_i18n::set_locale("en");
         assert_eq!(tr("nav.sites"), "Sites");
     }
@@ -78,7 +86,10 @@ mod tests {
     fn every_key_has_both_languages() {
         let yaml = include_str!("../locales/app.yml");
         for line in yaml.lines().filter(|l| l.contains(": {")) {
-            assert!(line.contains(" en: ") && line.contains(" ru: "), "missing translation: {line}");
+            assert!(
+                line.contains(" en: ") && line.contains(" ru: ") && line.contains(" az: "),
+                "missing translation: {line}"
+            );
         }
     }
 }

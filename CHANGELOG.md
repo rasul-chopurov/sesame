@@ -8,7 +8,13 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - Sesame Glass design: translucent light and dark themes over a blurred window, breadcrumbs in the titlebar, sidebar tree with server/site search, status bar, brand icons for detected software.
-- Russian translation; language and theme follow the system or are chosen in Settings.
+- Russian and Azerbaijani translations; language and theme follow the system or are chosen in Settings.
+- Changes on servers, always previewed and confirmed (destructive ones by typing the name), run with a live log and recorded in an audit log:
+  - start / stop / restart / disable systemd services and supervisor programs; one-click "stop unused PHP-FPM";
+  - create databases with a dedicated user and generated password (MySQL, MariaDB, PostgreSQL, MongoDB); drop databases after an automatic backup to `/var/backups/sesame`;
+  - install and uninstall Redis, PostgreSQL (PGDG), MariaDB, MongoDB 8.0, Elasticsearch 9 and RustFS (S3) with localhost-only defaults; uninstall keeps data unless asked;
+  - Laravel maintenance mode on/off and Reverb under supervisor per site.
+- Generated credentials are shown once, copyable as `.env`, and stored in the macOS Keychain.
 - Sites as searchable, filterable cards with a detail page (framework, database, drivers, processes, run-as users).
 - Services page showing which of Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 (RustFS/MinIO) and Reverb are installed, with conflicts.
 - Settings: theme, language, update channel, automatic updates; "What's new" page with release notes.

@@ -7550,6 +7550,8 @@ dependencies = [
  "serde_json",
  "sesame-core",
  "sesame-discovery",
+ "sesame-ops",
+ "sesame-provision",
  "sesame-ssh",
  "sesame-update",
  "sys-locale",
@@ -7586,6 +7588,27 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "sesame-ops"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "anyhow",
+ "getrandom 0.3.4",
+ "serde",
+ "sesame-core",
+ "sesame-ssh",
+ "tokio",
+]
+
+[[package]]
+name = "sesame-provision"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "anyhow",
+ "sesame-core",
+ "sesame-ops",
 ]
 
 [[package]]

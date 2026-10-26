@@ -1,0 +1,17 @@
+[package]
+name = "sesame-ops"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Changes Sesame makes on servers: plans, the runner and the built-in actions."
+
+[dependencies]
+sesame-core = { path = "../sesame-core" }
+sesame-ssh = { path = "../sesame-ssh" }
+anyhow.workspace = true
+serde.workspace = true
+tokio.workspace = true
+getrandom = "0.3"
+
+[dev-dependencies]
+tokio.workspace = true

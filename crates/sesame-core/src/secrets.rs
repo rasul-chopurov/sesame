@@ -45,3 +45,21 @@ pub fn delete(server: ServerId, kind: SecretKind) -> Result<()> {
         Err(e) => Err(e.into()),
     }
 }
+
+fn named_entry(server: ServerId, name: &str) -> Result<keyring::Entry> {
+    Ok(keyring::Entry::new(SERVICE, &format!("{server}:value:{name}"))?)
+}
+
+/// Stores a generated credential (a database password, an S3 key, …).
+pub fn set_named(server: ServerId, name: &str, value: &str) -> Result<()> {
+    named_entry(server, name)?.set_password(value)?;
+    Ok(())
+}
+
+pub fn get_named(server: ServerId, name: &str) -> Result<Option<String>> {
+    match named_entry(server, name)?.get_password() {
+        Ok(v) => Ok(Some(v)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}

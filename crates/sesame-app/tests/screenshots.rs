@@ -19,7 +19,7 @@ fn main() {
     sesame_discovery::apply_details(&mut snap, include_str!("../../sesame-discovery/fixtures/frankenphp-octane.details"));
     sesame_discovery::link(&mut snap);
 
-    for (theme, lang) in [("light", "en"), ("dark", "en"), ("light", "ru"), ("dark", "ru")] {
+    for (theme, lang) in [("light", "en"), ("dark", "en"), ("light", "ru"), ("dark", "ru"), ("light", "az"), ("dark", "az")] {
         let store = Arc::new(SqliteStore::in_memory().unwrap());
         let server = ServerConfig::new("app-1", "203.0.113.10", "root");
         store.save_server(&server).unwrap();
@@ -69,6 +69,7 @@ fn main() {
         if let Some(only) = &only {
             pages.retain(|(name, _)| only.split(',').any(|o| o == *name));
         }
+        let want = |name: &str| only.as_ref().is_none_or(|o| o.split(',').any(|x| x == name));
         for (name, page) in pages {
             cx.update_window(handle, |_, window, cx| {
                 view.update(cx, |v, cx| v.navigate(page, cx));
@@ -76,6 +77,42 @@ fn main() {
             })
             .unwrap();
             // Images load asynchronously; let them land, then paint again.
+            cx.run_until_parked();
+            cx.update_window(handle, |_, window, cx| window.render_frame(cx)).unwrap();
+            let image = cx.capture_screenshot(handle).expect("offscreen rendering");
+            let path = format!("{dir}/{name}-{theme}-{lang}.png");
+            image.save(&path).unwrap();
+            println!("saved {path}");
+        }
+
+        // Confirmation dialog for a destructive plan, then a finished job with credentials.
+        let shots: Vec<(&str, Box<dyn Fn(&mut SesameApp, &mut gpui_kit::Window, &mut gpui_kit::Context<SesameApp>)>)> = vec![
+            (
+                "confirm-drop",
+                Box::new(|v, w, cx| {
+                    v.navigate(Page::Server(id, Section::Databases), cx);
+                    let plan = sesame_ops::actions::db_drop(sesame_core::snapshot::DatabaseKind::MySql, "shop", None).unwrap();
+                    v.demo_confirm(plan, w, cx);
+                }),
+            ),
+            (
+                "job-done",
+                Box::new(|v, _, cx| {
+                    v.navigate(Page::Server(id, Section::Services), cx);
+                    let plan = sesame_provision::install(sesame_provision::Service::Postgres, &Default::default()).unwrap();
+                    let lines = ["Reading package lists...", "Setting up postgresql-18 (18.1-1.pgdg24.04+1) ...", "Created symlink /etc/systemd/system/multi-user.target.wants/postgresql.service", "PostgreSQL 18.1 on aarch64-unknown-linux-gnu"];
+                    let mut plan = plan;
+                    plan.reveal = vec![("DB_PASSWORD".into(), "k7Qm2vXc9RtA4pLs8NwE3hJy6UbZ5dFg".into())];
+                    v.demo_job(&plan, lines.iter().map(|s| s.to_string()).collect(), cx);
+                }),
+            ),
+        ];
+        for (name, apply) in shots.iter().filter(|(n, _)| want(n)) {
+            cx.update_window(handle, |_, window, cx| {
+                view.update(cx, |v, cx| apply(v, window, cx));
+                window.render_frame(cx);
+            })
+            .unwrap();
             cx.run_until_parked();
             cx.update_window(handle, |_, window, cx| window.render_frame(cx)).unwrap();
             let image = cx.capture_screenshot(handle).expect("offscreen rendering");

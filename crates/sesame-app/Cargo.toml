@@ -14,6 +14,8 @@ sesame-core = { path = "../sesame-core" }
 sesame-ssh = { path = "../sesame-ssh" }
 sesame-discovery = { path = "../sesame-discovery" }
 sesame-update = { path = "../sesame-update" }
+sesame-ops = { path = "../sesame-ops" }
+sesame-provision = { path = "../sesame-provision" }
 gpui-kit.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
@@ -25,6 +27,8 @@ semver = "1"
 time = "0.3"
 
 [dev-dependencies]
+sesame-ops = { path = "../sesame-ops" }
+sesame-provision = { path = "../sesame-provision" }
 gpui-kit = { workspace = true, features = ["test-support"] }
 sesame-discovery = { path = "../sesame-discovery" }
 image = { version = "0.25", default-features = false, features = ["png"] }

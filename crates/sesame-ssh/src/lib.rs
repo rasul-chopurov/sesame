@@ -34,6 +34,21 @@ pub trait Exec: Send + Sync {
     fn exec(&self, command: &str) -> impl Future<Output = Result<CommandOutput>> + Send;
 }
 
+/// Runs a script fed over stdin as root (directly or via `sudo -n`),
+/// streaming output lines as they arrive. Scripts go through stdin so
+/// nothing they contain — passwords included — shows up in `ps`.
+pub trait Run: Send + Sync {
+    fn run_script(
+        &self,
+        script: &str,
+        lines: Option<tokio::sync::mpsc::UnboundedSender<String>>,
+    ) -> impl Future<Output = Result<CommandOutput>> + Send;
+}
+
+/// The command that reads a script from stdin and runs it as root.
+pub const ROOT_SHELL: &str =
+    "if [ \"$(id -u)\" = 0 ]; then exec sh -s; elif sudo -n true 2>/dev/null; then exec sudo -n sh -s; else echo 'sesame: root or passwordless sudo required' >&2; exit 126; fi";
+
 /// What happened to the server's host key on connect.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostKeyStatus {
@@ -134,6 +149,67 @@ impl Session {
         out.stdout = String::from_utf8_lossy(&stdout).into_owned();
         out.stderr = String::from_utf8_lossy(&stderr).into_owned();
         Ok(out)
+    }
+}
+
+impl Session {
+    async fn run_streaming(
+        &self,
+        script: &str,
+        lines: Option<tokio::sync::mpsc::UnboundedSender<String>>,
+    ) -> Result<CommandOutput> {
+        let mut channel = self.handle.channel_open_session().await?;
+        channel.exec(true, ROOT_SHELL).await?;
+        channel.data_bytes(script.as_bytes().to_vec()).await?;
+        channel.eof().await?;
+
+        let mut out = CommandOutput::default();
+        let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+        let mut pending = String::new();
+        let emit = |chunk: &[u8], pending: &mut String| {
+            pending.push_str(&String::from_utf8_lossy(chunk));
+            while let Some(i) = pending.find('\n') {
+                let line: String = pending.drain(..=i).collect();
+                if let Some(tx) = &lines {
+                    let _ = tx.send(line.trim_end_matches(['\r', '\n']).to_string());
+                }
+            }
+        };
+        while let Some(msg) = channel.wait().await {
+            match msg {
+                ChannelMsg::Data { data } => {
+                    stdout.extend_from_slice(&data);
+                    emit(&data, &mut pending);
+                }
+                ChannelMsg::ExtendedData { data, .. } => {
+                    stderr.extend_from_slice(&data);
+                    emit(&data, &mut pending);
+                }
+                ChannelMsg::ExitStatus { exit_status } => out.exit_code = Some(exit_status),
+                _ => {}
+            }
+        }
+        if !pending.is_empty() {
+            if let Some(tx) = &lines {
+                let _ = tx.send(pending);
+            }
+        }
+        out.stdout = String::from_utf8_lossy(&stdout).into_owned();
+        out.stderr = String::from_utf8_lossy(&stderr).into_owned();
+        Ok(out)
+    }
+}
+
+impl Run for Session {
+    async fn run_script(
+        &self,
+        script: &str,
+        lines: Option<tokio::sync::mpsc::UnboundedSender<String>>,
+    ) -> Result<CommandOutput> {
+        // Installs can take a while (apt, downloads).
+        tokio::time::timeout(Duration::from_secs(1800), self.run_streaming(script, lines))
+            .await
+            .map_err(|_| anyhow!("script timed out after 30 minutes"))?
     }
 }
 

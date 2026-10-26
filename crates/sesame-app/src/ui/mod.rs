@@ -1,6 +1,7 @@
 //! The desktop window: glass titlebar with breadcrumbs, a sidebar tree of
 //! servers and their sections, the content panel and a status bar.
 
+mod jobs;
 pub mod theme;
 mod views;
 mod widgets;
@@ -151,6 +152,9 @@ pub struct SesameApp {
     pub(crate) lang_pref: LangPref,
     pub(crate) translucent: bool,
     pub(crate) update: UpdateState,
+    pub(crate) pending: Option<jobs::Pending>,
+    pub(crate) job: Option<jobs::Job>,
+    pub(crate) db_name: Entity<InputState>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -176,11 +180,13 @@ impl SesameApp {
         };
         let filter = input(tr("nav.filter"), window, cx);
         let site_search = input(tr("sites.search"), window, cx);
+        let db_name = input(tr("db.name_placeholder"), window, cx);
 
         let mut subs = vec![
             cx.subscribe(&filter, |_, _, _: &InputEvent, cx| cx.notify()),
             cx.subscribe(&site_search, |_, _, _: &InputEvent, cx| cx.notify()),
         ];
+        subs.push(cx.subscribe(&db_name, |_, _, _: &InputEvent, cx| cx.notify()));
         subs.push(cx.observe_window_appearance(window, |this, window, cx| {
             if this.theme_pref == ThemePref::System {
                 theme::apply(theme::is_dark(ThemePref::System, Some(window)), this.translucent, cx);
@@ -208,6 +214,9 @@ impl SesameApp {
             lang_pref,
             translucent,
             update: UpdateState::default(),
+            pending: None,
+            job: None,
+            db_name,
             _subscriptions: subs,
         };
         if translucent && this.update_due() {
@@ -498,10 +507,17 @@ impl Render for SesameApp {
                             .min_w_0()
                             .pr_2()
                             .pb_2()
-                            .child(panel(cx).size_full().overflow_hidden().child(content)),
+                            .child(
+                                panel(cx)
+                                    .size_full()
+                                    .overflow_hidden()
+                                    .child(div().flex_1().min_h_0().child(content))
+                                    .children(self.render_job(cx)),
+                            ),
                     ),
             )
             .child(self.render_statusbar(cx))
+            .children(self.render_confirm(cx))
     }
 }
 
@@ -555,11 +571,17 @@ impl SesameApp {
         right = right
             .child(
                 tool("tb-lang")
-                    .child(div().text_xs().font_weight(FontWeight::SEMIBOLD).text_color(g.dim).child(
-                        if lang == LangPref::Ru { "RU" } else { "EN" },
-                    ))
+                    .child(div().text_xs().font_weight(FontWeight::SEMIBOLD).text_color(g.dim).child(match lang {
+                        LangPref::Ru => "RU",
+                        LangPref::Az => "AZ",
+                        _ => "EN",
+                    }))
                     .on_click(cx.listener(move |this, _, window, cx| {
-                        let next = if lang == LangPref::Ru { LangPref::En } else { LangPref::Ru };
+                        let next = match lang {
+                            LangPref::Ru => LangPref::Az,
+                            LangPref::Az => LangPref::En,
+                            _ => LangPref::Ru,
+                        };
                         this.set_language(next, window, cx);
                     })),
             )

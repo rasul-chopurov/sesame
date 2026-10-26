@@ -17,6 +17,23 @@ pub trait Store: Send + Sync {
     fn save_snapshot(&self, id: ServerId, snapshot: &ServerSnapshot) -> Result<()>;
     fn setting(&self, key: &str) -> Result<Option<String>>;
     fn set_setting(&self, key: &str, value: &str) -> Result<()>;
+    fn log_audit(&self, entry: &AuditEntry) -> Result<()>;
+    fn audit(&self, server: Option<ServerId>, limit: usize) -> Result<Vec<AuditEntry>>;
+}
+
+/// One change Sesame made (or tried to make) on a server. Never contains secrets.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct AuditEntry {
+    /// RFC 3339.
+    pub at: String,
+    pub server_id: ServerId,
+    pub op: String,
+    pub title: String,
+    /// `user`, or `agent:<token name>` for API/MCP calls.
+    pub actor: String,
+    pub ok: bool,
+    /// Tail of the output, for troubleshooting.
+    pub log: String,
 }
 
 pub struct SqliteStore {
@@ -61,6 +78,16 @@ impl SqliteStore {
                 server_id TEXT PRIMARY KEY REFERENCES servers(id) ON DELETE CASCADE,
                 taken_at TEXT NOT NULL,
                 data TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                at TEXT NOT NULL,
+                server_id TEXT NOT NULL,
+                op TEXT NOT NULL,
+                title TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                ok INTEGER NOT NULL,
+                log TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -128,6 +155,35 @@ impl Store for SqliteStore {
             .optional()?)
     }
 
+    fn log_audit(&self, e: &AuditEntry) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO audit (at, server_id, op, title, actor, ok, log) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![e.at, e.server_id.to_string(), e.op, e.title, e.actor, e.ok, e.log],
+        )?;
+        Ok(())
+    }
+
+    fn audit(&self, server: Option<ServerId>, limit: usize) -> Result<Vec<AuditEntry>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT at, server_id, op, title, actor, ok, log FROM audit
+             WHERE ?1 IS NULL OR server_id = ?1 ORDER BY id DESC LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![server.map(|s| s.to_string()), limit as i64], |r| {
+            Ok(AuditEntry {
+                at: r.get(0)?,
+                server_id: r.get::<_, String>(1)?.parse().unwrap_or_default(),
+                op: r.get(2)?,
+                title: r.get(3)?,
+                actor: r.get(4)?,
+                ok: r.get(5)?,
+                log: r.get(6)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     fn set_setting(&self, key: &str, value: &str) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
@@ -164,6 +220,28 @@ mod tests {
 
         store.delete_server(a.id).unwrap();
         assert_eq!(store.servers().unwrap(), vec![b]);
+    }
+
+    #[test]
+    fn audit_newest_first_per_server() {
+        let store = SqliteStore::in_memory().unwrap();
+        let (a, b) = (uuid::Uuid::new_v4(), uuid::Uuid::new_v4());
+        for (i, s) in [(1, a), (2, b), (3, a)] {
+            store
+                .log_audit(&AuditEntry {
+                    at: format!("t{i}"),
+                    server_id: s,
+                    op: "service_action".into(),
+                    title: format!("op {i}"),
+                    actor: "user".into(),
+                    ok: true,
+                    log: String::new(),
+                })
+                .unwrap();
+        }
+        let only_a: Vec<String> = store.audit(Some(a), 10).unwrap().into_iter().map(|e| e.title).collect();
+        assert_eq!(only_a, ["op 3", "op 1"]);
+        assert_eq!(store.audit(None, 2).unwrap().len(), 2);
     }
 
     #[test]

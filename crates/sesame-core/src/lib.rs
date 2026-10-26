@@ -10,4 +10,4 @@ pub mod store;
 
 pub use model::{AuthMethod, ServerConfig, ServerId};
 pub use snapshot::ServerSnapshot;
-pub use store::{SqliteStore, Store};
+pub use store::{AuditEntry, SqliteStore, Store};

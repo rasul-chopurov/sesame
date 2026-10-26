@@ -39,7 +39,7 @@ It is built for how Laravel actually runs in production today: FrankenPHP and Oc
 | 🔍 **Discover** | One read-only probe, two SSH round trips: OS and resources · systemd and supervisor (Octane, queue, Horizon, Reverb recognised) · listening ports · sites from **FrankenPHP/Caddy, Nginx, Apache** · Laravel and WordPress with non-secret `.env` details · MySQL, MariaDB, PostgreSQL, Redis, MongoDB · mail · PHP and FPM pools · cron · certificates and expiry · ufw and fail2ban · Docker. |
 | 🚨 **Needs attention** | Failed processes, ports open to the world, inactive firewall, expiring certificates, PHP-FPM running for nobody, full disks. |
 | 🤖 **AI-friendly** | Every action is a typed operation. `sesame discover root@host` prints JSON today; MCP and REST servers for agents are on the roadmap. |
-| 🎨 **Glass UI, EN / RU** | Translucent light and dark themes over a blurred window, breadcrumbs in the titlebar, a sidebar tree with search, sites as searchable cards. English and Russian. |
+| 🎨 **Glass UI, EN / RU / AZ** | Translucent light and dark themes over a blurred window, breadcrumbs in the titlebar, a sidebar tree with search, sites as searchable cards. English, Russian and Azerbaijani. |
 | ⬆️ **Updates** | Checks GitHub Releases, shows the changelog of every version since yours, installs signed builds automatically if you want. |
 | 🔒 **Safe by default** | Discovery never changes anything and never reads passwords or keys from `.env`. |
 
@@ -86,9 +86,9 @@ State lives in `~/Library/Application Support/dev.sesame.Sesame/state.db` (overr
 - [x] Glass design, Russian translation, sites as searchable cards, in-app updates with changelog
 - [ ] Command palette ⌘K
 - [ ] Maintenance mode · disable/enable · per-site isolation (own Linux user, PHP-FPM pool or Octane, DB user, Redis ACL)
-- [ ] Start/stop/restart services, clean up unused ones
-- [ ] Databases: create/drop databases and users for MySQL, MariaDB, PostgreSQL, MongoDB
-- [ ] One-click services: Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 (RustFS / MinIO), Reverb
+- [x] Start/stop/restart services, clean up unused ones — previewed, confirmed, audited
+- [x] Databases: create/drop databases and users for MySQL, MariaDB, PostgreSQL, MongoDB (backup before drop)
+- [x] One-click services: Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 (RustFS), Reverb
 - [ ] Cloudflare: DNS, cache purge, Origin certificates
 - [ ] Deploys and a "new Laravel site" wizard
 - [ ] MCP and REST API for AI agents
@@ -103,6 +103,8 @@ crates/
   sesame-core        data model, SQLite store, keychain secrets, operation registry
   sesame-ssh         SSH transport (russh): auth, known_hosts, exec
   sesame-discovery   read-only probe + parsers + insights
+  sesame-ops         plans, runner, audit: service control, databases, maintenance
+  sesame-provision   service recipes (install / uninstall)
   sesame-app         GPUI window and the `sesame` CLI
 ```
 

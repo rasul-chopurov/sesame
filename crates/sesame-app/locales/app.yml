@@ -1,185 +1,213 @@
 _version: 2
 
-app.tagline: { en: "Open your servers", ru: "Откройте свои серверы" }
+app.tagline: { en: "Open your servers", ru: "Откройте свои серверы", az: "Serverlərinizi açın" }
 
-nav.servers: { en: "Servers", ru: "Серверы" }
-nav.overview: { en: "Overview", ru: "Обзор" }
-nav.sites: { en: "Sites", ru: "Сайты" }
-nav.processes: { en: "Processes", ru: "Процессы" }
-nav.services: { en: "Services", ru: "Сервисы" }
-nav.databases: { en: "Databases", ru: "Базы данных" }
-nav.mail_cron: { en: "Mail & Cron", ru: "Почта и Cron" }
-nav.security: { en: "Security", ru: "Безопасность" }
-nav.settings: { en: "Settings", ru: "Настройки" }
-nav.updates: { en: "What's new", ru: "Что нового" }
-nav.add_server: { en: "Add server", ru: "Добавить сервер" }
-nav.filter: { en: "Filter servers and sites…", ru: "Поиск серверов и сайтов…" }
+nav.servers: { en: "Servers", ru: "Серверы", az: "Serverlər" }
+nav.overview: { en: "Overview", ru: "Обзор", az: "Ümumi baxış" }
+nav.sites: { en: "Sites", ru: "Сайты", az: "Saytlar" }
+nav.processes: { en: "Processes", ru: "Процессы", az: "Proseslər" }
+nav.services: { en: "Services", ru: "Сервисы", az: "Xidmətlər" }
+nav.databases: { en: "Databases", ru: "Базы данных", az: "Verilənlər bazaları" }
+nav.mail_cron: { en: "Mail & Cron", ru: "Почта и Cron", az: "Poçt və Cron" }
+nav.security: { en: "Security", ru: "Безопасность", az: "Təhlükəsizlik" }
+nav.settings: { en: "Settings", ru: "Настройки", az: "Ayarlar" }
+nav.updates: { en: "What's new", ru: "Что нового", az: "Yeniliklər" }
+nav.add_server: { en: "Add server", ru: "Добавить сервер", az: "Server əlavə et" }
+nav.filter: { en: "Filter servers and sites…", ru: "Поиск серверов и сайтов…", az: "Server və sayt axtar…" }
 
-server.discover: { en: "Discover", ru: "Обнаружить" }
-server.rediscover: { en: "Rediscover", ru: "Обновить" }
-server.discovering: { en: "Discovering…", ru: "Сканирую…" }
-server.remove: { en: "Remove", ru: "Удалить" }
-server.discovered_at: { en: "discovered %{time}", ru: "обнаружено %{time}" }
-server.not_discovered: { en: "Not discovered yet — press Discover", ru: "Ещё не сканировали — нажмите «Обнаружить»" }
-server.connecting: { en: "Connecting and looking around…", ru: "Подключаюсь и осматриваюсь…" }
-server.could_not_discover: { en: "Could not discover", ru: "Не удалось просканировать" }
-server.new_host_key: { en: "New server key trusted and saved to known_hosts: %{fp}", ru: "Новый ключ сервера принят и сохранён в known_hosts: %{fp}" }
-server.empty: { en: "Add a server to begin", ru: "Добавьте сервер, чтобы начать" }
+server.discover: { en: "Discover", ru: "Обнаружить", az: "Skan et" }
+server.rediscover: { en: "Rediscover", ru: "Обновить", az: "Yenilə" }
+server.discovering: { en: "Discovering…", ru: "Сканирую…", az: "Skan edilir…" }
+server.remove: { en: "Remove", ru: "Удалить", az: "Sil" }
+server.discovered_at: { en: "discovered %{time}", ru: "обнаружено %{time}", az: "skan edilib: %{time}" }
+server.not_discovered: { en: "Not discovered yet — press Discover", ru: "Ещё не сканировали — нажмите «Обнаружить»", az: "Hələ skan edilməyib — «Skan et» düyməsini basın" }
+server.connecting: { en: "Connecting and looking around…", ru: "Подключаюсь и осматриваюсь…", az: "Qoşulur və ətrafa baxır…" }
+server.could_not_discover: { en: "Could not discover", ru: "Не удалось просканировать", az: "Skan etmək alınmadı" }
+server.new_host_key: { en: "New server key trusted and saved to known_hosts: %{fp}", ru: "Новый ключ сервера принят и сохранён в known_hosts: %{fp}", az: "Yeni server açarı qəbul edildi və known_hosts-a yazıldı: %{fp}" }
+server.empty: { en: "Add a server to begin", ru: "Добавьте сервер, чтобы начать", az: "Başlamaq üçün server əlavə edin" }
 
-add.title: { en: "Add a server", ru: "Добавить сервер" }
-add.lead: { en: "Give Sesame SSH access. It connects, looks around read-only and shows you every site, database, mail setup and process it finds.", ru: "Дайте Sesame SSH-доступ. Он подключится, осмотрится только на чтение и покажет все сайты, базы, почту и процессы." }
-add.address: { en: "SSH address", ru: "SSH-адрес" }
-add.address_hint: { en: "user@host[:port] — root or a user with passwordless sudo sees everything", ru: "user@host[:port] — root или пользователь с sudo без пароля видит всё" }
-add.name: { en: "Name", ru: "Название" }
-add.name_hint: { en: "Shown in the sidebar", ru: "Показывается в боковой панели" }
-add.key: { en: "Private key", ru: "Приватный ключ" }
-add.key_placeholder: { en: "~/.ssh/id_ed25519  (empty = ssh-agent and default keys)", ru: "~/.ssh/id_ed25519  (пусто = ssh-agent и ключи по умолчанию)" }
-add.optional: { en: "Optional", ru: "Необязательно" }
-add.password: { en: "Password", ru: "Пароль" }
-add.password_placeholder: { en: "only if the server uses password login", ru: "только если сервер пускает по паролю" }
-add.password_hint: { en: "Optional — stored in the macOS Keychain, never on disk", ru: "Необязательно — хранится в Связке ключей macOS, не на диске" }
-add.submit: { en: "Open Sesame — connect & discover", ru: "Сим-сим, откройся — подключить и просканировать" }
-add.cancel: { en: "Cancel", ru: "Отмена" }
+add.title: { en: "Add a server", ru: "Добавить сервер", az: "Server əlavə et" }
+add.lead: { en: "Give Sesame SSH access. It connects, looks around read-only and shows you every site, database, mail setup and process it finds.", ru: "Дайте Sesame SSH-доступ. Он подключится, осмотрится только на чтение и покажет все сайты, базы, почту и процессы.", az: "Sesame-ə SSH girişi verin. O, qoşulacaq, yalnız oxuma rejimində baxacaq və bütün saytları, bazaları, poçtu və prosesləri göstərəcək." }
+add.address: { en: "SSH address", ru: "SSH-адрес", az: "SSH ünvanı" }
+add.address_hint: { en: "user@host[:port] — root or a user with passwordless sudo sees everything", ru: "user@host[:port] — root или пользователь с sudo без пароля видит всё", az: "user@host[:port] — root və ya parolsuz sudo istifadəçisi hər şeyi görür" }
+add.name: { en: "Name", ru: "Название", az: "Ad" }
+add.name_hint: { en: "Shown in the sidebar", ru: "Показывается в боковой панели", az: "Yan paneldə göstərilir" }
+add.key: { en: "Private key", ru: "Приватный ключ", az: "Şəxsi açar" }
+add.key_placeholder: { en: "~/.ssh/id_ed25519  (empty = ssh-agent and default keys)", ru: "~/.ssh/id_ed25519  (пусто = ssh-agent и ключи по умолчанию)", az: "~/.ssh/id_ed25519  (boş = ssh-agent və standart açarlar)" }
+add.optional: { en: "Optional", ru: "Необязательно", az: "İstəyə bağlı" }
+add.password: { en: "Password", ru: "Пароль", az: "Parol" }
+add.password_placeholder: { en: "only if the server uses password login", ru: "только если сервер пускает по паролю", az: "yalnız server parolla giriş istəyirsə" }
+add.password_hint: { en: "Optional — stored in the macOS Keychain, never on disk", ru: "Необязательно — хранится в Связке ключей macOS, не на диске", az: "İstəyə bağlı — diskdə deyil, macOS Keychain-də saxlanılır" }
+add.submit: { en: "Open Sesame — connect & discover", ru: "Сим-сим, откройся — подключить и просканировать", az: "Açıl, Susam — qoşul və skan et" }
+add.cancel: { en: "Cancel", ru: "Отмена", az: "Ləğv et" }
 
-overview.attention: { en: "Needs attention", ru: "Требует внимания" }
-overview.all_good: { en: "Nothing — all good.", ru: "Ничего — всё в порядке." }
-overview.machine: { en: "Machine", ru: "Машина" }
-overview.resources: { en: "Resources", ru: "Ресурсы" }
-overview.stack: { en: "Stack", ru: "Стек" }
-overview.found: { en: "Found", ru: "Найдено" }
-overview.hostname: { en: "Hostname", ru: "Имя хоста" }
-overview.system: { en: "System", ru: "Система" }
-overview.kernel: { en: "Kernel", ru: "Ядро" }
-overview.cpus: { en: "CPUs", ru: "Ядра CPU" }
-overview.uptime: { en: "Uptime", ru: "Аптайм" }
-overview.access: { en: "Access", ru: "Доступ" }
-overview.access_root: { en: "root / sudo", ru: "root / sudo" }
-overview.access_limited: { en: "limited user", ru: "ограниченный пользователь" }
-overview.memory: { en: "Memory", ru: "Память" }
-overview.disk: { en: "Disk /", ru: "Диск /" }
-overview.load: { en: "Load", ru: "Нагрузка" }
-overview.of: { en: "%{used} of %{total} (%{pct}%)", ru: "%{used} из %{total} (%{pct}%)" }
-overview.web: { en: "Web", ru: "Веб" }
-overview.data: { en: "Data", ru: "Данные" }
-overview.cron_jobs: { en: "Cron jobs", ru: "Задачи cron" }
-overview.certificates: { en: "Certificates", ru: "Сертификаты" }
-level.critical: { en: "critical", ru: "критично" }
-level.warning: { en: "warning", ru: "внимание" }
-level.info: { en: "info", ru: "совет" }
-level.partial: { en: "partial", ru: "неполно" }
+overview.attention: { en: "Needs attention", ru: "Требует внимания", az: "Diqqət tələb edir" }
+overview.all_good: { en: "Nothing — all good.", ru: "Ничего — всё в порядке.", az: "Heç nə — hər şey qaydasındadır." }
+overview.machine: { en: "Machine", ru: "Машина", az: "Maşın" }
+overview.resources: { en: "Resources", ru: "Ресурсы", az: "Resurslar" }
+overview.stack: { en: "Stack", ru: "Стек", az: "Stek" }
+overview.found: { en: "Found", ru: "Найдено", az: "Tapıldı" }
+overview.hostname: { en: "Hostname", ru: "Имя хоста", az: "Host adı" }
+overview.system: { en: "System", ru: "Система", az: "Sistem" }
+overview.kernel: { en: "Kernel", ru: "Ядро", az: "Nüvə" }
+overview.cpus: { en: "CPUs", ru: "Ядра CPU", az: "CPU nüvələri" }
+overview.uptime: { en: "Uptime", ru: "Аптайм", az: "İş vaxtı" }
+overview.access: { en: "Access", ru: "Доступ", az: "Giriş" }
+overview.access_root: { en: "root / sudo", ru: "root / sudo", az: "root / sudo" }
+overview.access_limited: { en: "limited user", ru: "ограниченный пользователь", az: "məhdud istifadəçi" }
+overview.memory: { en: "Memory", ru: "Память", az: "Yaddaş" }
+overview.disk: { en: "Disk /", ru: "Диск /", az: "Disk /" }
+overview.load: { en: "Load", ru: "Нагрузка", az: "Yüklənmə" }
+overview.of: { en: "%{used} of %{total} (%{pct}%)", ru: "%{used} из %{total} (%{pct}%)", az: "%{used} / %{total} (%{pct}%)" }
+overview.web: { en: "Web", ru: "Веб", az: "Veb" }
+overview.data: { en: "Data", ru: "Данные", az: "Verilənlər" }
+overview.cron_jobs: { en: "Cron jobs", ru: "Задачи cron", az: "Cron tapşırıqları" }
+overview.certificates: { en: "Certificates", ru: "Сертификаты", az: "Sertifikatlar" }
+level.critical: { en: "critical", ru: "критично", az: "kritik" }
+level.warning: { en: "warning", ru: "внимание", az: "diqqət" }
+level.info: { en: "info", ru: "совет", az: "məsləhət" }
+level.partial: { en: "partial", ru: "неполно", az: "natamam" }
 
-insight.process_down: { en: "Process %{name} is %{state}", ru: "Процесс %{name} в состоянии %{state}" }
-insight.service_failed: { en: "Service %{name} failed", ru: "Сервис %{name} упал" }
-insight.disk_full: { en: "Disk is %{percent}% full", ru: "Диск заполнен на %{percent}%" }
-insight.memory_high: { en: "Memory is %{percent}% used", ru: "Память занята на %{percent}%" }
-insight.ufw_inactive: { en: "Firewall (ufw) is inactive — only the provider's firewall, if any, protects open ports", ru: "Файрвол (ufw) выключен — открытые порты защищает только файрвол провайдера, если он есть" }
-insight.port_public: { en: "Port %{port} (%{process}) listens on all interfaces", ru: "Порт %{port} (%{process}) слушает на всех интерфейсах" }
-insight.ssh_no_fail2ban: { en: "SSH is public and fail2ban has no jails", ru: "SSH открыт наружу, а у fail2ban нет правил" }
-insight.cert_expired: { en: "Certificate %{path} expired", ru: "Сертификат %{path} истёк" }
-insight.cert_expiring: { en: "Certificate %{path} expires in %{days} days", ru: "Сертификат %{path} истекает через %{days} дн." }
-insight.fpm_unused: { en: "PHP %{version} FPM is running but no site uses it — it can be stopped to free memory", ru: "PHP %{version} FPM запущен, но его не использует ни один сайт — можно остановить и освободить память" }
-insight.app_env_dev: { en: "%{site} runs with APP_ENV=%{env}", ru: "%{site} работает с APP_ENV=%{env}" }
+insight.process_down: { en: "Process %{name} is %{state}", ru: "Процесс %{name} в состоянии %{state}", az: "%{name} prosesi %{state} vəziyyətindədir" }
+insight.service_failed: { en: "Service %{name} failed", ru: "Сервис %{name} упал", az: "%{name} xidməti çökdü" }
+insight.disk_full: { en: "Disk is %{percent}% full", ru: "Диск заполнен на %{percent}%", az: "Disk %{percent}% doludur" }
+insight.memory_high: { en: "Memory is %{percent}% used", ru: "Память занята на %{percent}%", az: "Yaddaşın %{percent}%-i istifadə olunur" }
+insight.ufw_inactive: { en: "Firewall (ufw) is inactive — only the provider's firewall, if any, protects open ports", ru: "Файрвол (ufw) выключен — открытые порты защищает только файрвол провайдера, если он есть", az: "Firewall (ufw) söndürülüb — açıq portları yalnız provayderin firewall-u qoruyur (əgər varsa)" }
+insight.port_public: { en: "Port %{port} (%{process}) listens on all interfaces", ru: "Порт %{port} (%{process}) слушает на всех интерфейсах", az: "%{port} portu (%{process}) bütün interfeyslərdə dinləyir" }
+insight.ssh_no_fail2ban: { en: "SSH is public and fail2ban has no jails", ru: "SSH открыт наружу, а у fail2ban нет правил", az: "SSH xaricə açıqdır, fail2ban-da isə qayda yoxdur" }
+insight.cert_expired: { en: "Certificate %{path} expired", ru: "Сертификат %{path} истёк", az: "%{path} sertifikatının vaxtı bitib" }
+insight.cert_expiring: { en: "Certificate %{path} expires in %{days} days", ru: "Сертификат %{path} истекает через %{days} дн.", az: "%{path} sertifikatının vaxtı %{days} gündən sonra bitir" }
+insight.fpm_unused: { en: "PHP %{version} FPM is running but no site uses it — it can be stopped to free memory", ru: "PHP %{version} FPM запущен, но его не использует ни один сайт — можно остановить и освободить память", az: "PHP %{version} FPM işləyir, amma heç bir sayt ondan istifadə etmir — dayandırıb yaddaşı azad etmək olar" }
+insight.app_env_dev: { en: "%{site} runs with APP_ENV=%{env}", ru: "%{site} работает с APP_ENV=%{env}", az: "%{site} APP_ENV=%{env} ilə işləyir" }
 
-sites.search: { en: "Search sites by domain, path or framework…", ru: "Поиск по домену, пути или фреймворку…" }
-sites.all: { en: "All", ru: "Все" }
-sites.none: { en: "No sites found in the web server config", ru: "В конфиге веб-сервера сайтов не найдено" }
-sites.no_match: { en: "No sites match “%{q}”", ru: "Нет сайтов по запросу «%{q}»" }
-sites.any_host: { en: "Any host (default)", ru: "Любой хост (по умолчанию)" }
-sites.running: { en: "running", ru: "работает" }
-sites.back: { en: "All sites", ru: "Все сайты" }
-sites.open: { en: "Open in browser", ru: "Открыть в браузере" }
-sites.maintenance: { en: "Maintenance mode", ru: "Режим обслуживания" }
-sites.disable: { en: "Disable site", ru: "Отключить сайт" }
-sites.actions_soon: { en: "Maintenance and disable need write access — arriving with the next build.", ru: "Обслуживание и отключение меняют сервер — появятся в следующей сборке." }
-sites.framework: { en: "Framework", ru: "Фреймворк" }
-sites.directory: { en: "Directory", ru: "Папка" }
-sites.served_by: { en: "Served by", ru: "Обслуживает" }
-sites.tls: { en: "TLS", ru: "TLS" }
-sites.tls_none: { en: "none", ru: "нет" }
-sites.environment: { en: "Environment", ru: "Окружение" }
-sites.database: { en: "Database", ru: "База" }
-sites.drivers: { en: "Drivers", ru: "Драйверы" }
-sites.drivers_value: { en: "cache %{cache} · queue %{queue} · session %{session}", ru: "кэш %{cache} · очередь %{queue} · сессии %{session}" }
-sites.mail: { en: "Mail", ru: "Почта" }
-sites.processes: { en: "Processes", ru: "Процессы" }
-sites.isolation: { en: "Isolation", ru: "Изоляция" }
+sites.search: { en: "Search sites by domain, path or framework…", ru: "Поиск по домену, пути или фреймворку…", az: "Domen, yol və ya framework üzrə axtar…" }
+sites.all: { en: "All", ru: "Все", az: "Hamısı" }
+sites.none: { en: "No sites found in the web server config", ru: "В конфиге веб-сервера сайтов не найдено", az: "Veb server konfiqurasiyasında sayt tapılmadı" }
+sites.no_match: { en: "No sites match “%{q}”", ru: "Нет сайтов по запросу «%{q}»", az: "«%{q}» üzrə sayt yoxdur" }
+sites.any_host: { en: "Any host (default)", ru: "Любой хост (по умолчанию)", az: "İstənilən host (standart)" }
+sites.running: { en: "running", ru: "работает", az: "işləyir" }
+sites.back: { en: "All sites", ru: "Все сайты", az: "Bütün saytlar" }
+sites.open: { en: "Open in browser", ru: "Открыть в браузере", az: "Brauzerdə aç" }
+sites.maintenance: { en: "Maintenance mode", ru: "Режим обслуживания", az: "Texniki xidmət rejimi" }
+sites.disable: { en: "Disable site", ru: "Отключить сайт", az: "Saytı söndür" }
+sites.disable_note: { en: "Turning a site off needs it under Sesame management (its own web-server file) — coming next. Maintenance mode works for any Laravel site.", ru: "Отключение работает для сайтов под управлением Sesame (свой файл веб-сервера) — скоро. Режим обслуживания работает для любого Laravel-сайта.", az: "Saytı söndürmək üçün o, Sesame idarəsində olmalıdır (öz veb server faylı) — tezliklə. Texniki xidmət rejimi istənilən Laravel saytında işləyir." }
+sites.framework: { en: "Framework", ru: "Фреймворк", az: "Framework" }
+sites.directory: { en: "Directory", ru: "Папка", az: "Qovluq" }
+sites.served_by: { en: "Served by", ru: "Обслуживает", az: "Xidmət edir" }
+sites.tls: { en: "TLS", ru: "TLS", az: "TLS" }
+sites.tls_none: { en: "none", ru: "нет", az: "yoxdur" }
+sites.environment: { en: "Environment", ru: "Окружение", az: "Mühit" }
+sites.database: { en: "Database", ru: "База", az: "Baza" }
+sites.drivers: { en: "Drivers", ru: "Драйверы", az: "Drayverlər" }
+sites.drivers_value: { en: "cache %{cache} · queue %{queue} · session %{session}", ru: "кэш %{cache} · очередь %{queue} · сессии %{session}", az: "keş %{cache} · növbə %{queue} · sessiya %{session}" }
+sites.mail: { en: "Mail", ru: "Почта", az: "Poçt" }
+sites.processes: { en: "Processes", ru: "Процессы", az: "Proseslər" }
+sites.isolation: { en: "Isolation", ru: "Изоляция", az: "İzolyasiya" }
 
-proc.supervisor: { en: "Supervisor", ru: "Supervisor" }
-proc.none: { en: "No supervisor programs", ru: "Программ supervisor нет" }
-proc.system: { en: "System services", ru: "Системные сервисы" }
-proc.up: { en: "up %{time}", ru: "работает %{time}" }
+proc.supervisor: { en: "Supervisor", ru: "Supervisor", az: "Supervisor" }
+proc.none: { en: "No supervisor programs", ru: "Программ supervisor нет", az: "Supervisor proqramı yoxdur" }
+proc.system: { en: "System services", ru: "Системные сервисы", az: "Sistem xidmətləri" }
+proc.up: { en: "up %{time}", ru: "работает %{time}", az: "%{time} işləyir" }
 
-svc.title: { en: "Install services", ru: "Установка сервисов" }
-svc.lead: { en: "One click, safe defaults: bound to localhost, generated passwords kept in the Keychain, nothing exposed to the internet.", ru: "В один клик и с безопасными настройками: слушают только localhost, пароли генерируются и хранятся в Связке ключей, наружу ничего не открыто." }
-svc.installed: { en: "Installed", ru: "Установлен" }
-svc.not_installed: { en: "Not installed", ru: "Не установлен" }
-svc.install: { en: "Install", ru: "Установить" }
-svc.uninstall: { en: "Uninstall", ru: "Удалить" }
-svc.per_site: { en: "Per site", ru: "Для сайта" }
-svc.conflict: { en: "Conflicts with %{other}", ru: "Конфликтует с %{other}" }
-svc.soon: { en: "Installing arrives with the next build — this page already shows what is on the server.", ru: "Установка появится в следующей сборке — страница уже показывает, что стоит на сервере." }
-svc.redis: { en: "In-memory cache, queues and sessions", ru: "Кэш, очереди и сессии в памяти" }
-svc.postgres: { en: "Relational database", ru: "Реляционная база данных" }
-svc.mariadb: { en: "MySQL-compatible database", ru: "База, совместимая с MySQL" }
-svc.mongodb: { en: "Document database", ru: "Документная база данных" }
-svc.elasticsearch: { en: "Full-text search (needs 2 GB+ RAM)", ru: "Полнотекстовый поиск (нужно от 2 GB RAM)" }
-svc.s3: { en: "S3-compatible object storage (RustFS or MinIO)", ru: "S3-совместимое хранилище (RustFS или MinIO)" }
-svc.reverb: { en: "WebSockets for Laravel (per site)", ru: "WebSocket для Laravel (на сайт)" }
+svc.title: { en: "Install services", ru: "Установка сервисов", az: "Xidmətlərin quraşdırılması" }
+svc.lead: { en: "One click, safe defaults: bound to localhost, generated passwords kept in the Keychain, nothing exposed to the internet.", ru: "В один клик и с безопасными настройками: слушают только localhost, пароли генерируются и хранятся в Связке ключей, наружу ничего не открыто.", az: "Bir kliklə, təhlükəsiz ayarlarla: yalnız localhost-u dinləyir, parollar yaradılır və Keychain-də saxlanılır, internetə heç nə açılmır." }
+svc.installed: { en: "Installed", ru: "Установлен", az: "Quraşdırılıb" }
+svc.not_installed: { en: "Not installed", ru: "Не установлен", az: "Quraşdırılmayıb" }
+svc.install: { en: "Install", ru: "Установить", az: "Quraşdır" }
+svc.uninstall: { en: "Uninstall", ru: "Удалить", az: "Sil" }
+svc.per_site: { en: "Per site", ru: "Для сайта", az: "Sayt üçün" }
+svc.conflict: { en: "Conflicts with %{other}", ru: "Конфликтует с %{other}", az: "%{other} ilə ziddiyyət" }
+svc.note: { en: "Ubuntu 22.04/24.04 and Debian 12. MinIO no longer ships binaries, so S3 uses RustFS.", ru: "Ubuntu 22.04/24.04 и Debian 12. MinIO больше не публикует бинарники, поэтому S3 — это RustFS.", az: "Ubuntu 22.04/24.04 və Debian 12. MinIO artıq hazır fayllar yaymır, ona görə S3 üçün RustFS istifadə olunur." }
+svc.redis: { en: "In-memory cache, queues and sessions", ru: "Кэш, очереди и сессии в памяти", az: "Yaddaşda keş, növbələr və sessiyalar" }
+svc.postgres: { en: "Relational database", ru: "Реляционная база данных", az: "Relyasion verilənlər bazası" }
+svc.mariadb: { en: "MySQL-compatible database", ru: "База, совместимая с MySQL", az: "MySQL ilə uyğun baza" }
+svc.mongodb: { en: "Document database", ru: "Документная база данных", az: "Sənəd yönümlü baza" }
+svc.elasticsearch: { en: "Full-text search (needs 2 GB+ RAM)", ru: "Полнотекстовый поиск (нужно от 2 GB RAM)", az: "Tam mətn axtarışı (2 GB+ RAM lazımdır)" }
+svc.s3: { en: "S3-compatible object storage (RustFS)", ru: "S3-совместимое хранилище (RustFS)", az: "S3 uyğun obyekt yaddaşı (RustFS)" }
+svc.reverb: { en: "WebSockets for Laravel (per site)", ru: "WebSocket для Laravel (на сайт)", az: "Laravel üçün WebSocket (sayt üzrə)" }
 
-db.version: { en: "Version", ru: "Версия" }
-db.listens: { en: "Listens on", ru: "Слушает" }
-db.databases: { en: "Databases", ru: "Базы" }
-db.needs_creds: { en: "needs credentials to list", ru: "нужны учётные данные" }
-db.used_by: { en: "Used by", ru: "Используют" }
-db.none: { en: "No database servers found", ru: "Серверы баз данных не найдены" }
+db.version: { en: "Version", ru: "Версия", az: "Versiya" }
+db.listens: { en: "Listens on", ru: "Слушает", az: "Dinləyir" }
+db.databases: { en: "Databases", ru: "Базы", az: "Bazalar" }
+db.needs_creds: { en: "needs credentials to list", ru: "нужны учётные данные", az: "siyahı üçün giriş məlumatı lazımdır" }
+db.used_by: { en: "Used by", ru: "Используют", az: "İstifadə edir" }
+db.none: { en: "No database servers found", ru: "Серверы баз данных не найдены", az: "Baza serveri tapılmadı" }
 
-mail.title: { en: "Mail", ru: "Почта" }
-mail.server: { en: "Mail server", ru: "Почтовый сервер" }
-mail.none_local: { en: "none on this machine", ru: "на этой машине нет" }
-mail.apps_send: { en: "Apps send via", ru: "Приложения отправляют через" }
-mail.running: { en: "Running", ru: "Запущено" }
-mail.hostname: { en: "Hostname", ru: "Имя хоста" }
-mail.domains: { en: "Domains", ru: "Домены" }
-cron.title: { en: "Cron", ru: "Cron" }
-cron.none: { en: "No cron jobs", ru: "Задач cron нет" }
+mail.title: { en: "Mail", ru: "Почта", az: "Poçt" }
+mail.server: { en: "Mail server", ru: "Почтовый сервер", az: "Poçt serveri" }
+mail.none_local: { en: "none on this machine", ru: "на этой машине нет", az: "bu maşında yoxdur" }
+mail.apps_send: { en: "Apps send via", ru: "Приложения отправляют через", az: "Tətbiqlər bunun vasitəsilə göndərir" }
+mail.running: { en: "Running", ru: "Запущено", az: "İşləyir" }
+mail.hostname: { en: "Hostname", ru: "Имя хоста", az: "Host adı" }
+mail.domains: { en: "Domains", ru: "Домены", az: "Domenlər" }
+cron.title: { en: "Cron", ru: "Cron", az: "Cron" }
+cron.none: { en: "No cron jobs", ru: "Задач cron нет", az: "Cron tapşırığı yoxdur" }
 
-sec.firewall: { en: "Firewall", ru: "Файрвол" }
-sec.not_installed: { en: "not installed", ru: "не установлен" }
-sec.no_jails: { en: "no jails", ru: "правил нет" }
-sec.ports: { en: "Listening ports", ru: "Открытые порты" }
-sec.public: { en: "public", ru: "наружу" }
-sec.local: { en: "local", ru: "локально" }
-sec.certs: { en: "Certificates", ru: "Сертификаты" }
-sec.no_certs: { en: "No certificate files found (Caddy may manage them automatically)", ru: "Файлов сертификатов нет (Caddy может выпускать их сам)" }
-sec.expires: { en: "expires %{date}", ru: "до %{date}" }
+sec.firewall: { en: "Firewall", ru: "Файрвол", az: "Firewall" }
+sec.not_installed: { en: "not installed", ru: "не установлен", az: "quraşdırılmayıb" }
+sec.no_jails: { en: "no jails", ru: "правил нет", az: "qayda yoxdur" }
+sec.ports: { en: "Listening ports", ru: "Открытые порты", az: "Açıq portlar" }
+sec.public: { en: "public", ru: "наружу", az: "xaricə" }
+sec.local: { en: "local", ru: "локально", az: "lokal" }
+sec.certs: { en: "Certificates", ru: "Сертификаты", az: "Sertifikatlar" }
+sec.no_certs: { en: "No certificate files found (Caddy may manage them automatically)", ru: "Файлов сертификатов нет (Caddy может выпускать их сам)", az: "Sertifikat faylı tapılmadı (Caddy onları özü idarə edə bilər)" }
+sec.expires: { en: "expires %{date}", ru: "до %{date}", az: "%{date} tarixinədək" }
 
-settings.appearance: { en: "Appearance", ru: "Оформление" }
-settings.theme: { en: "Theme", ru: "Тема" }
-settings.system: { en: "System", ru: "Как в системе" }
-settings.light: { en: "Light", ru: "Светлая" }
-settings.dark: { en: "Dark", ru: "Тёмная" }
-settings.language: { en: "Language", ru: "Язык" }
-settings.updates: { en: "Updates", ru: "Обновления" }
-settings.channel: { en: "Channel", ru: "Канал" }
-settings.stable: { en: "Stable", ru: "Стабильный" }
-settings.beta: { en: "Beta (alpha & beta builds)", ru: "Бета (альфа и бета-сборки)" }
-settings.auto_update: { en: "Install updates automatically", ru: "Устанавливать обновления автоматически" }
-settings.check_now: { en: "Check now", ru: "Проверить сейчас" }
-settings.version: { en: "Version", ru: "Версия" }
-settings.about: { en: "About", ru: "О программе" }
-settings.license: { en: "Open source under Apache-2.0", ru: "Открытый код, лицензия Apache-2.0" }
+settings.appearance: { en: "Appearance", ru: "Оформление", az: "Görünüş" }
+settings.theme: { en: "Theme", ru: "Тема", az: "Mövzu" }
+settings.system: { en: "System", ru: "Как в системе", az: "Sistem kimi" }
+settings.light: { en: "Light", ru: "Светлая", az: "Açıq" }
+settings.dark: { en: "Dark", ru: "Тёмная", az: "Tünd" }
+settings.language: { en: "Language", ru: "Язык", az: "Dil" }
+settings.updates: { en: "Updates", ru: "Обновления", az: "Yeniləmələr" }
+settings.channel: { en: "Channel", ru: "Канал", az: "Kanal" }
+settings.stable: { en: "Stable", ru: "Стабильный", az: "Stabil" }
+settings.beta: { en: "Beta (alpha & beta builds)", ru: "Бета (альфа и бета-сборки)", az: "Beta (alfa və beta versiyalar)" }
+settings.auto_update: { en: "Install updates automatically", ru: "Устанавливать обновления автоматически", az: "Yeniləmələri avtomatik quraşdır" }
+settings.check_now: { en: "Check now", ru: "Проверить сейчас", az: "İndi yoxla" }
+settings.version: { en: "Version", ru: "Версия", az: "Versiya" }
+settings.about: { en: "About", ru: "О программе", az: "Proqram haqqında" }
+settings.license: { en: "Open source under Apache-2.0", ru: "Открытый код, лицензия Apache-2.0", az: "Açıq mənbə, Apache-2.0 lisenziyası" }
 
-update.available: { en: "Update %{version}", ru: "Обновление %{version}" }
-update.up_to_date: { en: "You are up to date (%{version})", ru: "У вас последняя версия (%{version})" }
-update.checking: { en: "Checking…", ru: "Проверяю…" }
-update.failed: { en: "Update check failed: %{error}", ru: "Не удалось проверить обновления: %{error}" }
-update.install: { en: "Download & install", ru: "Скачать и установить" }
-update.downloading: { en: "Downloading…", ru: "Скачиваю…" }
-update.restart: { en: "Restart to update", ru: "Перезапустить" }
-update.skip: { en: "Skip this version", ru: "Пропустить версию" }
-update.dev_build: { en: "This is a development build — updates install into the packaged app only.", ru: "Это сборка для разработки — обновления ставятся только в упакованное приложение." }
-update.none_yet: { en: "No releases published yet.", ru: "Релизов пока нет." }
+update.available: { en: "Update %{version}", ru: "Обновление %{version}", az: "Yeniləmə %{version}" }
+update.up_to_date: { en: "You are up to date (%{version})", ru: "У вас последняя версия (%{version})", az: "Ən son versiyadasınız (%{version})" }
+update.checking: { en: "Checking…", ru: "Проверяю…", az: "Yoxlanılır…" }
+update.failed: { en: "Update check failed: %{error}", ru: "Не удалось проверить обновления: %{error}", az: "Yeniləmələri yoxlamaq alınmadı: %{error}" }
+update.install: { en: "Download & install", ru: "Скачать и установить", az: "Yüklə və quraşdır" }
+update.downloading: { en: "Downloading…", ru: "Скачиваю…", az: "Yüklənir…" }
+update.restart: { en: "Restart to update", ru: "Перезапустить", az: "Yenidən başlat" }
+update.skip: { en: "Skip this version", ru: "Пропустить версию", az: "Bu versiyanı keç" }
+update.dev_build: { en: "This is a development build — updates install into the packaged app only.", ru: "Это сборка для разработки — обновления ставятся только в упакованное приложение.", az: "Bu, inkişaf versiyasıdır — yeniləmələr yalnız paketlənmiş tətbiqə quraşdırılır." }
+update.none_yet: { en: "No releases published yet.", ru: "Релизов пока нет.", az: "Hələ buraxılış yoxdur." }
 
-status.sites: { en: "%{n} sites", ru: "сайтов: %{n}" }
-status.processes: { en: "%{n} processes", ru: "процессов: %{n}" }
-status.not_connected: { en: "not discovered", ru: "не просканирован" }
+status.sites: { en: "%{n} sites", ru: "сайтов: %{n}", az: "saytlar: %{n}" }
+status.processes: { en: "%{n} processes", ru: "процессов: %{n}", az: "proseslər: %{n}" }
+status.not_connected: { en: "not discovered", ru: "не просканирован", az: "skan edilməyib" }
+
+job.confirm_title: { en: "Confirm changes", ru: "Подтвердите изменения", az: "Dəyişiklikləri təsdiqləyin" }
+job.will: { en: "This will:", ru: "Будет сделано:", az: "Ediləcək:" }
+job.type_to_confirm: { en: "Type %{word} to confirm", ru: "Введите %{word} для подтверждения", az: "Təsdiq üçün %{word} yazın" }
+job.run: { en: "Run", ru: "Выполнить", az: "İcra et" }
+job.cancel: { en: "Cancel", ru: "Отмена", az: "Ləğv et" }
+job.running: { en: "Running…", ru: "Выполняется…", az: "İcra olunur…" }
+job.done: { en: "Done", ru: "Готово", az: "Hazırdır" }
+job.failed: { en: "Failed", ru: "Ошибка", az: "Xəta" }
+job.close: { en: "Close", ru: "Закрыть", az: "Bağla" }
+job.reveal: { en: "Save these now — shown only once, also kept in the Keychain", ru: "Сохраните сейчас — показываются один раз, копия в Связке ключей", az: "İndi saxlayın — yalnız bir dəfə göstərilir, surəti Keychain-dədir" }
+job.copy: { en: "Copy", ru: "Копировать", az: "Kopyala" }
+job.copy_env: { en: "Copy as .env", ru: "Копировать как .env", az: ".env kimi kopyala" }
+job.delete_data: { en: "Also delete the data", ru: "Удалить и данные", az: "Məlumatları da sil" }
+job.risk_change: { en: "Changes the server", ru: "Меняет сервер", az: "Serveri dəyişir" }
+job.risk_destructive: { en: "Destructive", ru: "Необратимо", az: "Geri qaytarılmaz" }
+proc.start: { en: "Start", ru: "Запустить", az: "Başlat" }
+proc.stop: { en: "Stop", ru: "Остановить", az: "Dayandır" }
+proc.restart: { en: "Restart", ru: "Перезапустить", az: "Yenidən başlat" }
+proc.disable: { en: "Disable", ru: "Отключить", az: "Söndür" }
+db.new: { en: "New database", ru: "Новая база", az: "Yeni baza" }
+db.name_placeholder: { en: "name, e.g. shop", ru: "имя, например shop", az: "ad, məsələn shop" }
+db.create: { en: "Create", ru: "Создать", az: "Yarat" }
+db.drop: { en: "Drop", ru: "Удалить", az: "Sil" }
+sites.maintenance_on: { en: "Maintenance on", ru: "Включить обслуживание", az: "Texniki xidməti aç" }
+sites.maintenance_off: { en: "Maintenance off", ru: "Выключить обслуживание", az: "Texniki xidməti bağla" }
+sites.enable_reverb: { en: "Run Reverb", ru: "Запустить Reverb", az: "Reverb-i başlat" }
+overview.fix_fpm: { en: "Stop & disable", ru: "Остановить и отключить", az: "Dayandır və söndür" }

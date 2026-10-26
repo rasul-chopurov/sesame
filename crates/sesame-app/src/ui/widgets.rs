@@ -42,7 +42,16 @@ pub fn heading(title: &str, cx: &App) -> Div {
         .text_xs()
         .font_weight(FontWeight::SEMIBOLD)
         .text_color(Glass::get(cx).faint)
-        .child(title.to_uppercase())
+        .child(upper(title))
+}
+
+/// Uppercase that respects Azerbaijani (and Turkish) dotted İ.
+pub fn upper(s: &str) -> String {
+    if rust_i18n::locale().starts_with("az") {
+        s.replace('i', "İ").to_uppercase()
+    } else {
+        s.to_uppercase()
+    }
 }
 
 pub fn kv(label: &str, value: impl Into<SharedString>, cx: &App) -> Div {

@@ -5,7 +5,9 @@ use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::Input;
 use gpui_kit::component::switch::Switch;
 use gpui_kit::component::text::TextView;
-use gpui_kit::component::{Disableable as _, h_flex, v_flex};
+use gpui_kit::component::{Disableable as _, Sizable as _, h_flex, v_flex};
+use sesame_ops::actions::{self, ServiceAction, ServiceKind};
+use sesame_provision::Service;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use sesame_core::{ServerConfig, Store as _};
@@ -15,6 +17,7 @@ use sesame_update::Channel;
 
 use super::theme::{Glass, ThemePref};
 use super::widgets::*;
+use super::jobs::Rebuild;
 use super::{Page, Section, SesameApp};
 use crate::format;
 use crate::i18n::{LangPref, tr, trp};
@@ -96,12 +99,12 @@ pub fn server(
         None if busy => body.child(empty(tr("server.connecting"), cx)),
         None => body.child(empty(tr("server.not_discovered"), cx)),
         Some(s) => match section {
-            Section::Overview => body.child(overview(s, cx)),
+            Section::Overview => body.child(overview(id, s, cx)),
             Section::Sites => body.child(sites(app, id, s, cx)),
             Section::Site(i) => body.child(site_detail(id, s, i, cx)),
-            Section::Processes => body.child(processes(s, cx)),
-            Section::Services => body.child(services(s, cx)),
-            Section::Databases => body.child(databases(s, cx)),
+            Section::Processes => body.child(processes(id, s, cx)),
+            Section::Services => body.child(services(id, s, cx)),
+            Section::Databases => body.child(databases(id, s, app.db_name.clone(), cx)),
             Section::MailCron => body.child(mail_cron(s, cx)),
             Section::Security => body.child(security(s, cx)),
         },
@@ -111,7 +114,7 @@ pub fn server(
 
 // ---- overview --------------------------------------------------------------
 
-fn overview(s: &ServerSnapshot, cx: &App) -> Div {
+fn overview(server: sesame_core::ServerId, s: &ServerSnapshot, cx: &mut Context<SesameApp>) -> Div {
     let g = Glass::get(cx);
     let os = &s.os;
     let mem_used = os.mem_total_bytes.saturating_sub(os.mem_available_bytes);
@@ -134,7 +137,22 @@ fn overview(s: &ServerSnapshot, cx: &App) -> Div {
                 .min_h(px(26.))
                 .child(icon(ic, color))
                 .child(div().w(px(84.)).child(pill(label, color)))
-                .child(div().flex_1().child(trp(&format!("insight.{}", i.code), &params))),
+                .child(div().flex_1().child(trp(&format!("insight.{}", i.code), &params)))
+                .when(i.code == "fpm_unused", |row| {
+                    let version = i.params.first().map(|(_, v)| v.clone()).unwrap_or_default();
+                    let minor: String = version.split('.').take(2).collect::<Vec<_>>().join(".");
+                    row.child(
+                        Button::new(SharedString::from(format!("fix-fpm-{minor}")))
+                            .xsmall()
+                            .ghost()
+                            .icon(IconName::PowerOff)
+                            .label(tr("overview.fix_fpm"))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                let plan = actions::service(ServiceKind::Systemd, &format!("php{minor}-fpm"), ServiceAction::Disable);
+                                this.request(server, plan, None, window, cx);
+                            })),
+                    )
+                }),
         );
     }
     for w in &s.warnings {
@@ -452,8 +470,34 @@ fn site_detail(server: sesame_core::ServerId, s: &ServerSnapshot, i: usize, cx: 
                     .on_click(move |_, _, cx| cx.open_url(&url)),
             )
         })
-        .child(Button::new("maint").icon(IconName::Construction).label(tr("sites.maintenance")).disabled(true))
-        .child(Button::new("disable").icon(IconName::PowerOff).label(tr("sites.disable")).disabled(true));
+        .when(site.framework == Framework::Laravel && site.app_path.is_some(), |d| {
+            let path = site.app_path.clone().unwrap_or_default();
+            let path2 = path.clone();
+            d.child(
+                Button::new("maint-on").icon(IconName::Construction).label(tr("sites.maintenance_on")).on_click(cx.listener(
+                    move |this, _, window, cx| this.request(server, actions::maintenance(&path, true), None, window, cx),
+                )),
+            )
+            .child(
+                Button::new("maint-off").ghost().label(tr("sites.maintenance_off")).on_click(cx.listener(
+                    move |this, _, window, cx| this.request(server, actions::maintenance(&path2, false), None, window, cx),
+                )),
+            )
+        })
+        .when(
+            site.framework == Framework::Laravel
+                && !s.supervisor.iter().any(|p| p.role == ProcessRole::Reverb && site.processes.contains(&p.name)),
+            |d| {
+                let site_owned = site.clone();
+                let port = (8080u16..8200).find(|p| !s.ports.iter().any(|x| x.port == *p)).unwrap_or(8080);
+                d.child(Button::new("reverb").ghost().icon(IconName::Zap).label(tr("sites.enable_reverb")).on_click(cx.listener(
+                    move |this, _, window, cx| {
+                        this.request(server, sesame_provision::reverb_for_site(&site_owned, port), None, window, cx)
+                    },
+                )))
+            },
+        )
+        .child(Button::new("disable").ghost().icon(IconName::PowerOff).label(tr("sites.disable")).disabled(true));
 
     let fw = framework_label(site).unwrap_or_else(|| "—".into());
     let mut info = card(&tr("nav.sites"), cx)
@@ -505,7 +549,7 @@ fn site_detail(server: sesame_core::ServerId, s: &ServerSnapshot, i: usize, cx: 
     let procs: Vec<&SupervisorProgram> = s.supervisor.iter().filter(|p| site.processes.contains(&p.name)).collect();
     let mut proc_card = card(&tr("sites.processes"), cx);
     for p in &procs {
-        proc_card = proc_card.child(process_row(p, cx));
+        proc_card = proc_card.child(process_row(server, p, cx));
     }
     let users: Vec<String> = {
         let mut u: Vec<String> = procs.iter().filter_map(|p| p.user.clone()).collect();
@@ -523,7 +567,7 @@ fn site_detail(server: sesame_core::ServerId, s: &ServerSnapshot, i: usize, cx: 
         .gap_4()
         .child(back)
         .child(head)
-        .child(div().text_xs().text_color(g.faint).child(tr("sites.actions_soon")))
+        .child(div().text_xs().text_color(g.faint).child(tr("sites.disable_note")))
         .child(info)
         .when(!procs.is_empty(), |d| d.child(proc_card))
         .child(isolation)
@@ -531,8 +575,8 @@ fn site_detail(server: sesame_core::ServerId, s: &ServerSnapshot, i: usize, cx: 
 
 // ---- processes ---------------------------------------------------------------
 
-fn process_row(p: &SupervisorProgram, cx: &App) -> Div {
-    let g = Glass::get(cx);
+fn process_row(server: sesame_core::ServerId, p: &SupervisorProgram, cx: &mut Context<SesameApp>) -> Div {
+    let g = Glass::get(cx).clone();
     let color = state_color(&p.state, cx);
     h_flex()
         .gap_3()
@@ -543,16 +587,45 @@ fn process_row(p: &SupervisorProgram, cx: &App) -> Div {
         .child(div().w(px(80.)).text_color(g.dim).child(format!("{:?}", p.role).to_lowercase()))
         .child(div().w(px(80.)).text_color(g.dim).child(p.user.clone().unwrap_or_default()))
         .child(div().w(px(140.)).text_color(g.faint).child(p.uptime.clone().map(|u| trp("proc.up", &[("time", &u)])).unwrap_or_default()))
+        .child(proc_buttons(server, ServiceKind::Supervisor, &p.name, p.state == "RUNNING", cx))
 }
 
-fn processes(s: &ServerSnapshot, cx: &App) -> Div {
-    let g = Glass::get(cx);
+fn proc_buttons(server: sesame_core::ServerId, kind: ServiceKind, name: &str, running: bool, cx: &mut Context<SesameApp>) -> Div {
+    let mut wanted = vec![];
+    if running {
+        wanted.push((ServiceAction::Restart, "proc.restart", IconName::RefreshCw));
+        wanted.push((ServiceAction::Stop, "proc.stop", IconName::Square));
+        if kind == ServiceKind::Systemd {
+            wanted.push((ServiceAction::Disable, "proc.disable", IconName::PowerOff));
+        }
+    } else {
+        wanted.push((ServiceAction::Start, "proc.start", IconName::Play));
+    }
+    let buttons: Vec<Button> = wanted
+        .into_iter()
+        .map(|(action, label, ic)| {
+            let name = name.to_string();
+            Button::new(SharedString::from(format!("{label}-{name}")))
+                .xsmall()
+                .ghost()
+                .icon(ic)
+                .tooltip(tr(label))
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.request(server, actions::service(kind, &name, action), None, window, cx);
+                }))
+        })
+        .collect();
+    h_flex().gap_1().children(buttons)
+}
+
+fn processes(server: sesame_core::ServerId, s: &ServerSnapshot, cx: &mut Context<SesameApp>) -> Div {
+    let g = Glass::get(cx).clone();
     let mut sup = card(&tr("proc.supervisor"), cx);
     if s.supervisor.is_empty() {
         sup = sup.child(div().text_color(g.dim).child(tr("proc.none")));
     }
     for p in &s.supervisor {
-        sup = sup.child(process_row(p, cx));
+        sup = sup.child(process_row(server, p, cx));
     }
     let mut sys = card(&tr("proc.system"), cx);
     for svc in s.services.iter().filter(|x| x.active != "inactive") {
@@ -564,7 +637,8 @@ fn processes(s: &ServerSnapshot, cx: &App) -> Div {
                 .child(dot(color))
                 .child(div().w(px(80.)).child(pill(svc.sub.clone(), color)))
                 .child(div().w(px(240.)).child(svc.unit.trim_end_matches(".service").to_string()))
-                .child(div().flex_1().text_color(g.dim).child(svc.description.clone())),
+                .child(div().flex_1().min_w_0().overflow_hidden().text_color(g.dim).child(svc.description.clone()))
+                .child(proc_buttons(server, ServiceKind::Systemd, &svc.unit, svc.sub == "running", cx)),
         );
     }
     v_flex().gap_4().child(sup).child(sys)
@@ -572,117 +646,105 @@ fn processes(s: &ServerSnapshot, cx: &App) -> Div {
 
 // ---- services catalog ----------------------------------------------------------
 
-struct CatalogItem {
-    name: &'static str,
-    slug: &'static str,
-    desc: &'static str,
-    detect: fn(&ServerSnapshot) -> Option<String>,
-    conflict: fn(&ServerSnapshot) -> Option<&'static str>,
-    per_site: bool,
-}
-
-fn engine(s: &ServerSnapshot, kind: DatabaseKind) -> Option<String> {
-    s.databases.iter().find(|d| d.kind == kind).map(|d| d.version.clone().unwrap_or_default())
-}
-
-fn unit_or_port(s: &ServerSnapshot, units: &[&str], procs: &[&str]) -> Option<String> {
-    let unit = s.services.iter().find(|u| units.iter().any(|n| u.unit.starts_with(n)));
-    let port = s.ports.iter().find(|p| procs.contains(&p.process.as_str()));
-    match (unit, port) {
-        (Some(u), _) => Some(u.sub.clone()),
-        (None, Some(p)) => Some(format!(":{}", p.port)),
-        _ => None,
+fn service_desc(svc: Service) -> &'static str {
+    match svc {
+        Service::Redis => "svc.redis",
+        Service::Postgres => "svc.postgres",
+        Service::MariaDb => "svc.mariadb",
+        Service::MongoDb => "svc.mongodb",
+        Service::Elasticsearch => "svc.elasticsearch",
+        Service::RustFs => "svc.s3",
     }
 }
 
-const CATALOG: &[CatalogItem] = &[
-    CatalogItem { name: "Redis", slug: "redis", desc: "svc.redis", detect: |s| engine(s, DatabaseKind::Redis), conflict: |_| None, per_site: false },
-    CatalogItem { name: "PostgreSQL", slug: "postgresql", desc: "svc.postgres", detect: |s| engine(s, DatabaseKind::Postgres), conflict: |_| None, per_site: false },
-    CatalogItem {
-        name: "MariaDB",
-        slug: "mariadb",
-        desc: "svc.mariadb",
-        detect: |s| engine(s, DatabaseKind::MariaDb),
-        conflict: |s| s.databases.iter().any(|d| d.kind == DatabaseKind::MySql).then_some("MySQL"),
-        per_site: false,
-    },
-    CatalogItem { name: "MongoDB", slug: "mongodb", desc: "svc.mongodb", detect: |s| engine(s, DatabaseKind::MongoDb), conflict: |_| None, per_site: false },
-    CatalogItem {
-        name: "Elasticsearch",
-        slug: "elasticsearch",
-        desc: "svc.elasticsearch",
-        detect: |s| unit_or_port(s, &["elasticsearch"], &["java"]).filter(|_| s.ports.iter().any(|p| p.port == 9200)),
-        conflict: |_| None,
-        per_site: false,
-    },
-    CatalogItem {
-        name: "S3 · RustFS / MinIO",
-        slug: "minio",
-        desc: "svc.s3",
-        detect: |s| unit_or_port(s, &["rustfs", "minio"], &["rustfs", "minio"]),
-        conflict: |_| None,
-        per_site: false,
-    },
-    CatalogItem {
-        name: "Reverb",
-        slug: "laravel",
-        desc: "svc.reverb",
-        detect: |s| {
-            let n = s.supervisor.iter().filter(|p| p.role == ProcessRole::Reverb).count();
-            (n > 0).then(|| n.to_string())
-        },
-        conflict: |_| None,
-        per_site: true,
-    },
-];
-
-fn services(s: &ServerSnapshot, cx: &App) -> Div {
+fn service_card(
+    i: usize,
+    logo: &str,
+    name: String,
+    desc: String,
+    status: Div,
+    action: Option<Button>,
+    cx: &App,
+) -> Div {
     let g = Glass::get(cx);
+    let _ = i;
+    panel(cx)
+        .p_4()
+        .gap_3()
+        .child(
+            h_flex()
+                .gap_3()
+                .child(
+                    div()
+                        .size(px(36.))
+                        .rounded_lg()
+                        .bg(g.panel_hover)
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .children(brand(logo, px(20.)))
+                        .when(brand(logo, px(20.)).is_none(), |d| d.child(icon(IconName::Boxes, g.accent))),
+                )
+                .child(
+                    v_flex()
+                        .flex_1()
+                        .child(div().font_weight(FontWeight::SEMIBOLD).child(name))
+                        .child(div().text_xs().text_color(g.dim).child(desc)),
+                ),
+        )
+        .child(h_flex().justify_between().child(status).children(action))
+}
+
+fn services(server: sesame_core::ServerId, s: &ServerSnapshot, cx: &mut Context<SesameApp>) -> Div {
+    let g = Glass::get(cx).clone();
     let mut grid = div().grid().grid_cols(2).gap_3();
-    for (i, item) in CATALOG.iter().enumerate() {
-        let found = (item.detect)(s);
-        let conflict = (item.conflict)(s);
-        let status = match (&found, conflict) {
-            (Some(v), _) if !v.is_empty() => pill(format!("{} · {v}", tr("svc.installed")), g.ok),
-            (Some(_), _) => pill(tr("svc.installed"), g.ok),
-            (None, Some(other)) => pill(trp("svc.conflict", &[("other", other)]), g.warn),
-            (None, None) => pill(tr("svc.not_installed"), g.faint),
+    for (i, svc) in Service::ALL.into_iter().enumerate() {
+        let st = sesame_provision::detect(svc, s);
+        let status = match (&st.version, st.installed, &st.conflict) {
+            (Some(v), true, _) => pill(format!("{} · {v}", tr("svc.installed")), g.ok),
+            (None, true, _) => pill(tr("svc.installed"), g.ok),
+            (_, false, Some(other)) => pill(trp("svc.conflict", &[("other", other)]), g.warn),
+            _ => pill(tr("svc.not_installed"), g.faint),
         };
-        let action = if found.is_some() && !item.per_site {
-            Button::new(SharedString::from(format!("svc-{i}"))).ghost().label(tr("svc.uninstall"))
+        let action = if st.installed {
+            Button::new(SharedString::from(format!("svc-{i}")))
+                .ghost()
+                .label(tr("svc.uninstall"))
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.request(server, sesame_provision::uninstall(svc, true), Some(Rebuild::Uninstall(svc)), window, cx);
+                }))
         } else {
             Button::new(SharedString::from(format!("svc-{i}")))
                 .primary()
                 .icon(IconName::Download)
-                .label(if item.per_site { tr("svc.per_site") } else { tr("svc.install") })
+                .label(tr("svc.install"))
+                .disabled(st.conflict.is_some())
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    let plan = match this.snapshots.get(&server) {
+                        Some(snap) => sesame_provision::install(svc, snap),
+                        None => Err(anyhow::anyhow!("discover the server first")),
+                    };
+                    this.request(server, plan, None, window, cx);
+                }))
         };
-        grid = grid.child(
-            panel(cx)
-                .p_4()
-                .gap_3()
-                .child(
-                    h_flex()
-                        .gap_3()
-                        .child(
-                            div()
-                                .size(px(36.))
-                                .rounded_lg()
-                                .bg(g.panel_hover)
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .children(brand(item.slug, px(20.))),
-                        )
-                        .child(
-                            v_flex()
-                                .flex_1()
-                                .child(div().font_weight(FontWeight::SEMIBOLD).child(item.name))
-                                .child(div().text_xs().text_color(g.dim).child(tr(item.desc))),
-                        ),
-                )
-                .child(h_flex().justify_between().child(status).child(action.disabled(true))),
-        );
+        let logo = if svc == Service::RustFs { "minio" } else { svc.slug() };
+        let name = if svc == Service::RustFs { "S3 · RustFS".to_string() } else { svc.name().to_string() };
+        grid = grid.child(service_card(i, logo, name, tr(service_desc(svc)), status, Some(action), cx));
     }
+    // Reverb lives inside each Laravel app.
+    let reverbs = s.supervisor.iter().filter(|p| p.role == ProcessRole::Reverb).count();
+    let reverb_status = if reverbs > 0 {
+        pill(format!("{} · {reverbs}", tr("svc.installed")), g.ok)
+    } else {
+        pill(tr("svc.not_installed"), g.faint)
+    };
+    let reverb_action = Button::new("svc-reverb")
+        .ghost()
+        .icon(IconName::Globe)
+        .label(tr("svc.per_site"))
+        .on_click(cx.listener(move |this, _, _, cx| this.navigate(Page::Server(server, Section::Sites), cx)));
+    grid = grid.child(service_card(99, "laravel", "Reverb".into(), tr("svc.reverb"), reverb_status, Some(reverb_action), cx));
+
     v_flex()
         .gap_4()
         .child(
@@ -692,13 +754,18 @@ fn services(s: &ServerSnapshot, cx: &App) -> Div {
                 .child(div().text_color(g.dim).child(tr("svc.lead"))),
         )
         .child(grid)
-        .child(div().text_xs().text_color(g.faint).child(tr("svc.soon")))
+        .child(div().text_xs().text_color(g.faint).child(tr("svc.note")))
 }
 
 // ---- databases -----------------------------------------------------------------
 
-fn databases(s: &ServerSnapshot, cx: &App) -> Div {
-    let g = Glass::get(cx);
+fn databases(
+    server: sesame_core::ServerId,
+    s: &ServerSnapshot,
+    db_input: Entity<gpui_kit::component::input::InputState>,
+    cx: &mut Context<SesameApp>,
+) -> Div {
+    let g = Glass::get(cx).clone();
     let mut col = v_flex().gap_4();
     if s.databases.is_empty() {
         return col.child(empty(tr("db.none"), cx));
@@ -719,16 +786,35 @@ fn databases(s: &ServerSnapshot, cx: &App) -> Div {
         if d.databases.is_empty() {
             dbs = dbs.child(div().text_color(g.faint).child(tr("db.needs_creds")));
         }
+        let kind = d.kind;
         for name in &d.databases {
+            let droppable = kind != DatabaseKind::Redis;
+            let db = name.clone();
             dbs = dbs.child(
                 h_flex()
                     .gap_1()
-                    .px_2()
+                    .pl_2()
+                    .pr_1()
                     .py_0p5()
                     .rounded_md()
                     .bg(g.panel_hover)
                     .child(icon(IconName::Database, g.faint).size_3())
-                    .child(mono(name.clone())),
+                    .child(mono(name.clone()))
+                    .when(droppable, |chip| {
+                        chip.child(
+                            div()
+                                .id(SharedString::from(format!("drop-{name}")))
+                                .px_1()
+                                .rounded_sm()
+                                .cursor_pointer()
+                                .text_color(g.faint)
+                                .hover(|d| d.text_color(g.bad))
+                                .child("×")
+                                .on_click(cx.listener(move |this, _, window, cx| {
+                                    this.request(server, actions::db_drop(kind, &db, None), None, window, cx);
+                                })),
+                        )
+                    }),
             );
         }
         col = col.child(
@@ -744,11 +830,31 @@ fn databases(s: &ServerSnapshot, cx: &App) -> Div {
                 )
                 .child(kv(&tr("db.listens"), d.listen.clone().unwrap_or_else(|| "—".into()), cx))
                 .child(h_flex().gap_4().child(div().w(px(140.)).text_color(g.dim).child(tr("db.databases"))).child(dbs))
-                .when(!used_by.is_empty(), |c| c.child(kv(&tr("db.used_by"), used_by.join(", "), cx))),
+                .when(!used_by.is_empty(), |c| c.child(kv(&tr("db.used_by"), used_by.join(", "), cx)))
+                .when(kind != DatabaseKind::Redis, |c| {
+                    c.child(
+                        h_flex()
+                            .gap_4()
+                            .child(div().w(px(140.)).text_color(g.dim).child(tr("db.new")))
+                            .child(div().w(px(240.)).child(Input::new(&db_input)))
+                            .child(
+                                Button::new(SharedString::from(format!("create-{}", db_slug(kind))))
+                                    .primary()
+                                    .icon(IconName::Plus)
+                                    .label(tr("db.create"))
+                                    .on_click(cx.listener(move |this, _, window, cx| {
+                                        let name = this.db_name.read(cx).value().trim().to_string();
+                                        let plan = actions::db_create(kind, &name, &name);
+                                        this.request(server, plan, None, window, cx);
+                                    })),
+                            ),
+                    )
+                }),
         );
     }
     col
 }
+
 
 // ---- mail & cron -----------------------------------------------------------------
 
@@ -950,7 +1056,12 @@ pub fn settings(app: &SesameApp, _window: &mut Window, cx: &mut Context<SesameAp
                     tr("settings.language"),
                     segmented(
                         "lang",
-                        &[(LangPref::System, tr("settings.system")), (LangPref::En, "English".into()), (LangPref::Ru, "Русский".into())],
+                        &[
+                            (LangPref::System, tr("settings.system")),
+                            (LangPref::En, "English".into()),
+                            (LangPref::Ru, "Русский".into()),
+                            (LangPref::Az, "Azərbaycanca".into()),
+                        ],
                         app.lang_pref,
                         lang_pick,
                         cx,
