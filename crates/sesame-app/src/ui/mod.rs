@@ -161,6 +161,11 @@ pub struct SesameApp {
     pub(crate) pending: Option<jobs::Pending>,
     pub(crate) job: Option<jobs::Job>,
     pub(crate) db_name: Entity<InputState>,
+    pub(crate) db_user: Entity<InputState>,
+    pub(crate) db_search: Entity<InputState>,
+    pub(crate) db_engine: Option<DatabaseKind>,
+    /// Some(true) = only databases a site uses, Some(false) = only unused.
+    pub(crate) db_filter: Option<bool>,
     pub(crate) vault_pw: Entity<InputState>,
     pub(crate) vault_pw2: Entity<InputState>,
     pub(crate) vault_busy: bool,
@@ -195,6 +200,8 @@ impl SesameApp {
         let filter = input(tr("nav.filter"), window, cx);
         let site_search = input(tr("sites.search"), window, cx);
         let db_name = input(tr("db.name_placeholder"), window, cx);
+        let db_user = input(tr("db.user_placeholder"), window, cx);
+        let db_search = input(tr("db.search"), window, cx);
         let int = integrations::Inputs::new(window, cx);
         let ns = newsite::Form::new(window, cx);
         let vault_pw = cx.new(|cx| InputState::new(window, cx).masked(true));
@@ -205,6 +212,8 @@ impl SesameApp {
             cx.subscribe(&site_search, |_, _, _: &InputEvent, cx| cx.notify()),
         ];
         subs.push(cx.subscribe(&db_name, |_, _, _: &InputEvent, cx| cx.notify()));
+        subs.push(cx.subscribe(&db_user, |_, _, _: &InputEvent, cx| cx.notify()));
+        subs.push(cx.subscribe(&db_search, |_, _, _: &InputEvent, cx| cx.notify()));
         for input in int.all().into_iter().chain(ns.inputs()) {
             subs.push(cx.subscribe(input, |_, _, _: &InputEvent, cx| cx.notify()));
         }
@@ -258,6 +267,10 @@ impl SesameApp {
             pending: None,
             job: None,
             db_name,
+            db_user,
+            db_search,
+            db_engine: None,
+            db_filter: None,
             vault_pw,
             vault_pw2,
             vault_busy: false,
@@ -280,7 +293,18 @@ impl SesameApp {
     // ---- navigation & settings ------------------------------------------
 
     pub fn navigate(&mut self, page: Page, cx: &mut Context<Self>) {
+        // Leaving the databases section closes the engine detail.
+        if !matches!(page, Page::Server(_, Section::Databases)) {
+            self.db_engine = None;
+        }
         self.page = page;
+        cx.notify();
+    }
+
+    /// Opens one database engine on the databases page (screenshots, demos).
+    #[doc(hidden)]
+    pub fn demo_open_engine(&mut self, kind: DatabaseKind, cx: &mut Context<Self>) {
+        self.db_engine = Some(kind);
         cx.notify();
     }
 
@@ -310,6 +334,9 @@ impl SesameApp {
         let fields = [
             (&self.filter, tr("nav.filter")),
             (&self.site_search, tr("sites.search")),
+            (&self.db_search, tr("db.search")),
+            (&self.db_user, tr("db.user_placeholder")),
+            (&self.db_name, tr("db.name_placeholder")),
             (&self.int.repo_search, tr("repo.search")),
             (&self.int.zone_search, tr("cf.search_domains")),
             (&self.int.record_search, tr("cf.search_records")),

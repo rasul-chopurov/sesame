@@ -209,6 +209,15 @@ pub fn php(cli: &str, fpm_pools: &str, services: &[SystemService]) -> Vec<PhpIns
     out
 }
 
+fn sizes(body: &str) -> Vec<(String, u64)> {
+    body.lines()
+        .filter_map(|l| {
+            let (n, s) = l.split_once('\t')?;
+            Some((n.trim().to_string(), s.trim().parse::<f64>().ok()? as u64))
+        })
+        .collect()
+}
+
 pub fn databases<'a>(
     get: &dyn Fn(&str) -> &'a str,
     ports: &[ListeningPort],
@@ -238,6 +247,7 @@ pub fn databases<'a>(
                 })
                 .map(String::from)
                 .collect(),
+            sizes: sizes(get("mysql_sizes")),
         });
     }
 
@@ -255,6 +265,7 @@ pub fn databases<'a>(
                 .filter(|d| !d.is_empty() && *d != "postgres")
                 .map(String::from)
                 .collect(),
+            sizes: sizes(get("postgres_sizes")),
         });
     }
 
@@ -273,6 +284,7 @@ pub fn databases<'a>(
                     db.starts_with("db").then(|| format!("{db} ({keys} keys)"))
                 })
                 .collect(),
+            sizes: vec![],
         });
     }
 
@@ -284,6 +296,7 @@ pub fn databases<'a>(
             version: version_after(mongo, "version v"),
             listen: mongo_listen,
             databases: Vec::new(),
+            sizes: vec![],
         });
     }
     out

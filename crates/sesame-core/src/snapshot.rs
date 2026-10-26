@@ -187,6 +187,15 @@ pub struct DatabaseEngine {
     pub listen: Option<String>,
     /// Databases we could list without asking for credentials (root socket auth).
     pub databases: Vec<String>,
+    /// Size in bytes per database, when the engine reports it.
+    #[serde(default)]
+    pub sizes: Vec<(String, u64)>,
+}
+
+impl DatabaseEngine {
+    pub fn size_of(&self, db: &str) -> Option<u64> {
+        self.sizes.iter().find(|(n, _)| n == db).map(|(_, s)| *s)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

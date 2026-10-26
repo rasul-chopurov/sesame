@@ -403,7 +403,7 @@ mod tests {
         ServerSnapshot {
             databases: dbs
                 .iter()
-                .map(|k| DatabaseEngine { kind: *k, version: Some("1".into()), listen: None, databases: vec![] })
+                .map(|k| DatabaseEngine { kind: *k, version: Some("1".into()), listen: None, databases: vec![], sizes: vec![] })
                 .collect(),
             ..Default::default()
         }

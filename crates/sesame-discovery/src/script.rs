@@ -57,10 +57,17 @@ done
 sec php_fpm; ls -1 /etc/php/*/fpm/pool.d/*.conf 2>/dev/null
 sec mysql; { has mysql && mysql --version 2>/dev/null; } || { has mariadb && mariadb --version 2>/dev/null; }
 sec mysql_dbs; has mysql && $S mysql -NBe 'SHOW DATABASES' 2>/dev/null
+sec mysql_sizes; has mysql && $S mysql -NBe 'SELECT table_schema, SUM(data_length + index_length) FROM information_schema.tables GROUP BY table_schema' 2>/dev/null
 sec postgres; has psql && psql --version 2>/dev/null
 sec postgres_dbs
 if has psql; then
   Q="select datname from pg_database where not datistemplate"
+  if [ "$(id -u)" = 0 ]; then su - postgres -c "psql -Atc '$Q'" 2>/dev/null
+  elif [ -n "$S" ]; then sudo -n -u postgres psql -Atc "$Q" 2>/dev/null; fi
+fi
+sec postgres_sizes
+if has psql; then
+  Q="select datname || chr(9) || pg_database_size(datname) from pg_database where not datistemplate"
   if [ "$(id -u)" = 0 ]; then su - postgres -c "psql -Atc '$Q'" 2>/dev/null
   elif [ -n "$S" ]; then sudo -n -u postgres psql -Atc "$Q" 2>/dev/null; fi
 fi

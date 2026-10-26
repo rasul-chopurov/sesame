@@ -313,3 +313,13 @@ svc_site.workers: { en: "%{n} workers", ru: "воркеров: %{n}", az: "işç
 vault.missing_title: { en: "The vault key file is missing", ru: "Файл ключа хранилища пропал", az: "Anbarın açar faylı yoxdur" }
 vault.missing_lead: { en: "Sesame was set up without a master password, but vault.key is gone, so the saved secrets can't be decrypted. Reset the vault and set it up again; then re-enter your tokens and server passwords. Servers and sites are not affected.", ru: "Sesame настроен без мастер-пароля, но файл vault.key пропал, поэтому сохранённые секреты не расшифровать. Сбросьте хранилище и настройте заново, затем снова введите токены и пароли серверов. Серверы и сайты не затронуты.", az: "Sesame master parolsuz qurulub, amma vault.key yoxdur, ona görə saxlanmış sirləri açmaq olmur. Anbarı sıfırlayın və yenidən qurun, sonra tokenləri və server parollarını yenidən daxil edin. Serverlər və saytlar təsirlənmir." }
 vault.reset: { en: "Reset the vault", ru: "Сбросить хранилище", az: "Anbarı sıfırla" }
+db.all_engines: { en: "All database servers", ru: "Все серверы баз", az: "Bütün baza serverləri" }
+db.count: { en: "%{n} databases", ru: "баз: %{n}", az: "baza: %{n}" }
+db.search: { en: "Search databases…", ru: "Поиск баз…", az: "Baza axtar…" }
+db.used: { en: "Used by a site", ru: "Используется сайтом", az: "Saytda istifadə olunur" }
+db.unused: { en: "Unused", ru: "Не используется", az: "İstifadə olunmur" }
+db.size: { en: "Size", ru: "Размер", az: "Ölçü" }
+db.name: { en: "Name", ru: "Имя", az: "Ad" }
+db.user_placeholder: { en: "user (default: same as name)", ru: "пользователь (по умолчанию как имя)", az: "istifadəçi (standart: adla eyni)" }
+db.no_match: { en: "No databases match", ru: "Нет подходящих баз", az: "Uyğun baza yoxdur" }
+db.redis_note: { en: "Redis has numbered databases; sites get their own ACL user instead (Sites → site → Site services).", ru: "В Redis базы нумерованные; сайты получают своего ACL-пользователя (Сайты → сайт → Сервисы сайта).", az: "Redis-də bazalar nömrələnir; saytlar öz ACL istifadəçisini alır (Saytlar → sayt → Sayt xidmətləri)." }

@@ -105,7 +105,7 @@ pub fn server(
             Section::NewSite => body.child(super::newsite::wizard(app, id, s, cx)),
             Section::Processes => body.child(processes(id, s, cx)),
             Section::Services => body.child(services(id, s, cx)),
-            Section::Databases => body.child(databases(id, s, app.db_name.clone(), cx)),
+            Section::Databases => body.child(databases(app, id, s, cx)),
             Section::MailCron => body.child(mail_cron(s, cx)),
             Section::Security => body.child(security(s, cx)),
         },
@@ -776,104 +776,251 @@ fn services(server: sesame_core::ServerId, s: &ServerSnapshot, cx: &mut Context<
 
 // ---- databases -----------------------------------------------------------------
 
+fn db_users(s: &ServerSnapshot, d: &DatabaseEngine) -> Vec<(String, String)> {
+    // (database, site that uses it)
+    s.sites
+        .iter()
+        .filter_map(|site| {
+            let env = site.env.as_ref()?;
+            let db = env.db_database.clone()?;
+            d.databases.contains(&db).then(|| (db, site_title(site)))
+        })
+        .collect()
+}
+
 fn databases(
+    app: &SesameApp,
     server: sesame_core::ServerId,
     s: &ServerSnapshot,
-    db_input: Entity<gpui_kit::component::input::InputState>,
     cx: &mut Context<SesameApp>,
 ) -> Div {
-    let g = Glass::get(cx).clone();
-    let mut col = v_flex().gap_4();
     if s.databases.is_empty() {
-        return col.child(empty(tr("db.none"), cx));
+        return v_flex().child(empty(tr("db.none"), cx));
     }
+    match app.db_engine.and_then(|k| s.databases.iter().find(|d| d.kind == k)) {
+        None => db_engines(server, s, cx),
+        Some(d) => db_engine_detail(app, server, s, d, cx),
+    }
+}
+
+fn db_engines(_server: sesame_core::ServerId, s: &ServerSnapshot, cx: &mut Context<SesameApp>) -> Div {
+    let g = Glass::get(cx).clone();
+    let mut grid = div().grid().grid_cols(3).gap_3();
     for d in &s.databases {
-        let used_by: Vec<String> = s
-            .sites
-            .iter()
-            .filter(|site| {
-                site.env.as_ref().is_some_and(|e| {
-                    e.db_database.as_ref().is_some_and(|db| d.databases.contains(db))
-                        || (d.kind == DatabaseKind::Redis && e.redis_host.is_some())
-                })
-            })
-            .map(site_title)
-            .collect();
-        let mut dbs = h_flex().gap_1().flex_wrap();
-        if d.databases.is_empty() {
-            dbs = dbs.child(div().text_color(g.faint).child(tr("db.needs_creds")));
-        }
         let kind = d.kind;
-        for name in &d.databases {
-            let droppable = kind != DatabaseKind::Redis;
-            let db = name.clone();
-            dbs = dbs.child(
-                h_flex()
-                    .gap_1()
-                    .pl_2()
-                    .pr_1()
-                    .py_0p5()
-                    .rounded_md()
-                    .bg(g.panel_hover)
-                    .child(icon(IconName::Database, g.faint).size_3())
-                    .child(mono(name.clone()))
-                    .when(droppable, |chip| {
-                        chip.child(
-                            div()
-                                .id(SharedString::from(format!("drop-{name}")))
-                                .px_1()
-                                .rounded_sm()
-                                .cursor_pointer()
-                                .text_color(g.faint)
-                                .hover(|d| d.text_color(g.bad))
-                                .child("×")
-                                .on_click(cx.listener(move |this, _, window, cx| {
-                                    let admin = crate::cli::mongo_admin(server);
-                                    this.request(server, actions::db_drop(kind, &db, None, admin.as_ref()), None, window, cx);
-                                })),
-                        )
-                    }),
-            );
-        }
-        col = col.child(
-            panel(cx)
+        let total: u64 = d.sizes.iter().filter(|(n, _)| d.databases.contains(n)).map(|(_, b)| *b).sum();
+        let used = db_users(s, d).len();
+        grid = grid.child(
+            v_flex()
+                .id(SharedString::from(format!("engine-{}", db_slug(kind))))
                 .p_4()
                 .gap_3()
+                .rounded_lg()
+                .border_1()
+                .border_color(g.line)
+                .bg(g.panel)
+                .cursor_pointer()
+                .hover(|d| d.bg(g.panel_hover).border_color(g.accent.opacity(0.5)))
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.db_engine = Some(kind);
+                    this.db_name.update(cx, |s, cx| s.set_value("", window, cx));
+                    cx.notify();
+                }))
                 .child(
                     h_flex()
                         .gap_3()
-                        .children(brand(db_slug(d.kind), px(22.)))
-                        .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child(db_name(d.kind)))
-                        .child(div().text_color(g.dim).child(d.version.clone().unwrap_or_default())),
+                        .child(div().size(px(36.)).rounded_lg().bg(g.panel_hover).flex().items_center().justify_center().children(brand(db_slug(kind), px(20.))))
+                        .child(
+                            v_flex()
+                                .flex_1()
+                                .child(div().font_weight(FontWeight::SEMIBOLD).child(db_name(kind)))
+                                .child(div().text_xs().text_color(g.faint).child(d.version.clone().unwrap_or_default())),
+                        ),
                 )
-                .child(kv(&tr("db.listens"), d.listen.clone().unwrap_or_else(|| "—".into()), cx))
-                .child(h_flex().gap_4().child(div().w(px(140.)).text_color(g.dim).child(tr("db.databases"))).child(dbs))
-                .when(!used_by.is_empty(), |c| c.child(kv(&tr("db.used_by"), used_by.join(", "), cx)))
-                .when(kind != DatabaseKind::Redis, |c| {
-                    c.child(
-                        h_flex()
-                            .gap_4()
-                            .child(div().w(px(140.)).text_color(g.dim).child(tr("db.new")))
-                            .child(div().w(px(240.)).child(Input::new(&db_input)))
-                            .child(
-                                Button::new(SharedString::from(format!("create-{}", db_slug(kind))))
-                                    .primary()
-                                    .icon(IconName::Plus)
-                                    .label(tr("db.create"))
-                                    .on_click(cx.listener(move |this, _, window, cx| {
-                                        let name = this.db_name.read(cx).value().trim().to_string();
-                                        let admin = crate::cli::mongo_admin(server);
-                                        let plan = actions::db_create(kind, &name, &name, admin.as_ref());
-                                        this.request(server, plan, None, window, cx);
-                                    })),
-                            ),
-                    )
-                }),
+                .child(
+                    h_flex()
+                        .gap_3()
+                        .text_xs()
+                        .text_color(g.dim)
+                        .child(trp("db.count", &[("n", &d.databases.len().to_string())]))
+                        .when(total > 0, |r| r.child(format::bytes(total)))
+                        .when(used > 0, |r| r.child(format!("{} · {used}", tr("db.used_by"))))
+                        .child(div().flex_1())
+                        .child(mono(d.listen.clone().unwrap_or_default())),
+                ),
         );
     }
-    col
+    v_flex().gap_4().child(grid)
 }
 
+fn db_engine_detail(
+    app: &SesameApp,
+    server: sesame_core::ServerId,
+    s: &ServerSnapshot,
+    d: &DatabaseEngine,
+    cx: &mut Context<SesameApp>,
+) -> Div {
+    let g = Glass::get(cx).clone();
+    let kind = d.kind;
+    let users = db_users(s, d);
+    let q = app.db_search.read(cx).value().trim().to_lowercase();
+
+    let back = h_flex()
+        .id("db-back")
+        .gap_1()
+        .cursor_pointer()
+        .text_color(g.dim)
+        .hover(|d| d.text_color(g.text))
+        .on_click(cx.listener(|this, _, _, cx| {
+            this.db_engine = None;
+            cx.notify();
+        }))
+        .child("←")
+        .child(tr("db.all_engines"));
+    let head = h_flex()
+        .gap_3()
+        .children(brand(db_slug(kind), px(26.)))
+        .child(div().text_xl().font_weight(FontWeight::BOLD).child(db_name(kind)))
+        .child(div().text_color(g.dim).child(d.version.clone().unwrap_or_default()))
+        .child(div().flex_1())
+        .child(mono(d.listen.clone().unwrap_or_default()).text_color(g.dim));
+
+    if kind == DatabaseKind::Redis {
+        let mut list = card(&tr("db.databases"), cx);
+        for name in &d.databases {
+            list = list.child(mono(name.clone()));
+        }
+        return v_flex()
+            .gap_4()
+            .child(back)
+            .child(head)
+            .child(list)
+            .child(div().text_xs().text_color(g.faint).child(tr("db.redis_note")));
+    }
+
+    let create = card(&tr("db.new"), cx).child(
+        h_flex()
+            .gap_2()
+            .child(div().w(px(240.)).child(Input::new(&app.db_name)))
+            .child(div().w(px(300.)).child(Input::new(&app.db_user)))
+            .child(
+                Button::new("db-create")
+                    .primary()
+                    .icon(IconName::Plus)
+                    .label(tr("db.create"))
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        let name = this.db_name.read(cx).value().trim().to_string();
+                        let user = this.db_user.read(cx).value().trim().to_string();
+                        let user = if user.is_empty() { name.clone() } else { user };
+                        let admin = crate::cli::mongo_admin(server);
+                        let plan = actions::db_create(kind, &name, &user, admin.as_ref());
+                        this.request(server, plan, None, window, cx);
+                    })),
+            ),
+    );
+
+    // Filters.
+    let chip = |id: &str, label: String, active: bool| {
+        div()
+            .id(SharedString::from(id.to_string()))
+            .px_3()
+            .py_1()
+            .rounded_full()
+            .cursor_pointer()
+            .text_xs()
+            .border_1()
+            .border_color(if active { g.accent } else { g.line })
+            .when(active, |d| d.bg(g.accent_soft).text_color(g.text))
+            .when(!active, |d| d.text_color(g.dim))
+            .child(label)
+    };
+    let used_count = users.len();
+    let unused_count = d.databases.len().saturating_sub(used_count);
+    let filters = h_flex()
+        .gap_1()
+        .child(chip("dbf-all", format!("{} · {}", tr("sites.all"), d.databases.len()), app.db_filter.is_none()).on_click(cx.listener(|this, _, _, cx| {
+            this.db_filter = None;
+            cx.notify();
+        })))
+        .child(chip("dbf-used", format!("{} · {used_count}", tr("db.used")), app.db_filter == Some(true)).on_click(cx.listener(|this, _, _, cx| {
+            this.db_filter = Some(true);
+            cx.notify();
+        })))
+        .child(chip("dbf-unused", format!("{} · {unused_count}", tr("db.unused")), app.db_filter == Some(false)).on_click(cx.listener(|this, _, _, cx| {
+            this.db_filter = Some(false);
+            cx.notify();
+        })));
+
+    let head_row = h_flex()
+        .gap_3()
+        .px_2()
+        .pb_1()
+        .text_xs()
+        .text_color(g.faint)
+        .child(div().w(px(260.)).child(tr("db.name").to_uppercase()))
+        .child(div().w(px(120.)).child(tr("db.size").to_uppercase()))
+        .child(div().flex_1().child(tr("db.used_by").to_uppercase()))
+        .child(div().w(px(90.)));
+    let mut table = v_flex().gap_0p5().child(head_row);
+    let mut shown = 0;
+    let mut dbs = d.databases.clone();
+    dbs.sort();
+    for name in dbs {
+        let site = users.iter().find(|(db, _)| *db == name).map(|(_, s)| s.clone());
+        if !q.is_empty() && !name.to_lowercase().contains(&q) && !site.as_deref().is_some_and(|s| s.to_lowercase().contains(&q)) {
+            continue;
+        }
+        if let Some(want_used) = app.db_filter {
+            if site.is_some() != want_used {
+                continue;
+            }
+        }
+        shown += 1;
+        let db = name.clone();
+        table = table.child(
+            h_flex()
+                .gap_3()
+                .min_h(px(34.))
+                .px_2()
+                .rounded_md()
+                .border_b_1()
+                .border_color(g.line)
+                .hover(|d| d.bg(g.panel_hover))
+                .child(h_flex().w(px(260.)).gap_2().child(icon(IconName::Database, g.faint).size_3()).child(mono(name.clone())))
+                .child(div().w(px(120.)).text_color(g.dim).child(d.size_of(&name).map(format::bytes).unwrap_or_else(|| "—".into())))
+                .child(h_flex().flex_1().child(match site {
+                    Some(sname) => pill(sname, g.ok),
+                    None => pill(tr("db.unused"), g.faint),
+                }))
+                .child(
+                    div().w(px(90.)).child(
+                        Button::new(SharedString::from(format!("drop-{name}")))
+                            .xsmall()
+                            .danger()
+                            .icon(IconName::X)
+                            .label(tr("db.drop"))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                let admin = crate::cli::mongo_admin(server);
+                                this.request(server, actions::db_drop(kind, &db, None, admin.as_ref()), None, window, cx);
+                            })),
+                    ),
+                ),
+        );
+    }
+    if shown == 0 {
+        table = table.child(empty(if d.databases.is_empty() { tr("db.needs_creds") } else { tr("db.no_match") }, cx));
+    }
+    v_flex()
+        .gap_4()
+        .child(back)
+        .child(head)
+        .child(create)
+        .child(
+            card(&tr("db.databases"), cx)
+                .child(h_flex().gap_3().child(filters).child(div().flex_1()).child(div().w(px(280.)).child(Input::new(&app.db_search).prefix(icon(IconName::Search, g.faint)).cleanable(true))))
+                .child(table),
+        )
+}
 
 // ---- mail & cron -----------------------------------------------------------------
 
