@@ -32,6 +32,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build the app
-        run: cargo build -p sesame-app --locked
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo build -p sesame-app --locked 2>&1 | tee build.log || {
+            # Surface compiler errors as annotations (readable without signing in).
+            grep -E -A6 '^error' build.log | head -60 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          }
       - name: Test the engine (no GUI)
         run: cargo test --locked -p sesame-core -p sesame-cloudflare -p sesame-mail -p sesame-update -p sesame-engine
