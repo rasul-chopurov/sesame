@@ -1,6 +1,6 @@
 # Sesame Cloud — plan
 
-Status: draft, October 2026. Nothing here is built yet.
+Status: October 2026. Phase 1 exists as self-hosted `sesame-cloud` + `web/` (see [cloud.md](cloud.md)); hosting for many teams is not built yet.
 
 Sesame Cloud is the hosted, team version of Sesame: a Vue web app and a public
 API in front of a central service that manages customers' servers over SSH.

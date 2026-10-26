@@ -101,7 +101,9 @@ State lives in `~/Library/Application Support/dev.sesame.Sesame/state.db` (overr
 - [x] Mail: Resend domains and site keys; Stalwart mail server (experimental)
 - [x] Site owners and per-person access (SFTP-only or shell keys, revoke in one click)
 - [x] Prepare a fresh server for Laravel (idempotent: only installs what is missing)
-- [ ] Windows release (builds in CI) · mobile · Sesame Cloud ([plan](docs/cloud-plan.md))
+- [x] Windows build in CI (ssh-agent via OpenSSH pipe / Pageant)
+- [x] Sesame Cloud, self-hosted: web app + API with roles, approvals and audit; installable on phones (PWA) — [docs](docs/cloud.md)
+- [ ] Hosted multi-tenant Sesame Cloud, native mobile apps ([plan](docs/cloud-plan.md))
 
 ## Architecture
 
@@ -118,6 +120,8 @@ crates/
   sesame-github      GitHub API, deploy keys
   sesame-mail        Resend API and mail DNS
   sesame-app         GPUI window and the `sesame` CLI
+  sesame-cloud       self-hosted team server: web API, roles, approvals
+web/                 Vue 3 web app for Sesame Cloud (PWA)
 ```
 
 Only `sesame-app` depends on GPUI, so the mobile app, the agent APIs and the cloud reuse everything else.

@@ -17,6 +17,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Test
         run: cargo test --workspace --locked
+      - name: Web app
+        run: cd web && npm ci && npm run build
       - name: Screenshots
         run: cargo test -p sesame-app --test screenshots --locked
       - uses: actions/upload-artifact@v4
