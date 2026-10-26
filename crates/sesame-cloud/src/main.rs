@@ -5,6 +5,7 @@
 //! identical. Put it behind Caddy for TLS; it listens on 127.0.0.1 by default.
 
 mod api;
+mod terminal;
 mod users;
 
 use std::path::PathBuf;

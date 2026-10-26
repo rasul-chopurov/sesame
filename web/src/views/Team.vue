@@ -24,7 +24,7 @@ async function setRole(u, role) {
   try { await api(`/users/${u.id}`, { method: 'PATCH', body: { role } }); load() } catch (e) { error.value = e.message; load() }
 }
 async function remove(u) {
-  if (!window.confirm(`${t('remove')} ${u.name || u.email}?`)) return
+  if (!window.confirm(`${t('web.remove')} ${u.name || u.email}?`)) return
   try { await api(`/users/${u.id}`, { method: 'DELETE' }); load() } catch (e) { error.value = e.message }
 }
 onMounted(load)
@@ -32,12 +32,12 @@ const roles = () => (session.user?.role === 'owner' ? ['viewer', 'developer', 'a
 </script>
 
 <template>
-  <div class="page-title"><h1>{{ t('team') }}</h1></div>
+  <div class="head" style="margin-bottom:16px"><h1>{{ t('web.team') }}</h1></div>
   <p v-if="error" class="error">{{ error }}</p>
   <div class="stack">
     <div class="card" style="overflow-x:auto">
       <table>
-        <thead><tr><th>{{ t('name') }}</th><th>{{ t('email') }}</th><th>{{ t('role') }}</th><th></th></tr></thead>
+        <thead><tr><th>{{ t('web.name') }}</th><th>{{ t('web.email') }}</th><th>{{ t('web.role') }}</th><th></th></tr></thead>
         <tbody>
           <tr v-for="u in users" :key="u.id">
             <td>{{ u.name }} <span v-if="u.agent" class="pill">agent</span></td>
@@ -48,27 +48,27 @@ const roles = () => (session.user?.role === 'owner' ? ['viewer', 'developer', 'a
                 <option v-for="r in roles()" :key="r" :value="r">{{ r }}</option>
               </select>
             </td>
-            <td><button v-if="u.role !== 'owner' && u.id !== session.user?.id" class="btn sm" @click="remove(u)">{{ t('remove') }}</button></td>
+            <td><button v-if="u.role !== 'owner' && u.id !== session.user?.id" class="btn sm" @click="remove(u)">{{ t('web.remove') }}</button></td>
           </tr>
         </tbody>
       </table>
     </div>
     <div class="grid">
       <form class="card form" @submit.prevent="addPerson">
-        <h3>{{ t('add_person') }}</h3>
-        <input v-model="person.name" :placeholder="t('name')" required>
-        <input v-model="person.email" type="email" :placeholder="t('email')" required>
-        <input v-model="person.password" type="password" minlength="10" :placeholder="t('password')" autocomplete="new-password" required>
+        <h3>{{ t('web.add_person') }}</h3>
+        <input v-model="person.name" :placeholder="t('web.name')" required>
+        <input v-model="person.email" type="email" :placeholder="t('web.email')" required>
+        <input v-model="person.password" type="password" minlength="10" :placeholder="t('web.password')" autocomplete="new-password" required>
         <select v-model="person.role"><option v-for="r in roles()" :key="r" :value="r">{{ r }}</option></select>
-        <button class="btn primary">{{ t('add_person') }}</button>
+        <button class="btn primary">{{ t('web.add_person') }}</button>
       </form>
       <form class="card form" @submit.prevent="addAgent">
-        <h3>{{ t('add_agent') }}</h3>
+        <h3>{{ t('web.add_agent') }}</h3>
         <input v-model="agent.name" placeholder="claude-code" required>
         <select v-model="agent.role"><option value="viewer">viewer</option><option value="developer">developer</option></select>
-        <button class="btn primary">{{ t('add_agent') }}</button>
+        <button class="btn primary">{{ t('web.add_agent') }}</button>
         <template v-if="newToken">
-          <p class="dim" style="margin:0">{{ t('token_once') }}</p>
+          <p class="dim" style="margin:0">{{ t('web.token_once') }}</p>
           <input class="mono" :value="newToken" readonly @focus="$event.target.select()">
         </template>
       </form>

@@ -190,6 +190,65 @@ impl Engine {
                 }
                 Ok(serde_json::to_value(out)?)
             }
+            "integrations" => {
+                let has = |k: &str| secrets::get_global(k).ok().flatten().is_some();
+                let mut out = json!({ "github": null, "cloudflare": null, "resend": null });
+                if has("GITHUB_TOKEN") {
+                    out["github"] = match self.github()?.user().await {
+                        Ok(u) => json!({ "connected": true, "login": u.login }),
+                        Err(e) => json!({ "connected": false, "error": format!("{e:#}") }),
+                    };
+                }
+                if has("CLOUDFLARE_TOKEN") {
+                    let cf = self.cloudflare()?;
+                    out["cloudflare"] = match cf.accounts().await {
+                        Ok(a) => json!({ "connected": true, "account": a.first().map(|a| a.name.clone()) }),
+                        Err(e) => json!({ "connected": false, "error": format!("{e:#}") }),
+                    };
+                }
+                if has("RESEND_TOKEN") {
+                    out["resend"] = match self.resend()?.domains().await {
+                        Ok(d) => json!({ "connected": true, "domains": d.len() }),
+                        Err(e) => json!({ "connected": false, "error": format!("{e:#}") }),
+                    };
+                }
+                Ok(out)
+            }
+            "github_repos" => Ok(serde_json::to_value(self.github()?.repos().await?)?),
+            "github_branches" => Ok(serde_json::to_value(self.github()?.branches(str_arg(args, "repo")?).await?)?),
+            "github_head" => Ok(serde_json::to_value(self.github()?.head(str_arg(args, "repo")?, str_arg(args, "branch")?).await?)?),
+            "site_links" => {
+                let server = self.server(str_arg(args, "server")?)?;
+                let snap = self.snapshot(&server)?;
+                let mut out = serde_json::Map::new();
+                for site in &snap.sites {
+                    let Some(d) = site.domains.first() else { continue };
+                    if let Some(l) = self.store.site_link(server.id, d)? {
+                        out.insert(d.clone(), json!({ "repo": l.repo, "branch": l.branch, "app_path": l.app_path }));
+                    }
+                }
+                Ok(Value::Object(out))
+            }
+            "cloudflare_accounts" => Ok(serde_json::to_value(self.cloudflare()?.accounts().await?)?),
+            "files_list" | "files_read" => {
+                let (server, root) = self.site_root(args)?;
+                let files = sesame_ssh::files::SiteFiles::open(&server, &root).await?;
+                let path = opt_str(args, "path").unwrap_or("/");
+                if name == "files_list" {
+                    let list = files.list(path).await?;
+                    Ok(json!({
+                        "root": root,
+                        "owner": files.owner(),
+                        "entries": list.iter().map(|e| json!({ "name": e.name, "dir": e.is_dir, "link": e.is_link, "size": e.size, "modified": e.modified, "mode": format!("{:o}", e.mode) })).collect::<Vec<_>>(),
+                    }))
+                } else {
+                    let data = files.read(path, 1024 * 1024).await?;
+                    match String::from_utf8(data) {
+                        Ok(text) => Ok(json!({ "path": path, "text": text })),
+                        Err(_) => bail!("{path} is not a text file"),
+                    }
+                }
+            }
             "cloudflare_zones" => {
                 let cf = self.cloudflare()?;
                 Ok(serde_json::to_value(cf.zones().await?)?)
@@ -206,6 +265,18 @@ impl Engine {
     fn cloudflare(&self) -> Result<sesame_cloudflare::Client> {
         let token = secrets::get_global("CLOUDFLARE_TOKEN")?.context("Cloudflare is not connected in Sesame (Settings → Integrations)")?;
         sesame_cloudflare::Client::new(token)
+    }
+
+    fn github(&self) -> Result<sesame_github::Client> {
+        let token = secrets::get_global("GITHUB_TOKEN")?.context("GitHub is not connected in Sesame (Settings → Integrations)")?;
+        sesame_github::Client::new(token)
+    }
+
+    /// The server and the site directory named by `server` + `domain`.
+    fn site_root(&self, args: &Value) -> Result<(ServerConfig, String)> {
+        let server = self.server(str_arg(args, "server")?)?;
+        let root = site_app(&self.snapshot(&server)?, str_arg(args, "domain")?)?;
+        Ok((server, root))
     }
 
     fn resend(&self) -> Result<sesame_mail::Client> {
@@ -226,6 +297,10 @@ impl Engine {
     /// with no server steps and are run by [`Engine::execute`] specially.
     async fn plan(&self, name: &str, args: &Value) -> Result<(Option<ServerConfig>, Plan)> {
         use sesame_ops::actions;
+        if let Some(plan) = self.direct_plan(name, args)? {
+            let server = opt_str(args, "server").map(|n| self.server(n)).transpose()?;
+            return Ok((server, plan));
+        }
         if name.starts_with("cloudflare_") {
             return Ok((None, cloudflare_plan(name, args)?));
         }
@@ -344,6 +419,16 @@ impl Engine {
                 let opts = actions::DeployOptions { public_https: false, laravel, migrate: laravel, restart: vec![] };
                 actions::deploy(&link.app_path, &link.repo, &link.branch, &opts)?
             }
+            "site_reverb" => {
+                let domain = str_arg(args, "domain")?;
+                let snap = need_snap()?;
+                let site = snap.sites.iter().find(|s| s.domains.iter().any(|d| d == domain)).with_context(|| format!("no site {domain}"))?;
+                let port = match args.get("port").and_then(Value::as_u64) {
+                    Some(p) => p as u16,
+                    None => (8080u16..8200).find(|p| !snap.ports.iter().any(|x| x.port == *p)).unwrap_or(8080),
+                };
+                sesame_provision::reverb_for_site(site, port)?
+            }
             "site_enabled" => sesame_ops::site::set_site_enabled(str_arg(args, "domain")?, bool_arg(args, "enabled", true))?,
             "site_access_grant" => {
                 let domain = str_arg(args, "domain")?;
@@ -434,6 +519,7 @@ impl Engine {
     async fn execute(&self, actor: &Actor, server: Option<ServerConfig>, plan: Plan, consent: Consent) -> Result<Value> {
         self.consent(actor, server.as_ref(), &plan, consent).await?;
         let result: Result<(String, Vec<(String, String)>)> = match &server {
+            _ if plan.op == "direct" => self.run_direct(server.as_ref(), &plan).await,
             None => run_cloudflare(&self.cloudflare()?, &plan).await.map(|tail| (tail, vec![])),
             Some(server) if plan.op == "site_mail_resend" => self.run_resend(server, &plan).await,
             Some(server) => async {
@@ -483,6 +569,152 @@ impl Engine {
 }
 
 impl Engine {
+    /// Tools that are API calls or Sesame's own state rather than a server
+    /// script. Their arguments ride in the plan's single step and are run by
+    /// [`Engine::run_direct`] after consent. Titles never contain secrets.
+    fn direct_plan(&self, name: &str, args: &Value) -> Result<Option<Plan>> {
+        let (title, details, risk) = match name {
+            "add_server" => (format!("add server {} ({})", str_arg(args, "name")?, str_arg(args, "target")?), vec![], Risk::Change),
+            "remove_server" => (format!("remove {} from Sesame", str_arg(args, "server")?), vec!["its saved secrets are deleted; the server is not touched".into()], Risk::Destructive),
+            "set_integration" => (format!("connect {}", str_arg(args, "kind")?), vec!["the token is checked, then kept in the encrypted vault".into()], Risk::Change),
+            "remove_integration" => (format!("disconnect {}", str_arg(args, "kind")?), vec![], Risk::Destructive),
+            "github_link_site" => (
+                format!("link {} to {}@{}", str_arg(args, "domain")?, str_arg(args, "repo")?, str_arg(args, "branch")?),
+                vec!["a read-only deploy key is made on the server and added to the repository".into()],
+                Risk::Change,
+            ),
+            "cloudflare_create_zone" => (format!("add {} to Cloudflare", str_arg(args, "name")?), vec![], Risk::Change),
+            "files_write" => (format!("save {} on {}", str_arg(args, "path")?, str_arg(args, "domain")?), vec![], Risk::Change),
+            "files_mkdir" => (format!("create folder {} on {}", str_arg(args, "path")?, str_arg(args, "domain")?), vec![], Risk::Change),
+            "files_rename" => (format!("rename {} → {} on {}", str_arg(args, "from")?, str_arg(args, "to")?, str_arg(args, "domain")?), vec![], Risk::Change),
+            "files_remove" => (format!("delete {} on {}", str_arg(args, "path")?, str_arg(args, "domain")?), vec![], Risk::Destructive),
+            _ => return Ok(None),
+        };
+        Ok(Some(Plan {
+            op: "direct",
+            title,
+            risk,
+            details,
+            confirm_word: None,
+            steps: vec![sesame_ops::Step::new(name.to_string(), serde_json::to_string(args)?)],
+            reveal: vec![],
+            secret_scope: None,
+        }))
+    }
+
+    async fn run_direct(&self, server: Option<&ServerConfig>, plan: &Plan) -> Result<(String, Vec<(String, String)>)> {
+        let step = plan.steps.first().ok_or_else(|| anyhow!("empty plan"))?;
+        let args: Value = serde_json::from_str(&step.script)?;
+        let args = &args;
+        let need_server = || server.cloned().context("missing server");
+        let out = match step.title.as_str() {
+            "add_server" => {
+                let name = str_arg(args, "name")?;
+                if self.store.servers()?.iter().any(|s| s.name == name) {
+                    bail!("a server named {name} already exists");
+                }
+                let target = str_arg(args, "target")?;
+                let (user, rest) = target.split_once('@').unwrap_or(("root", target));
+                let (host, port) = match rest.rsplit_once(':') {
+                    Some((h, p)) => (h, p.parse().context("bad port")?),
+                    None => (rest, 22),
+                };
+                if host.is_empty() || user.is_empty() {
+                    bail!("expected user@host[:port]");
+                }
+                let mut s = ServerConfig::new(name, host, user);
+                s.port = port;
+                if let Some(path) = opt_str(args, "key_path") {
+                    s.auth = sesame_core::AuthMethod::KeyFile { path: path.to_string() };
+                } else if let Some(pw) = opt_str(args, "password") {
+                    s.auth = sesame_core::AuthMethod::Password;
+                    secrets::set(s.id, secrets::SecretKind::Password, pw)?;
+                }
+                self.store.save_server(&s)?;
+                // Discover right away so the server is useful and the host key is learned.
+                match sesame_discovery::discover_server(&s).await {
+                    Ok((snap, _)) => {
+                        self.store.save_snapshot(s.id, &snap)?;
+                        format!("{} saved and discovered: {} sites", s.name, snap.sites.len())
+                    }
+                    Err(e) => format!("{} saved; discovery failed: {e:#}", s.name),
+                }
+            }
+            "remove_server" => {
+                let s = need_server()?;
+                let _ = secrets::delete_server(s.id);
+                self.store.delete_server(s.id)?;
+                format!("{} removed from Sesame", s.name)
+            }
+            "set_integration" | "remove_integration" => {
+                let key = match str_arg(args, "kind")? {
+                    "github" => "GITHUB_TOKEN",
+                    "cloudflare" => "CLOUDFLARE_TOKEN",
+                    "resend" => "RESEND_TOKEN",
+                    k => bail!("unknown integration {k}"),
+                };
+                if step.title == "remove_integration" {
+                    secrets::delete_global(key)?;
+                    "disconnected".into()
+                } else {
+                    let token = str_arg(args, "token")?.trim().to_string();
+                    match key {
+                        "GITHUB_TOKEN" => drop(sesame_github::Client::new(token.clone())?.user().await?),
+                        "CLOUDFLARE_TOKEN" => sesame_cloudflare::Client::new(token.clone())?.verify().await?,
+                        _ => sesame_mail::Client::new(token.clone())?.check().await?,
+                    }
+                    secrets::set_global(key, &token)?;
+                    "connected".into()
+                }
+            }
+            "github_link_site" => {
+                let server = need_server()?;
+                let domain = str_arg(args, "domain")?;
+                let (repo, branch) = (str_arg(args, "repo")?, str_arg(args, "branch")?);
+                let app = site_app(&self.snapshot(&server)?, domain)?;
+                let gh = self.github()?;
+                gh.branches(repo).await?.iter().find(|b| b.name == branch).with_context(|| format!("{repo} has no branch {branch}"))?;
+                let key_plan = sesame_ops::actions::git_connect(&app)?;
+                let session = sesame_ssh::Session::connect(&server).await?;
+                let out = sesame_ops::execute(&session, &key_plan, None).await;
+                let _ = session.close().await;
+                let out = out?;
+                let public = out.reveal.iter().find(|(k, _)| k == "DEPLOY_PUBLIC_KEY").map(|(_, v)| v.clone()).context("no deploy key was made")?;
+                gh.ensure_deploy_key(repo, &format!("sesame · {domain}"), &public).await?;
+                self.store.set_site_link(&sesame_core::SiteLink {
+                    server_id: server.id,
+                    domain: domain.to_string(),
+                    app_path: app,
+                    repo: repo.to_string(),
+                    branch: branch.to_string(),
+                })?;
+                format!("{domain} is linked to {repo}@{branch}; deploy key added")
+            }
+            "cloudflare_create_zone" => {
+                let cf = self.cloudflare()?;
+                let account = match opt_str(args, "account_id") {
+                    Some(a) => a.to_string(),
+                    None => cf.accounts().await?.first().map(|a| a.id.clone()).context("the token sees no Cloudflare account")?,
+                };
+                let z = cf.create_zone(&account, str_arg(args, "name")?).await?;
+                format!("{} added ({}); set these nameservers at your registrar: {}", z.name, z.status, z.name_servers.join(", "))
+            }
+            "files_write" | "files_mkdir" | "files_rename" | "files_remove" => {
+                let (server, root) = self.site_root(args)?;
+                let files = sesame_ssh::files::SiteFiles::open(&server, &root).await?;
+                match step.title.as_str() {
+                    "files_write" => files.write(str_arg(args, "path")?, str_arg(args, "content")?.as_bytes()).await?,
+                    "files_mkdir" => files.mkdir(str_arg(args, "path")?).await?,
+                    "files_rename" => files.rename(str_arg(args, "from")?, str_arg(args, "to")?).await?,
+                    _ => files.remove(str_arg(args, "path")?).await?,
+                }
+                "done".into()
+            }
+            t => bail!("unknown tool {t}"),
+        };
+        Ok((out, vec![]))
+    }
+
     /// Resend + Cloudflare, then MAIL_* on the server for a Laravel site.
     async fn run_resend(&self, server: &ServerConfig, plan: &Plan) -> Result<(String, Vec<(String, String)>)> {
         let spec: Value = serde_json::from_str(&plan.steps[0].script)?;

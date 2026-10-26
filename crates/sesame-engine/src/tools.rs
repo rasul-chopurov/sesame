@@ -47,6 +47,29 @@ pub const TOOLS: &[Tool] = &[
     Tool { name: "site_enabled", description: "Turn a site created by Sesame on or off (its web-server file is set aside; files, database and workers stay). Needs approval.", risk: Risk::Destructive, params: &[SERVER, ("domain", "string", "Site domain", true), ("enabled", "boolean", "true = on, false = off", true)] },
     Tool { name: "site_access_grant", description: "Give a person their own SSH key access to a site's owner account: SFTP only (default) or a shell. Needs approval.", risk: Risk::Change, params: &[SERVER, ("domain", "string", "Site domain", true), ("person", "string", "Short name, e.g. anna", true), ("public_key", "string", "OpenSSH public key line", true), ("shell", "boolean", "Allow a shell, not just SFTP (default false)", false)] },
     Tool { name: "site_access_revoke", description: "Remove a person's key from a site's owner account. Needs approval.", risk: Risk::Destructive, params: &[SERVER, ("domain", "string", "Site domain", true), ("person", "string", "Name used when access was granted", true)] },
+    // ---- servers and integrations ----
+    Tool { name: "add_server", description: "Save a server: user@host[:port]. Authenticates with the ssh-agent or keys of the machine Sesame runs on, a key file, or a password (kept in the vault).", risk: Risk::Change, params: &[("name", "string", "Short name, e.g. prod", true), ("target", "string", "user@host[:port]", true), ("key_path", "string", "Private key file instead of the agent", false), ("password", "string", "SSH password instead of keys", false)] },
+    Tool { name: "remove_server", description: "Remove a server from Sesame with its saved secrets. The server itself is not touched.", risk: Risk::Destructive, params: &[SERVER] },
+    Tool { name: "integrations", description: "Which integrations are connected (GitHub, Cloudflare, Resend) and as whom.", risk: Risk::Read, params: &[] },
+    Tool { name: "set_integration", description: "Save or replace an integration token in the vault after checking it works.", risk: Risk::Change, params: &[("kind", "string", "github | cloudflare | resend", true), ("token", "string", "API token", true)] },
+    Tool { name: "remove_integration", description: "Forget an integration token.", risk: Risk::Destructive, params: &[("kind", "string", "github | cloudflare | resend", true)] },
+    // ---- GitHub ----
+    Tool { name: "github_repos", description: "Repositories the connected GitHub token can see.", risk: Risk::Read, params: &[] },
+    Tool { name: "github_branches", description: "Branches of a GitHub repository.", risk: Risk::Read, params: &[("repo", "string", "owner/name", true)] },
+    Tool { name: "github_head", description: "Latest commit of a branch on GitHub.", risk: Risk::Read, params: &[("repo", "string", "owner/name", true), ("branch", "string", "Branch", true)] },
+    Tool { name: "site_links", description: "GitHub repository and branch linked to each site of a server.", risk: Risk::Read, params: &[SERVER] },
+    Tool { name: "github_link_site", description: "Link a site to a GitHub repository and branch: a read-only deploy key is made on the server and added to the repository. Needs approval.", risk: Risk::Change, params: &[SERVER, ("domain", "string", "Site domain", true), ("repo", "string", "owner/name", true), ("branch", "string", "Branch", true)] },
+    // ---- Cloudflare, Reverb ----
+    Tool { name: "cloudflare_accounts", description: "Cloudflare accounts of the connected token.", risk: Risk::Read, params: &[] },
+    Tool { name: "cloudflare_create_zone", description: "Add a domain to Cloudflare; returns the nameservers to set at the registrar.", risk: Risk::Change, params: &[("name", "string", "Domain, e.g. example.com", true), ("account_id", "string", "Account (default: the first)", false)] },
+    Tool { name: "site_reverb", description: "Run Laravel Reverb (WebSockets) for a site under supervisor and route /app through the web server. Needs approval.", risk: Risk::Change, params: &[SERVER, ("domain", "string", "Site domain", true), ("port", "integer", "Local port (default: a free one from 8080)", false)] },
+    // ---- files of a site (SFTP, confined to the site directory) ----
+    Tool { name: "files_list", description: "List a directory inside a site's folder.", risk: Risk::Read, params: &[SERVER, ("domain", "string", "Site domain", true), ("path", "string", "Path inside the site, e.g. / or app/Models", false)] },
+    Tool { name: "files_read", description: "Read a text file inside a site's folder (up to 1 MB).", risk: Risk::Read, params: &[SERVER, ("domain", "string", "Site domain", true), ("path", "string", "File path inside the site", true)] },
+    Tool { name: "files_write", description: "Write a text file inside a site's folder; it is owned by the site's user. Needs approval.", risk: Risk::Change, params: &[SERVER, ("domain", "string", "Site domain", true), ("path", "string", "File path inside the site", true), ("content", "string", "New content", true)] },
+    Tool { name: "files_mkdir", description: "Create a folder inside a site's folder.", risk: Risk::Change, params: &[SERVER, ("domain", "string", "Site domain", true), ("path", "string", "Folder path inside the site", true)] },
+    Tool { name: "files_rename", description: "Rename or move inside a site's folder.", risk: Risk::Change, params: &[SERVER, ("domain", "string", "Site domain", true), ("from", "string", "Current path", true), ("to", "string", "New path", true)] },
+    Tool { name: "files_remove", description: "Delete a file or an empty folder inside a site's folder.", risk: Risk::Destructive, params: &[SERVER, ("domain", "string", "Site domain", true), ("path", "string", "Path inside the site", true)] },
     Tool { name: "run_command", description: "Run a shell command on a server as root and return its output. Always needs approval; prefer the specific tools.", risk: Risk::Destructive, params: &[SERVER, ("command", "string", "POSIX shell command", true)] },
 ];
 
@@ -79,7 +102,8 @@ mod tests {
             assert!(names.insert(t.name), "duplicate {}", t.name);
             let s = t.input_schema();
             assert_eq!(s["type"], "object");
-            if t.risk != Risk::Read && !t.name.starts_with("cloudflare_") {
+            let global = t.name.starts_with("cloudflare_") || matches!(t.name, "add_server" | "set_integration" | "remove_integration");
+            if t.risk != Risk::Read && !global {
                 assert!(t.params.iter().any(|p| p.0 == "server"), "{} needs a server", t.name);
             }
         }

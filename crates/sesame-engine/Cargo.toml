@@ -13,6 +13,7 @@ sesame-ops = { path = "../sesame-ops" }
 sesame-provision = { path = "../sesame-provision" }
 sesame-cloudflare = { path = "../sesame-cloudflare" }
 sesame-mail = { path = "../sesame-mail" }
+sesame-github = { path = "../sesame-github" }
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -60,7 +60,7 @@ fn auto_ttl() -> u32 {
     1
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Account {
     pub id: String,
     pub name: String,

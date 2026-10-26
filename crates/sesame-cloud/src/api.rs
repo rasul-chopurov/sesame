@@ -34,6 +34,10 @@ fn bearer(headers: &HeaderMap) -> Option<&str> {
     headers.get("authorization")?.to_str().ok()?.strip_prefix("Bearer ")
 }
 
+pub(crate) fn user_for(app: &App, token: &str) -> Option<User> {
+    app.users.by_token(token).ok().flatten()
+}
+
 fn whoami(app: &App, headers: &HeaderMap) -> Result<User, Reply> {
     let token = bearer(headers).ok_or_else(|| err(StatusCode::UNAUTHORIZED, "sign in first"))?;
     app.users
@@ -61,6 +65,7 @@ pub fn router(app: App, web_dir: Option<std::path::PathBuf>) -> Router {
         .route("/api/users", get(list_users).post(create_user))
         .route("/api/users/{id}", delete(delete_user).patch(set_role))
         .route("/api/agents", post(create_agent))
+        .route("/api/terminal", get(crate::terminal::upgrade))
         .with_state(app);
     match web_dir {
         Some(dir) => {
@@ -146,8 +151,13 @@ async fn tools(State(app): State<App>, headers: HeaderMap) -> Reply {
 /// Who may run what, and whether someone else has to approve it first.
 pub fn consent_for(user: &User, tool: &str, risk: Risk) -> Result<Consent, String> {
     let ask = Consent::AskInApp { timeout: Duration::from_secs(900) };
-    if tool == "run_command" && user.role < Role::Admin {
-        return Err("run_command needs the admin role".into());
+    let admin_only = ["run_command", "add_server", "remove_server", "set_integration", "remove_integration"];
+    if admin_only.contains(&tool) && (user.role < Role::Admin || user.agent) {
+        return Err(format!("{tool} needs the admin role"));
+    }
+    // Site files include .env and code: not for viewers.
+    if tool.starts_with("files_") && user.role < Role::Developer {
+        return Err("site files need the developer role".into());
     }
     match risk {
         Risk::Read => Ok(Consent::Given),
@@ -362,6 +372,8 @@ mod tests {
         assert!(given(consent_for(&u(Role::Admin, false), "drop_database", Risk::Destructive)));
         assert!(asks(consent_for(&u(Role::Developer, true), "install_service", Risk::Change)), "agents always ask");
         assert!(consent_for(&u(Role::Developer, false), "run_command", Risk::Destructive).is_err());
+        assert!(consent_for(&u(Role::Viewer, false), "files_read", Risk::Read).is_err());
+        assert!(consent_for(&u(Role::Admin, true), "add_server", Risk::Change).is_err(), "agents never add servers");
         assert!(may_grant(&u(Role::Admin, false), Role::Developer));
         assert!(!may_grant(&u(Role::Admin, false), Role::Admin));
         assert!(may_grant(&u(Role::Owner, false), Role::Admin));

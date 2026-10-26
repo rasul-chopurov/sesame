@@ -97,6 +97,7 @@ impl Users {
         Self::init(Connection::open(path)?)
     }
 
+    #[cfg(test)]
     pub fn in_memory() -> Result<Self> {
         Self::init(Connection::open_in_memory()?)
     }

@@ -11,18 +11,18 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page-title"><h1>{{ t('audit') }}</h1></div>
+  <div class="head" style="margin-bottom:16px"><h1>{{ t('web.audit') }}</h1></div>
   <p v-if="error" class="error">{{ error }}</p>
   <div class="card" style="overflow-x:auto">
     <table>
-      <thead><tr><th>{{ t('when') }}</th><th>{{ t('server') }}</th><th>{{ t('who') }}</th><th>{{ t('what') }}</th><th></th></tr></thead>
+      <thead><tr><th>{{ t('web.when') }}</th><th>{{ t('web.server') }}</th><th>{{ t('web.who') }}</th><th>{{ t('web.what') }}</th><th></th></tr></thead>
       <tbody>
         <tr v-for="(a, i) in list" :key="i">
           <td class="mono faint">{{ a.at.replace('T', ' ').slice(0, 16) }}</td>
           <td>{{ a.server || '—' }}</td>
           <td class="mono">{{ a.actor }}</td>
           <td>{{ a.title }}</td>
-          <td><span :class="['pill', a.ok ? 'ok' : 'bad']">{{ a.ok ? t('ok') : t('failed') }}</span></td>
+          <td><span :class="['pill', a.ok ? 'ok' : 'bad']">{{ a.ok ? t('web.ok') : t('web.failed') }}</span></td>
         </tr>
       </tbody>
     </table>

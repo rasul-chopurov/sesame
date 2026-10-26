@@ -32,13 +32,13 @@ async function submit() {
 <template>
   <div class="center">
     <form class="card login" @submit.prevent="submit">
-      <div class="row" style="gap:10px;margin-bottom:6px"><img src="/logo.svg" width="32" height="32" alt=""><h2 style="margin:0">{{ setup ? t('setup_title') : 'Sesame Cloud' }}</h2></div>
-      <label v-if="setup">{{ t('setup_code') }}<input v-model="form.setup_token" class="mono" name="sesame-setup-code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="b1ccaa250838" required></label>
-      <label v-if="setup">{{ t('name') }}<input v-model="form.name" required></label>
-      <label>{{ t('email') }}<input v-model="form.email" type="email" autocomplete="username" required></label>
-      <label>{{ t('password') }}<input v-model="form.password" type="password" :autocomplete="setup ? 'new-password' : 'current-password'" :minlength="setup ? 10 : 1" required></label>
+      <div class="row" style="gap:10px;margin-bottom:6px"><img src="/logo.svg" width="32" height="32" alt=""><h2 style="margin:0">{{ setup ? t('web.setup_title') : 'Sesame Cloud' }}</h2></div>
+      <label v-if="setup">{{ t('web.setup_code') }}<input v-model="form.setup_token" class="mono" name="sesame-setup-code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="b1ccaa250838" required></label>
+      <label v-if="setup">{{ t('web.name') }}<input v-model="form.name" required></label>
+      <label>{{ t('web.email') }}<input v-model="form.email" type="email" autocomplete="username" required></label>
+      <label>{{ t('web.password') }}<input v-model="form.password" type="password" :autocomplete="setup ? 'new-password' : 'current-password'" :minlength="setup ? 10 : 1" required></label>
       <p v-if="error" class="error">{{ error }}</p>
-      <button class="btn primary" :disabled="busy">{{ setup ? t('create_owner') : t('signin') }}</button>
+      <button class="btn primary" :disabled="busy">{{ setup ? t('web.create_owner') : t('web.signin') }}</button>
     </form>
   </div>
 </template>
