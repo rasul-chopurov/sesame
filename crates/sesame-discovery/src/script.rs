@@ -86,6 +86,16 @@ sec ufw; has ufw && $S ufw status 2>/dev/null
 sec fail2ban; has fail2ban-client && $S fail2ban-client status 2>/dev/null
 sec docker; has docker && $S docker ps -a --format '{{.Names}}	{{.Image}}	{{.Status}}	{{.Ports}}' 2>/dev/null
 sec sesame_tools; ls -1 /opt/sesame 2>/dev/null
+sec sesame_disabled
+for f in /etc/frankenphp/Caddyfile.d/sesame-*.disabled /etc/caddy/sites/sesame-*.disabled; do
+  [ -f "$f" ] || continue
+  echo "caddy|$(head -1 "$f" | sed 's/ *{$//')|$(grep -m1 'root \*' "$f" | awk '{print $3}')"
+done
+for f in /etc/nginx/sites-available/sesame-*.conf; do
+  [ -f "$f" ] || continue
+  [ -e "/etc/nginx/sites-enabled/$(basename "$f")" ] && continue
+  echo "nginx|$(grep -m1 server_name "$f" | sed 's/.*server_name *//; s/;.*//')|$(grep -m1 '^ *root ' "$f" | awk '{print $2}' | tr -d ';')"
+done
 sec end
 "#;
 
@@ -133,6 +143,7 @@ pub fn details(app_paths: &[String], cert_paths: &[String]) -> String {
              \x20 echo \"git_branch=$(git -c safe.directory='*' -C {q} rev-parse --abbrev-ref HEAD 2>/dev/null)\"\n\
              \x20 echo \"git_remote=$(git -c safe.directory='*' -C {q} config --get remote.origin.url 2>/dev/null)\"\n\
              fi\n\
+             o=$(stat -c %U {q} 2>/dev/null) && echo \"owner=$o\" && h=$(getent passwd \"$o\" | cut -d: -f6) && [ -n \"$h\" ] && $S grep ' sesame-access:' \"$h/.ssh/authorized_keys\" 2>/dev/null | sed 's/^/access:/'\n\
              [ -f {q}/wp-config.php ] && $S grep -oE \"define\\( *'DB_(NAME|HOST|USER)', *'[^']*'\" {q}/wp-config.php | sed 's/^/wp:/'\n",
             sec = quote(&format!("app:{p}")),
         ));

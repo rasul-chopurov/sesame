@@ -143,6 +143,9 @@ impl Engine {
                     "upstreams": s.upstreams,
                     "tls": s.tls,
                     "git": s.git,
+                    "owner": s.owner,
+                    "disabled": s.disabled,
+                    "access": s.access,
                     "env": s.env,
                     "processes": s.processes,
                 })).collect::<Vec<_>>()))
@@ -332,6 +335,17 @@ impl Engine {
                 let laravel = site.is_some_and(|s| s.framework == sesame_core::snapshot::Framework::Laravel);
                 let opts = actions::DeployOptions { public_https: false, laravel, migrate: laravel, restart: vec![] };
                 actions::deploy(&link.app_path, &link.repo, &link.branch, &opts)?
+            }
+            "site_enabled" => sesame_ops::site::set_site_enabled(str_arg(args, "domain")?, bool_arg(args, "enabled", true))?,
+            "site_access_grant" => {
+                let domain = str_arg(args, "domain")?;
+                let app = site_app(&need_snap()?, domain)?;
+                sesame_ops::site::grant_access(domain, &app, str_arg(args, "person")?, str_arg(args, "public_key")?, bool_arg(args, "shell", false))?
+            }
+            "site_access_revoke" => {
+                let domain = str_arg(args, "domain")?;
+                let app = site_app(&need_snap()?, domain)?;
+                sesame_ops::site::revoke_access(domain, &app, str_arg(args, "person")?)?
             }
             "site_mail_resend" => {
                 let domain = str_arg(args, "domain")?.to_lowercase();

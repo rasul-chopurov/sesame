@@ -105,6 +105,17 @@ pub fn from_probe(output: &str) -> ServerSnapshot {
         });
         snap.sites.extend(web::apache(get("apache_conf")));
     }
+    // A turned-off site shows up twice: its 503 placeholder block and the
+    // set-aside file. Keep one entry, marked disabled, with the real root.
+    for off in web::disabled(get("sesame_disabled")) {
+        match snap.sites.iter_mut().find(|s| s.domains.first() == off.domains.first()) {
+            Some(site) => {
+                site.disabled = true;
+                site.root = off.root.clone();
+            }
+            None => snap.sites.push(off),
+        }
+    }
     for site in &mut snap.sites {
         site.app_path = site.root.as_deref().map(app_path);
     }
@@ -160,6 +171,8 @@ pub fn apply_details(snap: &mut ServerSnapshot, output: &str) {
                 site.framework_version = d.version.clone();
                 site.env = d.env.clone();
                 site.git = d.git.clone();
+                site.owner = d.owner.clone();
+                site.access = d.access.clone();
             }
         } else if let Some(path) = name.strip_prefix("cert:") {
             let Some(cert) = app::certificate(path, body) else { continue };

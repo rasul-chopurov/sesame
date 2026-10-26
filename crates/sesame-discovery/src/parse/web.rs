@@ -402,3 +402,41 @@ server {
         assert_eq!(sites[0].root.as_deref(), Some("/var/www/blog"));
     }
 }
+
+/// Sites Sesame turned off: `caddy|a.com, www.a.com|/root` or `nginx|a.com www.a.com|/root`.
+pub fn disabled(body: &str) -> Vec<Site> {
+    body.lines()
+        .filter_map(|line| {
+            let mut parts = line.splitn(3, '|');
+            let kind = match parts.next()? {
+                "caddy" => WebServerKind::Caddy,
+                "nginx" => WebServerKind::Nginx,
+                _ => return None,
+            };
+            let domains: Vec<String> = parts
+                .next()?
+                .split([',', ' '])
+                .map(|d| d.trim().trim_start_matches("https://").trim_start_matches("http://"))
+                .filter(|d| !d.is_empty())
+                .map(String::from)
+                .collect();
+            if domains.is_empty() {
+                return None;
+            }
+            let root = parts.next().map(str::trim).filter(|r| !r.is_empty()).map(String::from);
+            Some(Site { domains, root, served_by: Some(kind), disabled: true, ..Default::default() })
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod disabled_tests {
+    #[test]
+    fn disabled_sites_are_listed() {
+        let s = super::disabled("caddy|shop.example.com, www.shop.example.com|/home/s_shop/shop.example.com/public\nnginx|blog.example.com|/home/s_blog/blog.example.com\nnoise\n");
+        assert_eq!(s.len(), 2);
+        assert!(s.iter().all(|x| x.disabled));
+        assert_eq!(s[0].domains, vec!["shop.example.com", "www.shop.example.com"]);
+        assert_eq!(s[1].root.as_deref(), Some("/home/s_blog/blog.example.com"));
+    }
+}

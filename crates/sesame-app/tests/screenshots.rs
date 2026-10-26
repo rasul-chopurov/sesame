@@ -46,7 +46,7 @@ fn main() {
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(Bounds {
                             origin: Default::default(),
-                            size: size(px(1320.), px(840.)),
+                            size: size(px(1320.), px(std::env::var("SESAME_SHOTS_HEIGHT").ok().and_then(|h| h.parse().ok()).unwrap_or(840.))),
                         })),
                         focus: false,
                         show: false,

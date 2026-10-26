@@ -564,6 +564,151 @@ fn set_env_script(app: &str, pairs: &[(&str, String)]) -> String {
     )
 }
 
+/// Turns a site Sesame created on or off by setting its web-server file
+/// aside. The configuration is validated first and rolled back on error;
+/// the app, its database and workers are untouched.
+pub fn set_site_enabled(domain: &str, enable: bool) -> Result<Plan> {
+    if !valid_domain(domain) {
+        bail!("invalid domain");
+    }
+    let slug = slug(domain);
+    // Caddy answers hosts without a block with an empty 200, so a turned-off
+    // site gets a small 503 block; the real one waits in `<file>.disabled`.
+    let caddy = if enable {
+        "[ -f \"$f.disabled\" ] || continue\n\
+         \x20 mv \"$f.disabled\" \"$f\"\n\
+         \x20 if ! $svc validate --config $main --adapter caddyfile >/tmp/sesame-web.log 2>&1; then mv \"$f\" \"$f.disabled\"; placeholder; tail -5 /tmp/sesame-web.log; exit 1; fi"
+    } else {
+        "[ -f \"$f\" ] && [ ! -f \"$f.disabled\" ] || continue\n\
+         \x20 mv \"$f\" \"$f.disabled\"\n\
+         \x20 placeholder\n\
+         \x20 if ! $svc validate --config $main --adapter caddyfile >/tmp/sesame-web.log 2>&1; then mv \"$f.disabled\" \"$f\"; tail -5 /tmp/sesame-web.log; exit 1; fi"
+    };
+    let script = format!(
+        "placeholder() {{ {{ head -1 \"$f.disabled\"; grep -m1 '^[[:space:]]*tls ' \"$f.disabled\"; printf '\\trespond \"This site is turned off.\" 503\\n}}\\n'; }} > \"$f\"; }}\n\
+         done=\n\
+         for f in /etc/frankenphp/Caddyfile.d/sesame-{slug}.caddyfile /etc/caddy/sites/sesame-{slug}.caddy; do\n\
+         \x20 case \"$f\" in /etc/frankenphp/*) svc=frankenphp; main=/etc/frankenphp/Caddyfile;; *) svc=caddy; main=/etc/caddy/Caddyfile;; esac\n\
+         \x20 {caddy}\n\
+         \x20 systemctl reload $svc; done=1\n\
+         done\n\
+         n=sesame-{slug}.conf\n\
+         if [ -f /etc/nginx/sites-available/$n ]; then\n\
+         \x20 if [ {enable} = true ]; then ln -sf /etc/nginx/sites-available/$n /etc/nginx/sites-enabled/$n; else rm -f /etc/nginx/sites-enabled/$n; fi\n\
+         \x20 if ! nginx -t >/tmp/sesame-web.log 2>&1; then tail -5 /tmp/sesame-web.log; if [ {enable} = true ]; then rm -f /etc/nginx/sites-enabled/$n; else ln -sf /etc/nginx/sites-available/$n /etc/nginx/sites-enabled/$n; fi; exit 1; fi\n\
+         \x20 systemctl reload nginx; done=1\n\
+         fi\n\
+         [ -n \"$done\" ] || {{ echo 'nothing to change: only sites created by Sesame can be turned off here'; exit 1; }}\n\
+         echo '{msg}'",
+        msg = if enable { "site is on" } else { "site is off" },
+    );
+    Ok(Plan {
+        op: if enable { "site_enable" } else { "site_disable" },
+        title: format!("turn {domain} {}", if enable { "on" } else { "off" }),
+        risk: if enable { Risk::Change } else { Risk::Destructive },
+        details: if enable {
+            vec!["its web-server file is put back, validated and reloaded".into()]
+        } else {
+            vec![
+                "visitors get “This site is turned off.” (503)".into(),
+                "files, database, workers and cron stay — turning it on again is instant".into(),
+            ]
+        },
+        confirm_word: if enable { None } else { Some(domain.to_string()) },
+        steps: vec![Step::new(if enable { "turn the site on" } else { "turn the site off" }, script)],
+        reveal: vec![],
+        secret_scope: None,
+    })
+}
+
+/// Checks an OpenSSH public key line and returns `type base64` without its comment.
+pub fn clean_public_key(key: &str) -> Result<String> {
+    let words: Vec<&str> = key.split_whitespace().collect();
+    let (Some(kind), Some(b64)) = (words.first(), words.get(1)) else { bail!("paste a public key like `ssh-ed25519 AAAA… you@laptop`") };
+    let kinds = ["ssh-ed25519", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521", "sk-ssh-ed25519@openssh.com", "sk-ecdsa-sha2-nistp256@openssh.com"];
+    if !kinds.contains(kind) {
+        bail!("unsupported key type {kind}");
+    }
+    if b64.len() < 60 || !b64.chars().all(|c| c.is_ascii_alphanumeric() || "+/=".contains(c)) {
+        bail!("this does not look like a public key");
+    }
+    Ok(format!("{kind} {b64}"))
+}
+
+fn valid_person(name: &str) -> bool {
+    !name.is_empty() && name.len() <= 40 && name.chars().all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
+}
+
+/// Lets a person into the site owner's account with their own SSH key:
+/// `sftp` (files only, no shell, no forwarding) or `shell`.
+pub fn grant_access(domain: &str, app_path: &str, person: &str, public_key: &str, shell: bool) -> Result<Plan> {
+    if !valid_domain(domain) || !app_path.starts_with('/') || app_path.contains("..") || app_path.contains('\'') {
+        bail!("invalid site");
+    }
+    if !valid_person(person) {
+        bail!("a name may use letters, digits, dot, dash and underscore");
+    }
+    let key = clean_public_key(public_key)?;
+    let options = if shell { "restrict,pty".to_string() } else { "restrict,command=\\\"$SFTP\\\"".to_string() };
+    let script = format!(
+        "owner=$(stat -c %U {app})
+         home=$(getent passwd \"$owner\" | cut -d: -f6)
+         [ \"$owner\" != root ] && [ -n \"$home\" ] || {{ echo 'the site has no owner account'; exit 1; }}
+         SFTP=$(sshd -T 2>/dev/null | awk '$1==\"subsystem\" && $2==\"sftp\" {{print $3}}')
+         case \"$SFTP\" in /*) ;; *) SFTP=/usr/lib/openssh/sftp-server;; esac
+         install -d -o \"$owner\" -g \"$(id -gn \"$owner\")\" -m 700 \"$home/.ssh\"
+         f=\"$home/.ssh/authorized_keys\"
+         touch \"$f\"
+         grep -v ' sesame-access:{person}$' \"$f\" > \"$f.sesame\" || true
+         echo \"{options} {key} sesame-access:{person}\" >> \"$f.sesame\"
+         chown \"$owner\": \"$f.sesame\" && chmod 600 \"$f.sesame\" && mv \"$f.sesame\" \"$f\"
+         echo \"{person} can connect: {how} $owner@$(hostname -f 2>/dev/null || hostname)\"",
+        app = q(app_path),
+        how = if shell { "ssh" } else { "sftp" },
+    );
+    Ok(Plan {
+        op: "site_access_grant",
+        title: format!("{} access to {domain} for {person}", if shell { "SSH" } else { "SFTP" }),
+        risk: Risk::Change,
+        details: vec![
+            format!("{person}'s key is added to the site owner's authorized_keys"),
+            if shell { "a shell as the site's user, no port or agent forwarding".into() } else { "files only (SFTP), no shell, no forwarding".into() },
+            "only this owner's sites are reachable; other sites stay closed".into(),
+        ],
+        confirm_word: None,
+        steps: vec![Step::new("add the key", script)],
+        reveal: vec![],
+        secret_scope: None,
+    })
+}
+
+/// Removes a person's key from the site owner's account.
+pub fn revoke_access(domain: &str, app_path: &str, person: &str) -> Result<Plan> {
+    if !valid_domain(domain) || !app_path.starts_with('/') || app_path.contains("..") || app_path.contains('\'') || !valid_person(person) {
+        bail!("invalid input");
+    }
+    let script = format!(
+        "owner=$(stat -c %U {app})
+         f=\"$(getent passwd \"$owner\" | cut -d: -f6)/.ssh/authorized_keys\"
+         [ -f \"$f\" ] || {{ echo 'no keys'; exit 0; }}
+         grep -v ' sesame-access:{person}$' \"$f\" > \"$f.sesame\" || true
+         chown \"$owner\": \"$f.sesame\" && chmod 600 \"$f.sesame\" && mv \"$f.sesame\" \"$f\"
+         pkill -u \"$owner\" -f 'sftp-server|sshd: '\"$owner\" 2>/dev/null || true
+         echo 'access removed'",
+        app = q(app_path)
+    );
+    Ok(Plan {
+        op: "site_access_revoke",
+        title: format!("remove {person}'s access to {domain}"),
+        risk: Risk::Destructive,
+        details: vec![format!("{person}'s key is removed; open sessions of the site's user are closed")],
+        confirm_word: None,
+        steps: vec![Step::new("remove the key", script)],
+        reveal: vec![],
+        secret_scope: None,
+    })
+}
+
 /// Outgoing mail for a Laravel site over SMTP (Resend, Stalwart or any relay):
 /// MAIL_* in `.env`. SMTP needs no extra composer package.
 pub fn mail_for_site(domain: &str, app_path: &str, smtp: &Smtp) -> Result<Plan> {
@@ -794,6 +939,33 @@ pub fn scheduler_for_site(domain: &str, app_path: &str) -> Result<Plan> {
 #[cfg(test)]
 mod more_site_tests {
     use super::*;
+
+    #[test]
+    fn site_toggle_validates_and_rolls_back() {
+        for on in [true, false] {
+            let p = set_site_enabled("shop.example.com", on).unwrap();
+            let s = &p.steps[0].script;
+            assert!(s.contains("validate --config"));
+            assert!(std::process::Command::new("sh").args(["-n", "-c", s]).status().unwrap().success(), "{s}");
+        }
+        assert_eq!(set_site_enabled("shop.example.com", false).unwrap().confirm_word.as_deref(), Some("shop.example.com"));
+        assert!(set_site_enabled("a.com; rm -rf /", false).is_err());
+    }
+
+    #[test]
+    fn access_keys_are_checked_and_scoped() {
+        let key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGq8qz1fUeQ9h7oX3m2bV4nT6yR0wK8sL5dJ1cP9aZxE anna@mac";
+        let p = grant_access("shop.example.com", "/home/s_shop/shop.example.com", "anna", key, false).unwrap();
+        let s = &p.steps[0].script;
+        assert!(s.contains("restrict,command=\\\"$SFTP\\\""), "{s}");
+        assert!(!s.contains("anna@mac"), "comment replaced by our marker");
+        assert!(std::process::Command::new("sh").args(["-n", "-c", s]).status().unwrap().success());
+        assert!(grant_access("shop.example.com", "/home/s/x", "anna; rm", key, true).is_err());
+        assert!(clean_public_key("ssh-ed25519 short").is_err());
+        assert!(clean_public_key("ssh-ed25519 AAAA$(reboot)AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").is_err());
+        let r = revoke_access("shop.example.com", "/home/s_shop/shop.example.com", "anna").unwrap();
+        assert!(std::process::Command::new("sh").args(["-n", "-c", &r.steps[0].script]).status().unwrap().success());
+    }
 
     #[test]
     fn mail_for_site_writes_smtp_env() {

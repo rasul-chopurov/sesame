@@ -1,6 +1,6 @@
 //! Phase 2 parsers: an app directory and a certificate.
 
-use sesame_core::snapshot::{AppEnv, Certificate, Framework, GitInfo};
+use sesame_core::snapshot::{Access, AppEnv, Certificate, Framework, GitInfo};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
@@ -11,6 +11,20 @@ pub struct AppDetails {
     pub version: Option<String>,
     pub env: Option<AppEnv>,
     pub git: Option<GitInfo>,
+    pub owner: Option<String>,
+    pub access: Vec<Access>,
+}
+
+/// `restrict,pty ssh-ed25519 AAAA… sesame-access:anna` → anna, shell.
+pub fn access_line(line: &str) -> Option<Access> {
+    let words: Vec<&str> = line.split_whitespace().collect();
+    let name = words.last()?.strip_prefix("sesame-access:")?.to_string();
+    let ki = words.iter().position(|w| w.starts_with("ssh-") || w.starts_with("ecdsa-"))?;
+    let options = if ki > 0 { words[..ki].join(" ") } else { String::new() };
+    let mode = if options.split(',').any(|o| o == "pty") { "shell" } else { "sftp" };
+    let material = words.get(ki + 1).copied().unwrap_or("");
+    let tail: String = material.chars().rev().take(10).collect::<Vec<_>>().into_iter().rev().collect();
+    Some(Access { name, mode: mode.into(), key: format!("{} …{tail}", words[ki]) })
 }
 
 pub fn app(body: &str) -> AppDetails {
@@ -69,6 +83,10 @@ pub fn app(body: &str) -> AppDetails {
                 g.remote = Some(v.to_string()).filter(|r| !r.is_empty());
                 g.github_repo = GitInfo::github_repo_of(v);
             }
+        } else if let Some(o) = line.strip_prefix("owner=") {
+            d.owner = Some(o.to_string()).filter(|o| !o.is_empty());
+        } else if let Some(a) = line.strip_prefix("access:") {
+            d.access.extend(access_line(a));
         } else if let Some(wp) = line.strip_prefix("wp:") {
             // define( 'DB_NAME', 'wordpress'
             let parts: Vec<&str> = wp.split('\'').collect();
@@ -162,6 +180,10 @@ mod tests {
 
     #[test]
     fn git_checkout() {
+        let a = app("owner=s_shop\naccess:restrict,pty ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIabcdefghij0123456789 sesame-access:anna\naccess:restrict,command=\"/usr/lib/openssh/sftp-server\" ssh-ed25519 AAAAC3Nza sesame-access:dev.bob\n");
+        assert_eq!(a.owner.as_deref(), Some("s_shop"));
+        assert_eq!((a.access[0].name.as_str(), a.access[0].mode.as_str()), ("anna", "shell"));
+        assert_eq!((a.access[1].name.as_str(), a.access[1].mode.as_str()), ("dev.bob", "sftp"));
         let d = app("framework=laravel\ngit_sha=1a2b3c4\ngit_branch=main\ngit_remote=git@github.com:rasul-chopurov/shop.git\n");
         let g = d.git.unwrap();
         assert_eq!(g.sha, "1a2b3c4");

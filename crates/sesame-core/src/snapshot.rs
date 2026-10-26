@@ -125,6 +125,24 @@ pub struct Site {
     /// The checkout in the app directory, when it is a git repository.
     #[serde(default)]
     pub git: Option<GitInfo>,
+    /// Linux user that owns the app directory.
+    #[serde(default)]
+    pub owner: Option<String>,
+    /// People Sesame gave SSH/SFTP access to the owner's account.
+    #[serde(default)]
+    pub access: Vec<Access>,
+    /// Turned off in Sesame: its web-server file is set aside.
+    #[serde(default)]
+    pub disabled: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct Access {
+    pub name: String,
+    /// `sftp` (files only) or `shell`.
+    pub mode: String,
+    /// Key type and the start of its fingerprint material, for display.
+    pub key: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]

@@ -90,7 +90,9 @@ sites.back: { en: "All sites", ru: "Все сайты", az: "Bütün saytlar" }
 sites.open: { en: "Open in browser", ru: "Открыть в браузере", az: "Brauzerdə aç" }
 sites.maintenance: { en: "Maintenance mode", ru: "Режим обслуживания", az: "Texniki xidmət rejimi" }
 sites.disable: { en: "Disable site", ru: "Отключить сайт", az: "Saytı söndür" }
-sites.disable_note: { en: "Turning a site off needs it under Sesame management (its own web-server file) — coming next. Maintenance mode works for any Laravel site.", ru: "Отключение работает для сайтов под управлением Sesame (свой файл веб-сервера) — скоро. Режим обслуживания работает для любого Laravel-сайта.", az: "Saytı söndürmək üçün o, Sesame idarəsində olmalıdır (öz veb server faylı) — tezliklə. Texniki xidmət rejimi istənilən Laravel saytında işləyir." }
+sites.enable: { en: "Enable site", ru: "Включить сайт", az: "Saytı yandır" }
+sites.disabled: { en: "disabled", ru: "отключён", az: "söndürülüb" }
+sites.disable_note: { en: "Turning a site off works for sites created by Sesame (their own web-server file). Maintenance mode works for any Laravel site.", ru: "Отключать можно сайты, созданные Sesame (у них свой файл веб-сервера). Режим обслуживания работает для любого Laravel-сайта.", az: "Yalnız Sesame-in yaratdığı saytları söndürmək olar (öz veb-server faylı var). Texniki xidmət rejimi istənilən Laravel saytı üçün işləyir." }
 sites.framework: { en: "Framework", ru: "Фреймворк", az: "Framework" }
 sites.directory: { en: "Directory", ru: "Папка", az: "Qovluq" }
 sites.served_by: { en: "Served by", ru: "Обслуживает", az: "Xidmət edir" }
@@ -385,3 +387,15 @@ palette.light: { en: "Theme: light", ru: "Тема: светлая", az: "Mövzu
 palette.dark: { en: "Theme: dark", ru: "Тема: тёмная", az: "Mövzu: tünd" }
 palette.system: { en: "Theme: system", ru: "Тема: как в системе", az: "Mövzu: sistem" }
 palette.keys: { en: "↑↓ choose · ↵ open · esc close", ru: "↑↓ выбрать · ↵ открыть · esc закрыть", az: "↑↓ seç · ↵ aç · esc bağla" }
+access.title: { en: "Access", ru: "Доступ", az: "Giriş" }
+access.unknown: { en: "Rediscover to see who owns this site.", ru: "Обновите сервер, чтобы увидеть владельца сайта.", az: "Saytın sahibini görmək üçün serveri yeniləyin." }
+access.owner: { en: "Owner account", ru: "Аккаунт владельца", az: "Sahib hesabı" }
+access.root_owner: { en: "owned by root", ru: "принадлежит root", az: "root-a məxsusdur" }
+access.root_hint: { en: "This site's files belong to root, so personal access can't be scoped to it. Sites created by Sesame get their own user.", ru: "Файлы сайта принадлежат root, поэтому личный доступ нельзя ограничить только им. У сайтов, созданных Sesame, свой пользователь.", az: "Saytın faylları root-a məxsusdur, ona görə şəxsi girişi yalnız bu sayta məhdudlaşdırmaq olmur. Sesame-in yaratdığı saytların öz istifadəçisi var." }
+access.nobody: { en: "Nobody else has access yet.", ru: "Больше ни у кого нет доступа.", az: "Hələ heç kimin girişi yoxdur." }
+access.add: { en: "Give someone access", ru: "Дать доступ", az: "Giriş ver" }
+access.shell: { en: "Shell", ru: "Оболочка", az: "Shell" }
+access.sftp_hint: { en: "Files only over SFTP. No shell, no port forwarding.", ru: "Только файлы по SFTP. Без оболочки и проброса портов.", az: "Yalnız SFTP ilə fayllar. Shell və port yönləndirmə yoxdur." }
+access.shell_hint: { en: "A shell as the site's user (artisan, composer). No port forwarding.", ru: "Оболочка от имени пользователя сайта (artisan, composer). Без проброса портов.", az: "Saytın istifadəçisi kimi shell (artisan, composer). Port yönləndirmə yoxdur." }
+access.grant: { en: "Give access", ru: "Дать доступ", az: "Giriş ver" }
+access.scope: { en: "The key opens %{owner} only — other sites on the server stay closed.", ru: "Ключ открывает только %{owner} — остальные сайты на сервере закрыты.", az: "Açar yalnız %{owner}-i açır — serverdəki digər saytlar bağlı qalır." }

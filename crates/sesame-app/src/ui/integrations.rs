@@ -1433,6 +1433,27 @@ impl SesameApp {
     /// Fills GitHub and Cloudflare with sample data (screenshots, demos).
     #[doc(hidden)]
     pub fn demo_integrations(&mut self, server_ip: &str, cx: &mut Context<Self>) {
+        for snap in self.snapshots.values_mut() {
+            if let Some(site) = snap.sites.first_mut() {
+                site.owner = Some("s_new_example_com".into());
+                site.access = vec![
+                    sesame_core::snapshot::Access { name: "anna".into(), mode: "sftp".into(), key: "ssh-ed25519 …sBFv/UMYqV".into() },
+                    sesame_core::snapshot::Access { name: "dev-bob".into(), mode: "shell".into(), key: "ssh-ed25519 …Q9h7oX3m2b".into() },
+                ];
+            }
+        }
+        self.rs.connected = true;
+        self.rs.domains = vec![sesame_mail::Domain {
+            id: "rd1".into(),
+            name: "new.example.com".into(),
+            status: "pending".into(),
+            region: "eu-west-1".into(),
+            records: vec![
+                sesame_mail::Record { record: "DKIM".into(), name: "resend._domainkey".into(), kind: "TXT".into(), value: "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDsc4Lh8xilsngyKEgN2S84".into(), priority: None, status: "verified".into() },
+                sesame_mail::Record { record: "SPF".into(), name: "send".into(), kind: "MX".into(), value: "feedback-smtp.eu-west-1.amazonses.com".into(), priority: Some(10), status: "verified".into() },
+                sesame_mail::Record { record: "SPF".into(), name: "send".into(), kind: "TXT".into(), value: "v=spf1 include:amazonses.com ~all".into(), priority: None, status: "pending".into() },
+            ],
+        }];
         self.gh.login = Some("rasul-chopurov".into());
         self.gh.repos = vec![Repo {
             full_name: "rasul-chopurov/shop".into(),

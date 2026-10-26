@@ -2,6 +2,7 @@
 //! servers and their sections, the content panel and a status bar.
 
 mod integrations;
+mod access;
 mod agents;
 mod palette;
 mod files;
@@ -194,6 +195,7 @@ pub struct SesameApp {
     pub(crate) approvals: Vec<sesame_core::Approval>,
     pub(crate) rs: integrations::RsState,
     pub(crate) palette: Option<palette::Palette>,
+    pub(crate) access_in: access::AccessInputs,
     pub(crate) api_token: Option<String>,
     pub(crate) forget_input: Entity<InputState>,
     _subscriptions: Vec<Subscription>,
@@ -228,6 +230,7 @@ impl SesameApp {
         let ns = newsite::Form::new(window, cx);
         let files_in = files::Inputs::new(window, cx);
         let forget_input = cx.new(|cx| InputState::new(window, cx));
+        let access_in = access::AccessInputs::new(window, cx);
         let vault_pw = cx.new(|cx| InputState::new(window, cx).masked(true));
         let vault_pw2 = cx.new(|cx| InputState::new(window, cx).masked(true));
 
@@ -311,6 +314,7 @@ impl SesameApp {
             approvals: vec![],
             rs: Default::default(),
             palette: None,
+            access_in,
             api_token: None,
             forget_input,
             _subscriptions: subs,

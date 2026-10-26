@@ -411,9 +411,12 @@ fn site_card(server: sesame_core::ServerId, i: usize, site: &Site, s: &ServerSna
     let title = site_title(site);
     let procs: Vec<&SupervisorProgram> = s.supervisor.iter().filter(|p| site.processes.contains(&p.name)).collect();
     let all_running = procs.iter().all(|p| p.state == "RUNNING");
-    let status = if all_running { g.ok } else { g.bad };
+    let status = if site.disabled { g.faint } else if all_running { g.ok } else { g.bad };
 
     let mut tags = h_flex().gap_1().flex_wrap();
+    if site.disabled {
+        tags = tags.child(pill(tr("sites.disabled"), g.faint));
+    }
     if let Some(f) = framework_label(site) {
         tags = tags.child(
             h_flex()
@@ -554,7 +557,19 @@ fn site_detail(app: &SesameApp, server: sesame_core::ServerId, s: &ServerSnapsho
                 )))
             },
         )
-        .child(Button::new("disable").ghost().icon(IconName::PowerOff).label(tr("sites.disable")).disabled(true));
+        .child({
+            let managed = site.app_path.as_deref().is_some_and(|p| p.starts_with("/home/s_"));
+            let domain = site.domains.first().cloned().unwrap_or_default();
+            let on = !site.disabled;
+            Button::new("disable")
+                .ghost()
+                .icon(if on { IconName::PowerOff } else { IconName::Power })
+                .label(if on { tr("sites.disable") } else { tr("sites.enable") })
+                .disabled(!managed)
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.request(server, sesame_ops::site::set_site_enabled(&domain, !on), None, window, cx)
+                }))
+        });
 
     let fw = framework_label(site).unwrap_or_else(|| "—".into());
     let mut info = card(&tr("nav.sites"), cx)
@@ -631,6 +646,7 @@ fn site_detail(app: &SesameApp, server: sesame_core::ServerId, s: &ServerSnapsho
         .child(super::integrations::repo_card(app, server, site, s, cx))
         .child(super::integrations::dns_card(app, server, site, cx))
         .child(super::integrations::mail_card(app, server, site, cx))
+        .child(super::access::access_card(app, server, site, cx))
         .when(!procs.is_empty(), |d| d.child(proc_card))
         .child(isolation)
 }
