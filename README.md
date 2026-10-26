@@ -91,7 +91,7 @@ State lives in `~/Library/Application Support/dev.sesame.Sesame/state.db` (overr
 - [x] SSH, read-only discovery, insights, light and dark themes, CLI
 - [x] Glass design, Russian translation, sites as searchable cards, in-app updates with changelog
 - [x] Command palette ⌘K
-- [ ] Maintenance mode · disable/enable · per-site isolation (own Linux user, PHP-FPM pool or Octane, DB user, Redis ACL)
+- [x] Maintenance mode · turn sites off and on · per-site isolation (own Linux user, PHP-FPM pool or Octane, DB user, Redis ACL)
 - [x] Start/stop/restart services, clean up unused ones — previewed, confirmed, audited
 - [x] Databases: create/drop databases and users for MySQL, MariaDB, PostgreSQL, MongoDB (backup before drop)
 - [x] One-click services: Redis, PostgreSQL, MariaDB, MongoDB, Elasticsearch, S3 (RustFS), Reverb
@@ -99,9 +99,9 @@ State lives in `~/Library/Application Support/dev.sesame.Sesame/state.db` (overr
 - [x] Deploys from GitHub and a "new isolated site" wizard, SFTP files with an editor, terminal
 - [x] MCP and REST API for AI agents, with in-app approvals
 - [x] Mail: Resend domains and site keys; Stalwart mail server (experimental)
-- [ ] Site owners and delegated access (one Linux user per owner, SFTP keys per person)
-- [ ] Provision a fresh server from zero
-- [ ] Windows · mobile · Sesame Cloud ([plan](docs/cloud-plan.md))
+- [x] Site owners and per-person access (SFTP-only or shell keys, revoke in one click)
+- [x] Prepare a fresh server for Laravel (idempotent: only installs what is missing)
+- [ ] Windows release (builds in CI) · mobile · Sesame Cloud ([plan](docs/cloud-plan.md))
 
 ## Architecture
 

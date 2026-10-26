@@ -12,6 +12,9 @@ and Sesame uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Command palette ⌘K.
 - Removing a server from Sesame asks for its name.
 - New landing page in EN/AZ/RU.
+- Site owners and per-person SSH/SFTP access; turn Sesame sites off (503 page) and on.
+- Prepare a server for Laravel from zero: base packages, security updates, swap, PHP, Composer, Caddy, supervisor, fail2ban, ufw.
+- Windows build checked in CI.
 
 ## [Unreleased]
 
