@@ -352,3 +352,17 @@ term.external: { en: "Open in Terminal.app", ru: "Открыть в Terminal.app
 term.lead: { en: "A real shell on the server as %{user}. Everything you type runs there — be careful as root.", ru: "Настоящий терминал сервера от имени %{user}. Всё, что вы вводите, выполняется там — с root будьте внимательны.", az: "Serverdə %{user} adından əsl terminal. Yazdığınız hər şey orada icra olunur — root ilə diqqətli olun." }
 term.closed: { en: "The session has ended.", ru: "Сессия завершена.", az: "Sessiya bitdi." }
 term.connecting: { en: "Connecting…", ru: "Подключаюсь…", az: "Qoşulur…" }
+server.forget: { en: "Remove from Sesame", ru: "Убрать из Sesame", az: "Sesame-dən çıxar" }
+server.forget_lead: { en: "Removes %{name} from this list and its saved secrets. The server itself and everything on it are not touched.", ru: "Убирает %{name} из списка вместе с сохранёнными секретами. Сам сервер и всё на нём не трогаются.", az: "%{name} siyahıdan və saxlanmış sirləri ilə birlikdə çıxarılır. Serverin özünə və üzərindəkilərə toxunulmur." }
+agents.title: { en: "Agents (MCP & REST)", ru: "Агенты (MCP и REST)", az: "Agentlər (MCP və REST)" }
+agents.lead: { en: "Claude, Cursor and other agents can use Sesame. Reading is immediate; every change waits for your approval here.", ru: "Claude, Cursor и другие агенты могут работать через Sesame. Чтение — сразу, любое изменение ждёт вашего подтверждения здесь.", az: "Claude, Cursor və digər agentlər Sesame ilə işləyə bilər. Oxuma dərhal, hər dəyişiklik burada təsdiqinizi gözləyir." }
+agents.claude_code: { en: "Claude Code", ru: "Claude Code", az: "Claude Code" }
+agents.json: { en: "Claude Desktop / Cursor (mcpServers)", ru: "Claude Desktop / Cursor (mcpServers)", az: "Claude Desktop / Cursor (mcpServers)" }
+agents.share: { en: "Return generated passwords to agents", ru: "Отдавать агентам сгенерированные пароли", az: "Yaradılan parolları agentlərə qaytar" }
+agents.rest: { en: "REST API", ru: "REST API", az: "REST API" }
+agents.rest_hint: { en: "Run `sesame serve` (127.0.0.1:7878). The token is shown once; only its hash is kept.", ru: "Запустите `sesame serve` (127.0.0.1:7878). Токен показывается один раз, хранится только его хеш.", az: "`sesame serve` işə salın (127.0.0.1:7878). Token bir dəfə göstərilir, yalnız heşi saxlanılır." }
+agents.new_token: { en: "New token", ru: "Новый токен", az: "Yeni token" }
+agents.password_note: { en: "With a master password, add SESAME_MASTER_PASSWORD to the agent's environment so it can use saved secrets.", ru: "С мастер-паролем добавьте SESAME_MASTER_PASSWORD в окружение агента, чтобы он мог использовать сохранённые секреты.", az: "Master parol varsa, agentin mühitinə SESAME_MASTER_PASSWORD əlavə edin ki, saxlanmış sirlərdən istifadə etsin." }
+approve.title: { en: "%{agent} wants to:", ru: "%{agent} хочет:", az: "%{agent} istəyir:" }
+approve.allow: { en: "Allow", ru: "Разрешить", az: "İcazə ver" }
+approve.deny: { en: "Deny", ru: "Отклонить", az: "Rədd et" }

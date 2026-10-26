@@ -1,0 +1,20 @@
+[package]
+name = "sesame-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Sesame's operations as tools: one engine behind the CLI, MCP and REST, with approvals and the audit log."
+
+[dependencies]
+sesame-core = { path = "../sesame-core" }
+sesame-ssh = { path = "../sesame-ssh" }
+sesame-discovery = { path = "../sesame-discovery" }
+sesame-ops = { path = "../sesame-ops" }
+sesame-provision = { path = "../sesame-provision" }
+sesame-cloudflare = { path = "../sesame-cloudflare" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+uuid = { version = "1", features = ["v4"] }
+time = { version = "0.3", features = ["formatting"] }

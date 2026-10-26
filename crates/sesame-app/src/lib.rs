@@ -6,5 +6,7 @@ pub mod assets;
 pub mod cli;
 pub mod format;
 pub mod i18n;
+pub mod mcp;
+pub mod rest;
 pub mod runtime;
 pub mod ui;

@@ -26,6 +26,11 @@ clap = { version = "4", features = ["derive"] }
 rust-i18n = "4"
 rpassword = "7"
 vt100 = "0.18"
+sesame-engine = { path = "../sesame-engine" }
+axum = "0.8"
+sha2 = "0.10"
+getrandom = "0.3"
+hex = "0.4"
 sys-locale = "0.3"
 semver = "1"
 time = "0.3"

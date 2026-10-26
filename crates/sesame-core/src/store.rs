@@ -34,6 +34,21 @@ pub struct SiteLink {
     pub branch: String,
 }
 
+/// A change an agent asked for, waiting for the user in the app.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Approval {
+    pub id: String,
+    pub created_at: String,
+    pub actor: String,
+    pub server_id: ServerId,
+    pub title: String,
+    pub details: Vec<String>,
+    /// `change` or `destructive`.
+    pub risk: String,
+    /// `pending`, `approved`, `denied` or `expired`.
+    pub status: String,
+}
+
 /// One change Sesame made (or tried to make) on a server. Never contains secrets.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AuditEntry {
@@ -108,6 +123,16 @@ impl SqliteStore {
                 repo TEXT NOT NULL,
                 branch TEXT NOT NULL,
                 PRIMARY KEY (server_id, domain)
+            );
+            CREATE TABLE IF NOT EXISTS approvals (
+                id TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                server_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                details TEXT NOT NULL,
+                risk TEXT NOT NULL,
+                status TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS vault_meta (
                 key TEXT PRIMARY KEY,
@@ -263,6 +288,46 @@ impl Store for SqliteStore {
 
 /// Raw access for the vault: it stores only ciphertext here.
 impl SqliteStore {
+    pub fn add_approval(&self, a: &Approval) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO approvals (id, created_at, actor, server_id, title, details, risk, status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![a.id, a.created_at, a.actor, a.server_id.to_string(), a.title, serde_json::to_string(&a.details)?, a.risk, a.status],
+        )?;
+        Ok(())
+    }
+
+    pub fn approval_status(&self, id: &str) -> Result<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        Ok(conn.query_row("SELECT status FROM approvals WHERE id = ?1", [id], |r| r.get(0)).optional()?)
+    }
+
+    /// Moves a pending request to `status`; returns false if it was not pending.
+    pub fn decide_approval(&self, id: &str, status: &str) -> Result<bool> {
+        let conn = self.conn.lock().unwrap();
+        Ok(conn.execute("UPDATE approvals SET status = ?2 WHERE id = ?1 AND status = 'pending'", params![id, status])? == 1)
+    }
+
+    pub fn pending_approvals(&self) -> Result<Vec<Approval>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, created_at, actor, server_id, title, details, risk, status FROM approvals WHERE status = 'pending' ORDER BY created_at",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(Approval {
+                id: r.get(0)?,
+                created_at: r.get(1)?,
+                actor: r.get(2)?,
+                server_id: r.get::<_, String>(3)?.parse().unwrap_or_default(),
+                title: r.get(4)?,
+                details: serde_json::from_str(&r.get::<_, String>(5)?).unwrap_or_default(),
+                risk: r.get(6)?,
+                status: r.get(7)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     pub(crate) fn vault_meta(&self, key: &str) -> Result<Option<Vec<u8>>> {
         let conn = self.conn.lock().unwrap();
         Ok(conn
@@ -429,6 +494,27 @@ mod tests {
         assert_eq!(store.site_link(id, "shop.test").unwrap(), Some(l));
         store.delete_site_link(id, "shop.test").unwrap();
         assert!(store.site_link(id, "shop.test").unwrap().is_none());
+    }
+
+    #[test]
+    fn approvals_flow() {
+        let store = SqliteStore::in_memory().unwrap();
+        let a = Approval {
+            id: "a1".into(),
+            created_at: "t".into(),
+            actor: "agent:claude".into(),
+            server_id: uuid::Uuid::new_v4(),
+            title: "install redis".into(),
+            details: vec!["listens on 127.0.0.1".into()],
+            risk: "change".into(),
+            status: "pending".into(),
+        };
+        store.add_approval(&a).unwrap();
+        assert_eq!(store.pending_approvals().unwrap(), vec![a.clone()]);
+        assert!(store.decide_approval("a1", "approved").unwrap());
+        assert!(!store.decide_approval("a1", "denied").unwrap(), "decided once");
+        assert_eq!(store.approval_status("a1").unwrap().as_deref(), Some("approved"));
+        assert!(store.pending_approvals().unwrap().is_empty());
     }
 
     #[test]

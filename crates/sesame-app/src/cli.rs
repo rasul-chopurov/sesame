@@ -142,6 +142,15 @@ pub enum Command {
     /// Type commands into an interactive PTY shell and print what comes back (diagnostics).
     #[command(hide = true)]
     ShellProbe { server: String, input: String },
+    /// Run the MCP server on stdio (for Claude Code, Claude Desktop, Cursor…).
+    Mcp,
+    /// Run the local REST API on 127.0.0.1.
+    Serve {
+        #[arg(long, default_value_t = 7878)]
+        port: u16,
+    },
+    /// Create a new REST API token (replaces the old one; shown once).
+    ApiToken,
     /// Show the audit log.
     Audit {
         server: Option<String>,
@@ -158,6 +167,25 @@ pub enum Command {
     },
     /// Attach a snapshot JSON (output of `sesame discover`) to a saved server.
     ImportSnapshot { name: String, file: String },
+}
+
+/// Unlocks the vault without ever prompting (MCP and REST own stdin/stdout):
+/// the key file, or `SESAME_MASTER_PASSWORD`.
+pub fn unlock_vault_quietly(store: &std::sync::Arc<SqliteStore>) -> Result<()> {
+    use sesame_core::vault::{Vault, VaultMode};
+    if sesame_core::secrets::is_unlocked() {
+        return Ok(());
+    }
+    let vault = match Vault::mode(store)? {
+        VaultMode::KeyFile => Vault::unlock_with_key_file(store.clone(), &Vault::key_file_path()?)?,
+        VaultMode::Password => {
+            let pw = std::env::var("SESAME_MASTER_PASSWORD").map_err(|_| anyhow::anyhow!("SESAME_MASTER_PASSWORD is not set"))?;
+            Vault::unlock_with_password(store.clone(), &pw)?
+        }
+        VaultMode::New => bail!("the vault is not set up yet — open the Sesame app once"),
+    };
+    sesame_core::secrets::install(vault);
+    Ok(())
 }
 
 /// Unlocks the encrypted vault for this process: `SESAME_MASTER_PASSWORD`,
@@ -199,6 +227,16 @@ pub fn unlock_vault(store: &std::sync::Arc<SqliteStore>) -> Result<()> {
 
 pub async fn run(cmd: Command) -> Result<()> {
     let store = std::sync::Arc::new(SqliteStore::open_default()?);
+    match cmd {
+        Command::Mcp => return crate::mcp::serve(store).await,
+        Command::Serve { port } => return crate::rest::serve(store, port).await,
+        Command::ApiToken => {
+            println!("{}", crate::rest::new_token(&store)?);
+            eprintln!("Use it as: Authorization: Bearer <token>. It is shown only once.");
+            return Ok(());
+        }
+        _ => {}
+    }
     let needs_vault = !matches!(cmd, Command::Servers | Command::Ops | Command::Audit { .. } | Command::Update { .. } | Command::Remove { .. } | Command::Panel { .. } | Command::Files { .. } | Command::ShellProbe { .. });
     if needs_vault {
         unlock_vault(&store)?;
@@ -337,6 +375,7 @@ pub async fn run(cmd: Command) -> Result<()> {
                 println!("{}  {:<4} {:<6} {:<18} {}", e.at, if e.ok { "ok" } else { "FAIL" }, e.actor, e.op, e.title);
             }
         }
+        Command::Mcp | Command::Serve { .. } | Command::ApiToken => unreachable!("handled above"),
         Command::Ops => {
             for op in sesame_core::ops::OPS {
                 println!("{:<16} {:<12} {}", op.name, format!("{:?}", op.risk), op.description);

@@ -84,11 +84,45 @@ pub fn server(
         .child(
             Button::new("remove")
                 .ghost()
-                .label(tr("server.remove"))
-                .on_click(cx.listener(move |this, _, _, cx| this.remove_server(id, cx))),
+                .label(tr("server.forget"))
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.confirm_forget = Some(id);
+                    this.forget_input.update(cx, |s, cx| s.set_value("", window, cx));
+                    cx.notify();
+                })),
         );
 
     let mut body = v_flex().gap_4();
+    if app.confirm_forget == Some(id) {
+        let typed = app.forget_input.read(cx).value().trim().to_string();
+        let name = server.name.clone();
+        body = body.child(
+            card(&tr("server.forget"), cx)
+                .child(div().text_color(g.dim).child(trp("server.forget_lead", &[("name", &server.name)])))
+                .child(div().text_color(g.dim).child(trp("job.type_to_confirm", &[("word", &server.name)])))
+                .child(
+                    h_flex()
+                        .gap_2()
+                        .child(div().w(px(240.)).child(Input::new(&app.forget_input)))
+                        .child(
+                            Button::new("forget-yes")
+                                .danger()
+                                .label(tr("server.forget"))
+                                .disabled(typed != name)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    if this.forget_input.read(cx).value().trim() == name {
+                                        this.confirm_forget = None;
+                                        this.remove_server(id, cx);
+                                    }
+                                })),
+                        )
+                        .child(Button::new("forget-no").ghost().label(tr("job.cancel")).on_click(cx.listener(|this, _, _, cx| {
+                            this.confirm_forget = None;
+                            cx.notify();
+                        }))),
+                ),
+        );
+    }
     if let Some(e) = app.errors.get(&id) {
         body = body.child(card(&tr("server.could_not_discover"), cx).child(div().text_color(g.bad).child(e.clone())));
     }
@@ -1350,6 +1384,7 @@ pub fn settings(app: &SesameApp, _window: &mut Window, cx: &mut Context<SesameAp
                 )),
         )
         .child(super::integrations::settings_card(app, cx))
+        .child(super::agents::settings_card(app, cx))
         .child(
             card(&tr("settings.about"), cx)
                 .child(h_flex().gap_3().child(img(ImageSource::Resource(Resource::Embedded("logo.svg".into()))).size(px(32.))).child(

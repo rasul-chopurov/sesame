@@ -2,6 +2,7 @@
 //! servers and their sections, the content panel and a status bar.
 
 mod integrations;
+mod agents;
 mod files;
 mod jobs;
 mod newsite;
@@ -187,6 +188,10 @@ pub struct SesameApp {
     pub(crate) files: Option<files::FilesState>,
     pub(crate) files_in: files::Inputs,
     pub(crate) terminal: Option<terminal::TerminalState>,
+    pub(crate) confirm_forget: Option<ServerId>,
+    pub(crate) approvals: Vec<sesame_core::Approval>,
+    pub(crate) api_token: Option<String>,
+    pub(crate) forget_input: Entity<InputState>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -218,6 +223,7 @@ impl SesameApp {
         let int = integrations::Inputs::new(window, cx);
         let ns = newsite::Form::new(window, cx);
         let files_in = files::Inputs::new(window, cx);
+        let forget_input = cx.new(|cx| InputState::new(window, cx));
         let vault_pw = cx.new(|cx| InputState::new(window, cx).masked(true));
         let vault_pw2 = cx.new(|cx| InputState::new(window, cx).masked(true));
 
@@ -228,7 +234,7 @@ impl SesameApp {
         subs.push(cx.subscribe(&db_name, |_, _, _: &InputEvent, cx| cx.notify()));
         subs.push(cx.subscribe(&db_user, |_, _, _: &InputEvent, cx| cx.notify()));
         subs.push(cx.subscribe(&db_search, |_, _, _: &InputEvent, cx| cx.notify()));
-        for input in int.all().into_iter().chain(ns.inputs()).chain([&files_in.new_folder, &files_in.filter]) {
+        for input in int.all().into_iter().chain(ns.inputs()).chain([&files_in.new_folder, &files_in.filter, &forget_input]) {
             subs.push(cx.subscribe(input, |_, _, _: &InputEvent, cx| cx.notify()));
         }
         subs.push(cx.subscribe(&vault_pw2, |_, _, _: &InputEvent, cx| cx.notify()));
@@ -297,10 +303,17 @@ impl SesameApp {
             files: None,
             files_in,
             terminal: None,
+            confirm_forget: None,
+            approvals: vec![],
+            api_token: None,
+            forget_input,
             _subscriptions: subs,
         };
         if this.page != Page::Vault && translucent {
             this.load_integrations(cx);
+        }
+        if translucent {
+            this.watch_approvals(cx);
         }
         if translucent && this.page != Page::Vault && this.update_due() {
             this.check_updates(cx);
@@ -726,6 +739,7 @@ impl Render for SesameApp {
             )
             .child(self.render_statusbar(cx))
             .children(self.render_confirm(cx))
+            .children(self.render_approvals(cx))
             .into_any_element()
     }
 }
