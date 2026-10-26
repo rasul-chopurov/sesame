@@ -25,6 +25,7 @@ tokio.workspace = true
 clap = { version = "4", features = ["derive"] }
 rust-i18n = "4"
 rpassword = "7"
+vt100 = "0.18"
 sys-locale = "0.3"
 semver = "1"
 time = "0.3"

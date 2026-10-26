@@ -139,6 +139,9 @@ pub enum Command {
         #[arg(long)]
         local: Option<String>,
     },
+    /// Type commands into an interactive PTY shell and print what comes back (diagnostics).
+    #[command(hide = true)]
+    ShellProbe { server: String, input: String },
     /// Show the audit log.
     Audit {
         server: Option<String>,
@@ -196,7 +199,7 @@ pub fn unlock_vault(store: &std::sync::Arc<SqliteStore>) -> Result<()> {
 
 pub async fn run(cmd: Command) -> Result<()> {
     let store = std::sync::Arc::new(SqliteStore::open_default()?);
-    let needs_vault = !matches!(cmd, Command::Servers | Command::Ops | Command::Audit { .. } | Command::Update { .. } | Command::Remove { .. } | Command::Panel { .. } | Command::Files { .. });
+    let needs_vault = !matches!(cmd, Command::Servers | Command::Ops | Command::Audit { .. } | Command::Update { .. } | Command::Remove { .. } | Command::Panel { .. } | Command::Files { .. } | Command::ShellProbe { .. });
     if needs_vault {
         unlock_vault(&store)?;
     }
@@ -311,6 +314,19 @@ pub async fn run(cmd: Command) -> Result<()> {
                 "rm" => files.remove(&path).await?,
                 a => bail!("unknown action {a}"),
             }
+        }
+        Command::ShellProbe { server, input } => {
+            let config = find(&store, &server)?.with_context(|| format!("no saved server named {server}"))?;
+            let mut shell = sesame_ssh::Shell::open(&config, 100, 30).await?;
+            shell.input.send(sesame_ssh::ShellInput::Data(format!("{input}\rexit\r").into_bytes()))?;
+            let mut out = Vec::new();
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
+            while let Ok(Some(chunk)) = tokio::time::timeout_at(deadline, shell.output.recv()).await {
+                out.extend(chunk);
+            }
+            let mut parser = vt100::Parser::new(std::num::NonZeroU16::new(30).unwrap(), std::num::NonZeroU16::new(100).unwrap(), 0);
+            parser.process(&out);
+            println!("{}", parser.screen().contents());
         }
         Command::Audit { server, limit } => {
             let id = match server {

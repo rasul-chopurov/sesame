@@ -345,3 +345,10 @@ files.filter: { en: "Filter this folder…", ru: "Фильтр в этой па�
 files.saved: { en: "Saved", ru: "Сохранено", az: "Saxlanıldı" }
 files.size: { en: "Size", ru: "Размер", az: "Ölçü" }
 files.modified: { en: "Modified", ru: "Изменён", az: "Dəyişdirilib" }
+nav.terminal: { en: "Terminal", ru: "Терминал", az: "Terminal" }
+term.connect: { en: "Open a shell", ru: "Открыть терминал", az: "Terminalı aç" }
+term.reconnect: { en: "Reconnect", ru: "Переподключить", az: "Yenidən qoşul" }
+term.external: { en: "Open in Terminal.app", ru: "Открыть в Terminal.app", az: "Terminal.app-də aç" }
+term.lead: { en: "A real shell on the server as %{user}. Everything you type runs there — be careful as root.", ru: "Настоящий терминал сервера от имени %{user}. Всё, что вы вводите, выполняется там — с root будьте внимательны.", az: "Serverdə %{user} adından əsl terminal. Yazdığınız hər şey orada icra olunur — root ilə diqqətli olun." }
+term.closed: { en: "The session has ended.", ru: "Сессия завершена.", az: "Sessiya bitdi." }
+term.connecting: { en: "Connecting…", ru: "Подключаюсь…", az: "Qoşulur…" }

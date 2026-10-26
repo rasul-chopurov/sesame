@@ -5,6 +5,7 @@ mod integrations;
 mod files;
 mod jobs;
 mod newsite;
+mod terminal;
 pub mod theme;
 mod views;
 mod widgets;
@@ -64,10 +65,11 @@ pub enum Section {
     Security,
     NewSite,
     Files(usize),
+    Terminal,
 }
 
 impl Section {
-    pub const NAV: [Section; 7] = [
+    pub const NAV: [Section; 8] = [
         Section::Overview,
         Section::Sites,
         Section::Processes,
@@ -75,6 +77,7 @@ impl Section {
         Section::Databases,
         Section::MailCron,
         Section::Security,
+        Section::Terminal,
     ];
 
     pub fn label(self) -> String {
@@ -86,6 +89,7 @@ impl Section {
             Section::Databases => "nav.databases",
             Section::MailCron => "nav.mail_cron",
             Section::Security => "nav.security",
+            Section::Terminal => "nav.terminal",
         })
     }
 
@@ -98,6 +102,7 @@ impl Section {
             Section::Databases => "databases",
             Section::MailCron => "mail-cron",
             Section::Security => "security",
+            Section::Terminal => "terminal",
         }
     }
 
@@ -110,6 +115,7 @@ impl Section {
             Section::Databases => IconName::Database,
             Section::MailCron => IconName::Mail,
             Section::Security => IconName::Shield,
+            Section::Terminal => IconName::Terminal,
         }
     }
 }
@@ -180,6 +186,7 @@ pub struct SesameApp {
     pub(crate) tunnels: HashMap<(ServerId, u16), sesame_ssh::Tunnel>,
     pub(crate) files: Option<files::FilesState>,
     pub(crate) files_in: files::Inputs,
+    pub(crate) terminal: Option<terminal::TerminalState>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -289,6 +296,7 @@ impl SesameApp {
             tunnels: HashMap::new(),
             files: None,
             files_in,
+            terminal: None,
             _subscriptions: subs,
         };
         if this.page != Page::Vault && translucent {

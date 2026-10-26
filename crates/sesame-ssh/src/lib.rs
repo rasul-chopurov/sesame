@@ -333,3 +333,61 @@ impl Drop for Tunnel {
         self.task.abort();
     }
 }
+
+/// What the UI sends to an interactive shell.
+#[derive(Debug)]
+pub enum ShellInput {
+    Data(Vec<u8>),
+    Resize { cols: u16, rows: u16 },
+    Close,
+}
+
+/// An interactive login shell with a PTY. Output bytes arrive on `output`;
+/// keystrokes and resizes go to `input`. Closing either side ends it.
+pub struct Shell {
+    pub input: tokio::sync::mpsc::UnboundedSender<ShellInput>,
+    pub output: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>,
+}
+
+impl Shell {
+    pub async fn open(server: &ServerConfig, cols: u16, rows: u16) -> Result<Self> {
+        let session = Session::connect(server).await?;
+        let mut channel = session.handle.channel_open_session().await?;
+        channel.request_pty(true, "xterm-256color", cols as u32, rows as u32, 0, 0, &[]).await?;
+        channel.request_shell(true).await?;
+        let (in_tx, mut in_rx) = tokio::sync::mpsc::unbounded_channel::<ShellInput>();
+        let (out_tx, out_rx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
+        tokio::spawn(async move {
+            // The session must live as long as the shell.
+            let _session = session;
+            loop {
+                tokio::select! {
+                    msg = channel.wait() => match msg {
+                        Some(ChannelMsg::Data { data }) | Some(ChannelMsg::ExtendedData { data, .. }) => {
+                            if out_tx.send(data.to_vec()).is_err() {
+                                break;
+                            }
+                        }
+                        Some(ChannelMsg::ExitStatus { .. }) | Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => break,
+                        _ => {}
+                    },
+                    input = in_rx.recv() => match input {
+                        Some(ShellInput::Data(bytes)) => {
+                            if channel.data_bytes(bytes).await.is_err() {
+                                break;
+                            }
+                        }
+                        Some(ShellInput::Resize { cols, rows }) => {
+                            let _ = channel.window_change(cols as u32, rows as u32, 0, 0).await;
+                        }
+                        Some(ShellInput::Close) | None => {
+                            let _ = channel.eof().await;
+                            break;
+                        }
+                    },
+                }
+            }
+        });
+        Ok(Self { input: in_tx, output: out_rx })
+    }
+}

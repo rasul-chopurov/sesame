@@ -104,6 +104,7 @@ pub fn server(
             Section::Site(i) => body.child(site_detail(app, id, s, i, cx)),
             Section::NewSite => body.child(super::newsite::wizard(app, id, s, cx)),
             Section::Files(i) => body.child(super::files::view(app, id, i, cx)),
+            Section::Terminal => body.child(super::terminal::view(app, id, cx)),
             Section::Processes => body.child(processes(id, s, cx)),
             Section::Services => body.child(services(id, s, cx)),
             Section::Databases => body.child(databases(app, id, s, cx)),

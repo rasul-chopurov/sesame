@@ -66,6 +66,7 @@ fn main() {
             ("site", Page::Server(id, Section::Site(0))),
             ("new-site", Page::Server(id, Section::NewSite)),
             ("files", Page::Server(id, Section::Files(0))),
+            ("terminal", Page::Server(id, Section::Terminal)),
             ("processes", Page::Server(id, Section::Processes)),
             ("services", Page::Server(id, Section::Services)),
             ("databases", Page::Server(id, Section::Databases)),
@@ -87,7 +88,9 @@ fn main() {
             cx.update_window(handle, |_, window, cx| {
                 view.update(cx, |v, cx| {
                     v.navigate(page, cx);
-                    if name == "files" {
+                    if name == "terminal" {
+                        v.demo_terminal(id, cx);
+                    } else if name == "files" {
                         v.demo_files(id, 0, cx);
                     } else if name == "database-engine" {
                         v.demo_open_engine(sesame_core::snapshot::DatabaseKind::MySql, cx);
