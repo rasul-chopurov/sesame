@@ -128,6 +128,17 @@ pub enum Command {
         #[arg(long)]
         seconds: Option<u64>,
     },
+    /// Site files over SFTP, confined to a directory: ls | cat | put | mkdir | rm.
+    Files {
+        server: String,
+        root: String,
+        action: String,
+        #[arg(default_value = "")]
+        path: String,
+        /// Local file for `put`.
+        #[arg(long)]
+        local: Option<String>,
+    },
     /// Show the audit log.
     Audit {
         server: Option<String>,
@@ -185,7 +196,7 @@ pub fn unlock_vault(store: &std::sync::Arc<SqliteStore>) -> Result<()> {
 
 pub async fn run(cmd: Command) -> Result<()> {
     let store = std::sync::Arc::new(SqliteStore::open_default()?);
-    let needs_vault = !matches!(cmd, Command::Servers | Command::Ops | Command::Audit { .. } | Command::Update { .. } | Command::Remove { .. } | Command::Panel { .. });
+    let needs_vault = !matches!(cmd, Command::Servers | Command::Ops | Command::Audit { .. } | Command::Update { .. } | Command::Remove { .. } | Command::Panel { .. } | Command::Files { .. });
     if needs_vault {
         unlock_vault(&store)?;
     }
@@ -280,6 +291,26 @@ pub async fn run(cmd: Command) -> Result<()> {
                 }
             }
             drop(tunnel);
+        }
+        Command::Files { server, root, action, path, local } => {
+            let config = find(&store, &server)?.with_context(|| format!("no saved server named {server}"))?;
+            let files = sesame_ssh::files::SiteFiles::open(&config, &root).await?;
+            match action.as_str() {
+                "ls" => {
+                    for e in files.list(&path).await? {
+                        println!("{}{:>10}  {:o}  {}", if e.is_dir { "d" } else { "-" }, e.size, e.mode, e.name);
+                    }
+                }
+                "cat" => print!("{}", String::from_utf8_lossy(&files.read(&path, 512 * 1024).await?)),
+                "put" => {
+                    let data = std::fs::read(local.context("--local is required")?)?;
+                    files.write(&path, &data).await?;
+                    println!("written {path} (owner {})", files.owner());
+                }
+                "mkdir" => files.mkdir(&path).await?,
+                "rm" => files.remove(&path).await?,
+                a => bail!("unknown action {a}"),
+            }
         }
         Command::Audit { server, limit } => {
             let id = match server {

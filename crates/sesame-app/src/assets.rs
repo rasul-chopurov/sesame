@@ -11,7 +11,7 @@ gpui_kit::assets::icon_assets!(
         Activity, Boxes, CircleAlert, Clock, Cloud, Construction, Database, DoorOpen, Download,
         ExternalLink, Gauge, HardDrive, KeyRound, Languages, Layers, ListChecks, Lock, Mail,
         MemoryStick, Monitor, Package, Power, PowerOff, RefreshCw, Rocket, Server, Shield,
-        Sparkles, Terminal, TriangleAlert, Wrench, Zap
+        Sparkles, Terminal, TriangleAlert, Wrench, X, Zap
     ]
 );
 

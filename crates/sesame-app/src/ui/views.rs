@@ -103,6 +103,7 @@ pub fn server(
             Section::Sites => body.child(sites(app, id, s, cx)),
             Section::Site(i) => body.child(site_detail(app, id, s, i, cx)),
             Section::NewSite => body.child(super::newsite::wizard(app, id, s, cx)),
+            Section::Files(i) => body.child(super::files::view(app, id, i, cx)),
             Section::Processes => body.child(processes(id, s, cx)),
             Section::Services => body.child(services(id, s, cx)),
             Section::Databases => body.child(databases(app, id, s, cx)),
@@ -481,6 +482,14 @@ fn site_detail(app: &SesameApp, server: sesame_core::ServerId, s: &ServerSnapsho
                     .icon(IconName::ExternalLink)
                     .label(tr("sites.open"))
                     .on_click(move |_, _, cx| cx.open_url(&url)),
+            )
+        })
+        .when_some(site.app_path.clone(), |d, root| {
+            d.child(
+                Button::new("files")
+                    .icon(IconName::Folder)
+                    .label(tr("files.open"))
+                    .on_click(cx.listener(move |this, _, _, cx| this.open_files(server, i, root.clone(), cx))),
             )
         })
         .when(site.framework == Framework::Laravel && site.app_path.is_some(), |d| {

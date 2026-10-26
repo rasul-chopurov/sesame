@@ -2,6 +2,7 @@
 //! servers and their sections, the content panel and a status bar.
 
 mod integrations;
+mod files;
 mod jobs;
 mod newsite;
 pub mod theme;
@@ -62,6 +63,7 @@ pub enum Section {
     MailCron,
     Security,
     NewSite,
+    Files(usize),
 }
 
 impl Section {
@@ -78,7 +80,7 @@ impl Section {
     pub fn label(self) -> String {
         tr(match self {
             Section::Overview => "nav.overview",
-            Section::Sites | Section::Site(_) | Section::NewSite => "nav.sites",
+            Section::Sites | Section::Site(_) | Section::NewSite | Section::Files(_) => "nav.sites",
             Section::Processes => "nav.processes",
             Section::Services => "nav.services",
             Section::Databases => "nav.databases",
@@ -90,7 +92,7 @@ impl Section {
     pub fn slug(self) -> &'static str {
         match self {
             Section::Overview => "overview",
-            Section::Sites | Section::Site(_) | Section::NewSite => "sites",
+            Section::Sites | Section::Site(_) | Section::NewSite | Section::Files(_) => "sites",
             Section::Processes => "processes",
             Section::Services => "services",
             Section::Databases => "databases",
@@ -102,7 +104,7 @@ impl Section {
     fn icon(self) -> IconName {
         match self {
             Section::Overview => IconName::Gauge,
-            Section::Sites | Section::Site(_) | Section::NewSite => IconName::Globe,
+            Section::Sites | Section::Site(_) | Section::NewSite | Section::Files(_) => IconName::Globe,
             Section::Processes => IconName::Activity,
             Section::Services => IconName::Package,
             Section::Databases => IconName::Database,
@@ -176,6 +178,8 @@ pub struct SesameApp {
     pub(crate) ns: newsite::Form,
     /// Open SSH tunnels to admin panels, by server and remote port.
     pub(crate) tunnels: HashMap<(ServerId, u16), sesame_ssh::Tunnel>,
+    pub(crate) files: Option<files::FilesState>,
+    pub(crate) files_in: files::Inputs,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -206,6 +210,7 @@ impl SesameApp {
         let db_search = input(tr("db.search"), window, cx);
         let int = integrations::Inputs::new(window, cx);
         let ns = newsite::Form::new(window, cx);
+        let files_in = files::Inputs::new(window, cx);
         let vault_pw = cx.new(|cx| InputState::new(window, cx).masked(true));
         let vault_pw2 = cx.new(|cx| InputState::new(window, cx).masked(true));
 
@@ -216,7 +221,7 @@ impl SesameApp {
         subs.push(cx.subscribe(&db_name, |_, _, _: &InputEvent, cx| cx.notify()));
         subs.push(cx.subscribe(&db_user, |_, _, _: &InputEvent, cx| cx.notify()));
         subs.push(cx.subscribe(&db_search, |_, _, _: &InputEvent, cx| cx.notify()));
-        for input in int.all().into_iter().chain(ns.inputs()) {
+        for input in int.all().into_iter().chain(ns.inputs()).chain([&files_in.new_folder, &files_in.filter]) {
             subs.push(cx.subscribe(input, |_, _, _: &InputEvent, cx| cx.notify()));
         }
         subs.push(cx.subscribe(&vault_pw2, |_, _, _: &InputEvent, cx| cx.notify()));
@@ -282,6 +287,8 @@ impl SesameApp {
             int,
             ns,
             tunnels: HashMap::new(),
+            files: None,
+            files_in,
             _subscriptions: subs,
         };
         if this.page != Page::Vault && translucent {
@@ -727,7 +734,7 @@ impl SesameApp {
             Page::Server(_, section) => {
                 if let Some(s) = self.current_server() {
                     crumbs = crumbs.child(sep()).child(s.name.clone()).child(sep()).child(section.label());
-                    if let (Section::Site(i), Some(snap)) = (section, self.snapshots.get(&s.id)) {
+                    if let (Section::Site(i) | Section::Files(i), Some(snap)) = (section, self.snapshots.get(&s.id)) {
                         if let Some(site) = snap.sites.get(i) {
                             crumbs = crumbs.child(sep()).child(site.domains.first().cloned().unwrap_or_default());
                         }
@@ -855,7 +862,7 @@ impl SesameApp {
                     _ => Section::Overview,
                 };
                 for section in Section::NAV {
-                    let active = section == current || (section == Section::Sites && matches!(current, Section::Site(_) | Section::NewSite));
+                    let active = section == current || (section == Section::Sites && matches!(current, Section::Site(_) | Section::NewSite | Section::Files(_)));
                     let count = snap.and_then(|sn| match section {
                         Section::Sites => Some(sn.sites.iter().filter(|s| s.domains != ["*"]).count()),
                         Section::Processes => Some(sn.supervisor.len()),

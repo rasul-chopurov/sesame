@@ -4,6 +4,8 @@
 //! Everything above this crate talks to servers through [`Exec`], so
 //! discovery and actions can be tested against recorded command output.
 
+pub mod files;
+
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

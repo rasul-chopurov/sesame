@@ -329,3 +329,19 @@ svc.open: { en: "Open", ru: "Открыть", az: "Aç" }
 svc.panels: { en: "Database panels", ru: "Панели баз данных", az: "Baza panelləri" }
 svc.tunnel_error: { en: "Could not open the tunnel: %{error}", ru: "Не удалось открыть туннель: %{error}", az: "Tuneli açmaq alınmadı: %{error}" }
 svc.needs: { en: "Needs %{what}", ru: "Нужен %{what}", az: "%{what} lazımdır" }
+files.title: { en: "Files", ru: "Файлы", az: "Fayllar" }
+files.open: { en: "Files", ru: "Файлы", az: "Fayllar" }
+files.lead: { en: "Only this site's directory — paths and symlinks outside it are refused. Uploaded files belong to the site's user.", ru: "Только папка этого сайта — пути и симлинки за её пределы запрещены. Загруженные файлы принадлежат пользователю сайта.", az: "Yalnız bu saytın qovluğu — ondan kənara yollar və simlinklər qadağandır. Yüklənən fayllar sayt istifadəçisinə məxsusdur." }
+files.upload: { en: "Upload", ru: "Загрузить", az: "Yüklə" }
+files.new_folder: { en: "New folder", ru: "Новая папка", az: "Yeni qovluq" }
+files.download: { en: "Download", ru: "Скачать", az: "Endir" }
+files.delete: { en: "Delete", ru: "Удалить", az: "Sil" }
+files.confirm_delete: { en: "Delete %{name}?", ru: "Удалить %{name}?", az: "%{name} silinsin?" }
+files.yes: { en: "Yes, delete", ru: "Да, удалить", az: "Bəli, sil" }
+files.save: { en: "Save", ru: "Сохранить", az: "Saxla" }
+files.close: { en: "Close", ru: "Закрыть", az: "Bağla" }
+files.empty: { en: "Empty folder", ru: "Пустая папка", az: "Boş qovluq" }
+files.filter: { en: "Filter this folder…", ru: "Фильтр в этой папке…", az: "Bu qovluqda süz…" }
+files.saved: { en: "Saved", ru: "Сохранено", az: "Saxlanıldı" }
+files.size: { en: "Size", ru: "Размер", az: "Ölçü" }
+files.modified: { en: "Modified", ru: "Изменён", az: "Dəyişdirilib" }

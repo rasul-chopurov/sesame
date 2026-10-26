@@ -65,6 +65,7 @@ fn main() {
             ("sites", Page::Server(id, Section::Sites)),
             ("site", Page::Server(id, Section::Site(0))),
             ("new-site", Page::Server(id, Section::NewSite)),
+            ("files", Page::Server(id, Section::Files(0))),
             ("processes", Page::Server(id, Section::Processes)),
             ("services", Page::Server(id, Section::Services)),
             ("databases", Page::Server(id, Section::Databases)),
@@ -86,7 +87,9 @@ fn main() {
             cx.update_window(handle, |_, window, cx| {
                 view.update(cx, |v, cx| {
                     v.navigate(page, cx);
-                    if name == "database-engine" {
+                    if name == "files" {
+                        v.demo_files(id, 0, cx);
+                    } else if name == "database-engine" {
                         v.demo_open_engine(sesame_core::snapshot::DatabaseKind::MySql, cx);
                     } else if name == "cloudflare-zone" {
                         v.demo_open_zone("z1", cx);
